@@ -1,0 +1,24 @@
+[package]
+name = "barust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "barust"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+librsvg = { git="https://gitlab.gnome.org/GNOME/librsvg", version = "2.55.0" }
+cairo-rs = { version = "0.15.12", features = ["xcb", "png"] }
+xcb = { version = "1.1.1", features = ["xlib_xcb", "debug_atom_names"] }
+chrono = "0.4.22"
+psutil = "3.2.2"
+xcb-wm = { version = "0.4.0", features = ["ewmh", "icccm"] }
+chan-signal = "0.3.3"
+chan = "0.1.23"
+pangocairo = "0.15.1"
+pango = "0.15.10"
+derive_more = "0.99.17"
+log = "0.4.17"
+
