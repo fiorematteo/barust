@@ -2,11 +2,15 @@
 name = "barust"
 version = "0.1.0"
 edition = "2021"
+description = "A X11 status bar"
+repository = "https://github.com/fiorematteo/barust"
+readme = "../README.md"
+keywords = ["x11", "status", "bar"]
+categories = ["gui"]
+license = "MIT"
 
 [lib]
 name = "barust"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 librsvg = { git="https://gitlab.gnome.org/GNOME/librsvg", version = "2.55.0" }
