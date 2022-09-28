@@ -16,7 +16,6 @@ Barust uses a widgets model inspired by [qtile](http://www.qtile.org/) and [cnx]
 * memory
 * network
 * spacer
-* svg
 * systray (WIP)
 * temperature
 * text

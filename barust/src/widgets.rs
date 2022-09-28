@@ -7,7 +7,6 @@ mod cpu;
 mod memory;
 mod network;
 mod spacer;
-mod svg;
 mod systray;
 mod temp;
 mod text;
@@ -19,7 +18,6 @@ pub use cpu::Cpu;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
 pub use spacer::Spacer;
-pub use svg::Svg;
 pub use systray::Systray;
 pub use temp::Temperatures;
 pub use text::Text;
@@ -96,7 +94,6 @@ pub enum WidgetError {
     Memory(memory::Error),
     Network(network::Error),
     Spacer,
-    Svg(svg::Error),
     Systray(systray::Error),
     Temperatures,
     Text(text::Error),
