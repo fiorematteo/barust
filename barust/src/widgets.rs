@@ -1,6 +1,7 @@
 use crate::{corex::Color, error::Erc};
 use cairo::{Context, Rectangle};
 
+mod active_window;
 mod bat;
 mod clock;
 mod cpu;
@@ -12,6 +13,7 @@ mod temp;
 mod text;
 mod workspaces;
 
+pub use active_window::ActiveWindow;
 pub use bat::{Battery, BatteryIcons};
 pub use clock::Clock;
 pub use cpu::Cpu;
@@ -88,6 +90,7 @@ impl<'a> Default for WidgetConfig<'a> {
 
 #[derive(Debug, derive_more::Error, derive_more::Display, derive_more::From)]
 pub enum WidgetError {
+    ActiveWindow(active_window::Error),
     Battery(bat::Error),
     Clock,
     Cpu(cpu::Error),

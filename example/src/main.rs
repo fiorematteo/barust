@@ -3,7 +3,8 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        Battery, BatteryIcons, Clock, Cpu, Network, Widget, WidgetConfig, WidgetError, Workspace,
+        ActiveWindow, Battery, BatteryIcons, Clock, Cpu, Network, Widget, WidgetConfig,
+        WidgetError, Workspace,
     },
 };
 
@@ -30,15 +31,18 @@ fn main() -> Result<()> {
     let mut bar = StatusBar::create()
         .position(Position::Bottom)
         .background(BLANK)
-        .left_widgets(vec![FilteredWorkspace::new::<&str>(
-            PURPLE,
-            10.0,
-            &WidgetConfig {
-                padding: 0.0,
-                ..wd_config
-            },
-            &["scratchpad", "pulsemixer"],
-        )])
+        .left_widgets(vec![
+            FilteredWorkspace::new::<&str>(
+                PURPLE,
+                10.0,
+                &WidgetConfig {
+                    padding: 0.0,
+                    ..wd_config
+                },
+                &["scratchpad", "pulsemixer"],
+            ),
+            ActiveWindow::new(&wd_config, None),
+        ])
         .right_widgets(vec![
             Cpu::new("%p%", &wd_config, None)?,
             Network::new("%s %n", "wlp1s0".to_string(), None, &wd_config, None),

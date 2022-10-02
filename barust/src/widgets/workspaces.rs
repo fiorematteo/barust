@@ -150,7 +150,8 @@ impl Widget for Workspace {
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
         thread::spawn(move || loop {
-            if let Ok(xcb::Event::X(_)) = connection.wait_for_event() {
+            if let Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_))) = connection.wait_for_event()
+            {
                 sender.send(());
             }
         });
