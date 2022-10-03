@@ -3,7 +3,7 @@ use log::debug;
 use std::thread;
 use xcb::{x::Window, Connection};
 
-pub fn get_active_window_name(connection: &Connection) -> Result<String> {
+pub fn get_active_window_name(connection: &Connection) -> Result<Option<String>> {
     let ewmh_connection = xcb_wm::ewmh::Connection::connect(connection);
     let cookie = ewmh_connection.send_request(&xcb_wm::ewmh::proto::GetActiveWindow);
     let active_window_id: Window = ewmh_connection
@@ -13,8 +13,8 @@ pub fn get_active_window_name(connection: &Connection) -> Result<String> {
     let cookie = ewmh_connection.send_request(&xcb_wm::ewmh::proto::GetWmName(active_window_id));
     let active_window_name = ewmh_connection
         .wait_for_reply(cookie)
-        .map_err(Error::from)?
-        .name;
+        .map(|a| Some(a.name))
+        .unwrap_or(None);
 
     Ok(active_window_name)
 }
@@ -74,8 +74,9 @@ impl Widget for ActiveWindow {
     fn update(&mut self) -> Result<()> {
         debug!("updating active_window");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let window_name = get_active_window_name(&connection)?;
-        self.inner.set_text(window_name);
+        if let Some(window_name) = get_active_window_name(&connection)? {
+            self.inner.set_text(window_name);
+        }
         Ok(())
     }
 

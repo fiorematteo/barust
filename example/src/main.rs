@@ -27,7 +27,11 @@ fn main() -> Result<()> {
 
     env_logger::init();
 
-    let wd_config = WidgetConfig::default();
+    let wd_config = WidgetConfig {
+        font: "DejaVu Sans Mono",
+        font_size: 16.0,
+        ..WidgetConfig::default()
+    };
     let mut bar = StatusBar::create()
         .position(Position::Bottom)
         .background(BLANK)
