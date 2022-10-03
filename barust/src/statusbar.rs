@@ -9,7 +9,7 @@ use crate::{
 use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use chan::{chan_select, Receiver};
 use log::{debug, error, info};
-use std::{sync::Arc, thread, time::Duration};
+use std::{sync::Arc, time::Duration, thread};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -59,7 +59,7 @@ impl StatusBar {
             log_error_and_replace!(wd, wd.hook(tx.clone()));
         }
         let signal = chan_signal::notify(&[chan_signal::Signal::INT, chan_signal::Signal::TERM]);
-        let timeout = chan::tick(Duration::from_secs(5));
+        let timeout = chan::tick(Duration::from_secs(10));
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.show()?;

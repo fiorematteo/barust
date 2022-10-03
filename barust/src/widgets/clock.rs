@@ -2,7 +2,7 @@ use super::{Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use chrono::Local;
 use log::debug;
-use std::fmt::Debug;
+use std::{fmt::Debug, thread, time::Duration};
 
 /// Displays a datetime
 pub struct Clock {
@@ -48,6 +48,14 @@ impl Widget for Clock {
     fn update(&mut self) -> Result<()> {
         debug!("updating clock");
         self.inner.set_text(Self::current_time_str(&self.format));
+        Ok(())
+    }
+
+    fn hook(&mut self, sender: chan::Sender<()>) -> Result<()> {
+        thread::spawn(move || loop {
+            thread::sleep(Duration::from_secs(1));
+            sender.send(());
+        });
         Ok(())
     }
 

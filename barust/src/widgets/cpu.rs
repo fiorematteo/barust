@@ -2,6 +2,7 @@ use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
+use std::time::{Duration, SystemTime, SystemTimeError};
 
 /// Displays cpu informations
 #[derive(Debug)]
@@ -9,6 +10,7 @@ pub struct Cpu {
     format: String,
     per: CpuPercentCollector,
     times: CpuTimesPercentCollector,
+    last_update: SystemTime,
     inner: Text,
     on_click: OptionCallback<Self>,
 }
@@ -31,6 +33,7 @@ impl Cpu {
             format: format.to_string(),
             per: CpuPercentCollector::new().map_err(Error::from)?,
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
+            last_update: SystemTime::now(),
             inner: *Text::new("CPU", config, None),
             on_click: on_click.into(),
         }))
@@ -42,7 +45,7 @@ impl Widget for Cpu {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    fn first_update(&mut self) -> Result<()> {
         debug!("updating cpu");
         let times = self.times.cpu_times_percent().map_err(Error::from)?;
         let text = self
@@ -57,6 +60,14 @@ impl Widget for Cpu {
             .replace("%b", &format!("{:.1}", times.busy()));
         self.inner.set_text(text);
         Ok(())
+    }
+
+    fn update(&mut self) -> Result<()> {
+        if self.last_update.elapsed().map_err(Error::from)? < Duration::from_secs(1) {
+            return Ok(());
+        }
+        self.last_update = SystemTime::now();
+        self.first_update()
     }
 
     fn size(&self, context: &Context) -> Result<f64> {
@@ -77,4 +88,5 @@ impl Widget for Cpu {
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
     Psutil(psutil::Error),
+    SystemTime(SystemTimeError),
 }
