@@ -9,7 +9,7 @@ use crate::{
 use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use chan::{chan_select, Receiver};
 use log::{debug, error, info};
-use std::{sync::Arc, time::Duration, thread};
+use std::{sync::Arc, thread, time::Duration};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,

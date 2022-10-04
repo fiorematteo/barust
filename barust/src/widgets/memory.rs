@@ -38,7 +38,8 @@ impl Widget for Memory {
     fn update(&mut self) -> Result<()> {
         debug!("updating memory");
         let ram = virtual_memory().map_err(Error::from)?;
-        let text = (&self.format)
+        let text = self
+            .format
             .replace("%p", &format!("{:.2}", ram.percent()))
             .replace("%t", &bytes_to_closest(ram.total()))
             .replace("%a", &bytes_to_closest(ram.available()))
