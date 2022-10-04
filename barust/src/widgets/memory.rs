@@ -2,6 +2,7 @@ use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::{memory::virtual_memory, Bytes};
+use std::fmt::Display;
 
 /// Displays memory informations
 #[derive(Debug)]
@@ -77,6 +78,12 @@ fn bytes_to_closest(value: Bytes) -> String {
         selected_unit += 1;
     }
     format!("{:.1}{}", value, units[selected_unit])
+}
+
+impl Display for Memory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Memory").fmt(f)
+    }
 }
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]

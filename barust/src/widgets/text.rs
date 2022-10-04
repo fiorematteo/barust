@@ -3,7 +3,7 @@ use crate::corex::{set_source_rgba, Color};
 use cairo::{Context, Rectangle};
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
-use std::cell::RefCell;
+use std::fmt::Display;
 
 /// Displays custom text
 #[derive(Debug)]
@@ -81,6 +81,12 @@ impl Widget for Text {
         if let OptionCallback::Some(cb) = &self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for Text {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Text").fmt(f)
     }
 }
 

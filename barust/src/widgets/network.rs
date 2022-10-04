@@ -1,7 +1,10 @@
 use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
-use std::fs::{metadata, read_to_string};
+use std::{
+    fmt::Display,
+    fs::{metadata, read_to_string},
+};
 
 fn get_interface_stats(ifname: &str) -> Result<(bool, bool)> {
     metadata(format!("/sys/class/net/{}", ifname)).map_err(Error::from)?;
@@ -114,6 +117,12 @@ impl Widget for Network {
         if let OptionCallback::Some(cb) = &self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for Network {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Network").fmt(f)
     }
 }
 

@@ -2,7 +2,11 @@ use super::{Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use chrono::Local;
 use log::debug;
-use std::{fmt::Debug, thread, time::Duration};
+use std::{
+    fmt::{Debug, Display},
+    thread,
+    time::Duration,
+};
 
 /// Displays a datetime
 pub struct Clock {
@@ -71,5 +75,11 @@ impl Widget for Clock {
         if let Some(cb) = &self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for Clock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from("Clock"))
     }
 }

@@ -1,6 +1,6 @@
 use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use log::debug;
-use std::thread;
+use std::{fmt::Display, thread};
 use xcb::{x::Window, Connection};
 
 pub fn get_active_window_name(connection: &Connection) -> Result<Option<String>> {
@@ -84,6 +84,12 @@ impl Widget for ActiveWindow {
         if let OptionCallback::Some(cb) = self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for ActiveWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("ActiveWindow").fmt(f)
     }
 }
 

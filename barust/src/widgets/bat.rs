@@ -2,6 +2,7 @@ use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{
+    fmt::Display,
     fs::{read_dir, File},
     io::Read,
 };
@@ -138,6 +139,12 @@ impl Widget for Battery {
         if let OptionCallback::Some(cb) = self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for Battery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Battery").fmt(f)
     }
 }
 

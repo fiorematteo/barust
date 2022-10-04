@@ -1,5 +1,6 @@
 use super::{Result, Widget};
 use cairo::{Context, Rectangle};
+use std::fmt::Display;
 
 ///Adds empty space between widgets
 #[derive(Debug)]
@@ -25,5 +26,11 @@ impl Widget for Spacer {
 
     fn padding(&self) -> f64 {
         0.0
+    }
+}
+
+impl Display for Spacer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Spacer").fmt(f)
     }
 }

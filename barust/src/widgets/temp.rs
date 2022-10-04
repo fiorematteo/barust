@@ -2,6 +2,7 @@ use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::sensors::temperatures;
+use std::fmt::Display;
 
 /// Displays the average temperature read by the device sensors
 #[derive(Debug)]
@@ -55,5 +56,11 @@ impl Widget for Temperatures {
         if let OptionCallback::Some(cb) = &self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for Temperatures {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Temperatures").fmt(f)
     }
 }

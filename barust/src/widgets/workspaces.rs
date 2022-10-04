@@ -4,7 +4,7 @@ use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
-use std::{cell::RefCell, thread};
+use std::{fmt::Display, thread};
 use xcb::Connection;
 
 pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
@@ -156,6 +156,12 @@ impl Widget for Workspace {
             }
         });
         Ok(())
+    }
+}
+
+impl Display for Workspace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Workspace").fmt(f)
     }
 }
 

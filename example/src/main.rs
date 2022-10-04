@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use barust::{
     corex::Color,
     error::{Erc, Result},
@@ -106,6 +108,12 @@ impl Widget for FilteredWorkspace {
 
     fn hook(&mut self, sender: chan::Sender<()>) -> barust::widgets::Result<()> {
         self.inner.hook(sender)
+    }
+}
+
+impl Display for FilteredWorkspace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FilteredWorkspace")
     }
 }
 

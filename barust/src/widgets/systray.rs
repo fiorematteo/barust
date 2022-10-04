@@ -4,7 +4,7 @@ use crate::corex::{
     _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
 };
 use log::{debug, warn};
-use std::thread;
+use std::{fmt::Display, thread};
 use xcb::{
     x::{
         ChangeWindowAttributes, ClientMessageData, ConfigWindow, ConfigureWindow, CreateWindow, Cw,
@@ -30,11 +30,11 @@ pub struct Systray {
 
 impl std::fmt::Debug for Systray {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        format!(
+        write!(
+            f,
             "padding: {:?}, icon_size: {:?}, window: {:?}, screen_id: {:?}, children: {:?}",
             self.padding, self.icon_size, self.window, self.screen_id, self.children,
         )
-        .fmt(f)
     }
 }
 
@@ -408,6 +408,12 @@ impl Widget for Systray {
 
     fn padding(&self) -> f64 {
         self.padding
+    }
+}
+
+impl Display for Systray {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Systray").fmt(f)
     }
 }
 

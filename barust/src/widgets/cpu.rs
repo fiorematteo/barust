@@ -2,7 +2,10 @@ use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
-use std::time::{Duration, SystemTime, SystemTimeError};
+use std::{
+    fmt::Display,
+    time::{Duration, SystemTime, SystemTimeError},
+};
 
 /// Displays cpu informations
 #[derive(Debug)]
@@ -82,6 +85,12 @@ impl Widget for Cpu {
         if let OptionCallback::Some(cb) = &self.on_click {
             cb(self);
         }
+    }
+}
+
+impl Display for Cpu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        String::from("Cpu").fmt(f)
     }
 }
 

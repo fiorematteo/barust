@@ -1,5 +1,6 @@
 use crate::{corex::Color, error::Erc};
 use cairo::{Context, Rectangle};
+use std::fmt::Display;
 
 mod active_window;
 mod bat;
@@ -43,15 +44,18 @@ impl<T> From<Option<fn(&mut T)>> for OptionCallback<T> {
 
 impl<T> std::fmt::Debug for OptionCallback<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Some(_) => "Some callback",
-            Self::None => "None",
-        }
-        .fmt(f)
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Some(_) => "Some callback",
+                Self::None => "None",
+            }
+        )
     }
 }
 
-pub trait Widget: std::fmt::Debug {
+pub trait Widget: std::fmt::Debug + Display + Send {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()>;
     fn first_update(&mut self) -> Result<()> {
         Ok(())
