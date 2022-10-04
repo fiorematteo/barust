@@ -88,12 +88,6 @@ impl Widget for Battery {
     fn update(&mut self) -> Result<()> {
         debug!("updating battery");
         let status = &self.read_os_file("status");
-        let status = if let Some(status) = status {
-            status
-        } else {
-            return Ok(());
-        };
-
         let charge = (|| -> Option<f64> {
             Some(
                 self.read_os_file("charge_now")?.parse::<f64>().ok()?
@@ -121,7 +115,7 @@ impl Widget for Battery {
             .format
             .replace(
                 "%i",
-                if status == "Charging" {
+                if status.as_ref().map(|s| s == "Charging").unwrap_or(false) {
                     &self.icons.charging
                 } else {
                     &self.icons.percentages[(percent / 10.0) as usize]
