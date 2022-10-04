@@ -32,7 +32,6 @@ pub struct Workspace {
     internal_padding: f64,
     active_workspace_color: Color,
     pub workspaces: Vec<(String, bool)>,
-    cached_layout: RefCell<Option<Layout>>,
 }
 
 impl Workspace {
@@ -55,23 +54,16 @@ impl Workspace {
             workspaces: Vec::new(),
             font: config.font.into(),
             font_size: config.font_size,
-            cached_layout: RefCell::default(),
         })
     }
 
     fn get_layout(&self, context: &Context) -> Result<Layout> {
-        if let Some(layout) = self.cached_layout.take() {
-            self.cached_layout.replace(Some(layout.clone()));
-            Ok(layout)
-        } else {
-            let pango_context = create_context(context).ok_or(Error::PangoError)?;
-            let layout = Layout::new(&pango_context);
-            let mut font = FontDescription::from_string(&self.font);
-            font.set_absolute_size(self.font_size * pango::SCALE as f64);
-            layout.set_font_description(Some(&font));
-            self.cached_layout.replace(Some(layout.clone()));
-            Ok(layout)
-        }
+        let pango_context = create_context(context).ok_or(Error::PangoError)?;
+        let layout = Layout::new(&pango_context);
+        let mut font = FontDescription::from_string(&self.font);
+        font.set_absolute_size(self.font_size * pango::SCALE as f64);
+        layout.set_font_description(Some(&font));
+        Ok(layout)
     }
 }
 
