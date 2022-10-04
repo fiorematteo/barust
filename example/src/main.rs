@@ -3,8 +3,7 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, BatteryIcons, Clock, Cpu, Network, Widget, WidgetConfig,
-        WidgetError, Workspace,
+        ActiveWindow, Battery, Clock, Cpu, Network, Widget, WidgetConfig, WidgetError, Workspace,
     },
 };
 
@@ -16,15 +15,6 @@ const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
 fn main() -> Result<()> {
-    let icons = BatteryIcons {
-        full: String::from(" "),
-        most: String::from(" "),
-        half: String::from(" "),
-        few: String::from(" "),
-        empty: String::from(" "),
-        charging: String::from("🗲"),
-    };
-
     env_logger::init();
 
     let wd_config = WidgetConfig {
@@ -50,7 +40,7 @@ fn main() -> Result<()> {
         .right_widgets(vec![
             Cpu::new("%p%", &wd_config, None)?,
             Network::new("%s %n", "wlp1s0".to_string(), None, &wd_config, None),
-            Battery::new("%i  %c%", Some(icons), &wd_config, None)?,
+            Battery::new("%i  %c%", None, &wd_config, None)?,
             Clock::new("%H:%M %d/%m/%Y", &wd_config, None),
         ])
         .build()?;

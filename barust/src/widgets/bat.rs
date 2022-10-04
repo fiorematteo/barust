@@ -9,29 +9,17 @@ use std::{
 /// Icons used by [Battery]
 #[derive(Debug)]
 pub struct BatteryIcons {
-    ///displayed if `charge > 90%`
-    pub full: String,
-    ///displayed if `70% < charge < 90%`
-    pub most: String,
-    ///displayed if `40% < charge < 70%`
-    pub half: String,
-    ///displayed if `10% < charge < 40%`
-    pub few: String,
-    ///displayed if `charge < 10%`
-    pub empty: String,
+    pub percentages: [String; 10],
     ///displayed if the device is charging
     pub charging: String,
 }
 
 impl Default for BatteryIcons {
     fn default() -> Self {
+        let percentages = ['', '', '', '', '', '', '', '', '', ''];
         Self {
-            full: String::from("▇"),
-            most: String::from("▆"),
-            half: String::from("▅"),
-            few: String::from("▃"),
-            empty: String::from("▂"),
-            charging: String::from("🗲"),
+            percentages: percentages.map(String::from),
+            charging: String::from('🗲'),
         }
     }
 }
@@ -135,16 +123,8 @@ impl Widget for Battery {
                 "%i",
                 if status == "Charging" {
                     &self.icons.charging
-                } else if percent > 90.0 {
-                    &self.icons.full
-                } else if percent > 70.0 {
-                    &self.icons.most
-                } else if percent > 40.0 {
-                    &self.icons.half
-                } else if percent > 10.0 {
-                    &self.icons.few
                 } else {
-                    &self.icons.empty
+                    &self.icons.percentages[(percent / 10.0) as usize]
                 },
             )
             .replace("%c", &percent.round().to_string());
