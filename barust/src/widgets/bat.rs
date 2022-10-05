@@ -1,11 +1,7 @@
 use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
-use std::{
-    fmt::Display,
-    fs::{read_dir, File},
-    io::Read,
-};
+use std::{fmt::Display, fs::read_dir};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
@@ -73,9 +69,8 @@ impl Battery {
 
     #[inline(always)]
     fn read_os_file(&self, filename: &str) -> Option<String> {
-        let mut value = String::default();
-        let mut file = File::open(format!("{}/{}", self.root_path, filename)).ok()?;
-        file.read_to_string(&mut value).ok()?;
+        let path = format!("{}/{}", self.root_path, filename);
+        let mut value: String = std::fs::read_to_string(path).ok()?;
         value.pop(); //removes /n
         Some(value)
     }
