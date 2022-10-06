@@ -1,4 +1,5 @@
-use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
+use super::{Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, SelfCallback};
 use log::debug;
 use std::{fmt::Display, thread};
 use xcb::{x::Window, Connection};
@@ -20,13 +21,13 @@ pub fn get_active_window_name(connection: &Connection) -> Result<Option<String>>
 }
 
 #[derive(Debug)]
-pub struct ActiveWindow {
-    inner: Text,
-    on_click: OptionCallback<Self>,
+pub struct ActiveWindow<'a> {
+    inner: Text<'a>,
+    on_click: OptionCallback<'a, Self>,
 }
 
-impl ActiveWindow {
-    pub fn new(config: &WidgetConfig, on_click: Option<fn(&mut Self)>) -> Box<Self> {
+impl<'a> ActiveWindow<'a> {
+    pub fn new(config: &WidgetConfig, on_click: Option<&'a SelfCallback<Self>>) -> Box<Self> {
         Box::new(Self {
             inner: *Text::new("", config, None),
             on_click: on_click.into(),
@@ -34,17 +35,18 @@ impl ActiveWindow {
     }
 }
 
-impl Widget for ActiveWindow {
+impl Widget for ActiveWindow<'_> {
     fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn size(&self, context: &cairo::Context) -> Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
+    fn update(&mut self) -> Result<()> {
+        debug!("updating active_window");
+        let (connection, _) = Connection::connect(None).map_err(Error::from)?;
+        if let Some(window_name) = get_active_window_name(&connection)? {
+            self.inner.set_text(window_name);
+        }
+        Ok(())
     }
 
     fn hook(&mut self, sender: chan::Sender<()>) -> Result<()> {
@@ -71,13 +73,12 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    fn update(&mut self) -> Result<()> {
-        debug!("updating active_window");
-        let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        if let Some(window_name) = get_active_window_name(&connection)? {
-            self.inner.set_text(window_name);
-        }
-        Ok(())
+    fn size(&self, context: &cairo::Context) -> Result<f64> {
+        self.inner.size(context)
+    }
+
+    fn padding(&self) -> f64 {
+        self.inner.padding()
     }
 
     fn on_click(&mut self) {
@@ -87,7 +88,7 @@ impl Widget for ActiveWindow {
     }
 }
 
-impl Display for ActiveWindow {
+impl Display for ActiveWindow<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("ActiveWindow").fmt(f)
     }

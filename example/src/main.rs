@@ -50,12 +50,12 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug)]
-struct FilteredWorkspace {
-    inner: Workspace,
+struct FilteredWorkspace<'a> {
+    inner: Workspace<'a>,
     ignored_workspaces: Vec<String>,
 }
 
-impl FilteredWorkspace {
+impl FilteredWorkspace<'_> {
     fn new<T: ToString>(
         active_workspace_color: Color,
         internal_padding: f64,
@@ -70,7 +70,7 @@ impl FilteredWorkspace {
     }
 }
 
-impl Widget for FilteredWorkspace {
+impl Widget for FilteredWorkspace<'_> {
     fn draw(
         &self,
         context: &cairo::Context,
@@ -111,7 +111,7 @@ impl Widget for FilteredWorkspace {
     }
 }
 
-impl Display for FilteredWorkspace {
+impl Display for FilteredWorkspace<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FilteredWorkspace")
     }

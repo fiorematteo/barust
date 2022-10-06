@@ -1,4 +1,5 @@
-use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
+use super::{Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, SelfCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::sensors::temperatures;
@@ -6,18 +7,22 @@ use std::fmt::Display;
 
 /// Displays the average temperature read by the device sensors
 #[derive(Debug)]
-pub struct Temperatures {
+pub struct Temperatures<'a> {
     format: String,
-    inner: Text,
-    on_click: OptionCallback<Self>,
+    inner: Text<'a>,
+    on_click: OptionCallback<'a, Self>,
 }
 
-impl Temperatures {
+impl<'a> Temperatures<'a> {
     ///* `format`
     ///  * `%t` will be replaced with the temperature in celsius
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: &str, config: &WidgetConfig, on_click: Option<fn(&mut Self)>) -> Box<Self> {
+    pub fn new(
+        format: &str,
+        config: &WidgetConfig,
+        on_click: Option<&'a SelfCallback<Self>>,
+    ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new("CPU", config, None),
@@ -26,7 +31,7 @@ impl Temperatures {
     }
 }
 
-impl Widget for Temperatures {
+impl Widget for Temperatures<'_> {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -53,13 +58,13 @@ impl Widget for Temperatures {
     }
 
     fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let OptionCallback::Some(cb) = self.on_click {
             cb(self);
         }
     }
 }
 
-impl Display for Temperatures {
+impl Display for Temperatures<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Temperatures").fmt(f)
     }

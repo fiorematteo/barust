@@ -1,4 +1,6 @@
-use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, SelfCallback};
+
+use super::{Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{
@@ -40,15 +42,15 @@ impl Default for NetworkIcons {
 
 /// Displays informations about a network interface
 #[derive(Debug)]
-pub struct Network {
+pub struct Network<'a> {
     format: String,
     interface: String,
     icons: NetworkIcons,
-    inner: Text,
-    on_click: OptionCallback<Self>,
+    inner: Text<'a>,
+    on_click: OptionCallback<'a, Self>,
 }
 
-impl Network {
+impl<'a> Network<'a> {
     ///* `format`
     ///  * `%n` will be replaced with the interface name
     ///  * `%s` will be replaced with the interface status
@@ -62,7 +64,7 @@ impl Network {
         interface: String,
         icons: Option<NetworkIcons>,
         config: &WidgetConfig,
-        on_click: Option<fn(&mut Self)>,
+        on_click: Option<&'a SelfCallback<Self>>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
@@ -74,7 +76,7 @@ impl Network {
     }
 }
 
-impl Widget for Network {
+impl Widget for Network<'_> {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -114,13 +116,13 @@ impl Widget for Network {
     }
 
     fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let OptionCallback::Some(cb) = self.on_click {
             cb(self);
         }
     }
 }
 
-impl Display for Network {
+impl Display for Network<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Network").fmt(f)
     }

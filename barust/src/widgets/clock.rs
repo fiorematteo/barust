@@ -9,13 +9,13 @@ use std::{
 };
 
 /// Displays a datetime
-pub struct Clock {
+pub struct Clock<'a> {
     format: String,
-    inner: Text,
+    inner: Text<'a>,
     on_click: Option<fn(&mut Self)>,
 }
 
-impl Debug for Clock {
+impl Debug for Clock<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -26,7 +26,7 @@ impl Debug for Clock {
     }
 }
 
-impl Clock {
+impl Clock<'_> {
     ///* `format` describes how to display the time following [chrono format rules](chrono::format::strftime)
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
@@ -44,7 +44,7 @@ impl Clock {
     }
 }
 
-impl Widget for Clock {
+impl Widget for Clock<'_> {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -78,7 +78,7 @@ impl Widget for Clock {
     }
 }
 
-impl Display for Clock {
+impl Display for Clock<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", String::from("Clock"))
     }

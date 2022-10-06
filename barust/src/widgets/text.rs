@@ -1,5 +1,5 @@
-use super::{OptionCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color};
+use super::{Result, Widget, WidgetConfig};
+use crate::corex::{set_source_rgba, Color, SelfCallback, OptionCallback};
 use cairo::{Context, Rectangle};
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
@@ -7,20 +7,24 @@ use std::fmt::Display;
 
 /// Displays custom text
 #[derive(Debug)]
-pub struct Text {
+pub struct Text<'a> {
     text: String,
     padding: f64,
     fg_color: Color,
     font: String,
     font_size: f64,
-    on_click: OptionCallback<Self>,
+    on_click: OptionCallback<'a, Self>,
 }
 
-impl Text {
+impl<'a> Text<'a> {
     ///* `text` text to display
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(text: &str, config: &WidgetConfig, on_click: Option<fn(&mut Self)>) -> Box<Self> {
+    pub fn new(
+        text: &str,
+        config: &WidgetConfig,
+        on_click: Option<&'a SelfCallback<Self>>,
+    ) -> Box<Self> {
         Box::new(Self {
             text: text.to_string(),
             padding: config.padding,
@@ -46,7 +50,7 @@ impl Text {
     }
 }
 
-impl Widget for Text {
+impl Widget for Text<'_> {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         set_source_rgba(context, self.fg_color);
         let layout = self.get_layout(context)?;
@@ -70,13 +74,13 @@ impl Widget for Text {
     }
 
     fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let OptionCallback::Some(cb) = self.on_click {
             cb(self);
         }
     }
 }
 
-impl Display for Text {
+impl Display for Text<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Text").fmt(f)
     }

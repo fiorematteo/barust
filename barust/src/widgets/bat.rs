@@ -1,7 +1,9 @@
-use super::{OptionCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, SelfCallback};
+
+use super::{Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
-use std::{fmt::Display, fs::read_dir};
+use std::{fmt::Display, fs::read_dir, cmp::min};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
@@ -22,15 +24,15 @@ impl Default for BatteryIcons {
 }
 /// Displays status and charge of the battery
 #[derive(Debug)]
-pub struct Battery {
+pub struct Battery<'a> {
     format: String,
-    inner: Text,
+    inner: Text<'a>,
     root_path: String,
     icons: BatteryIcons,
-    on_click: OptionCallback<Self>,
+    on_click: OptionCallback<'a, Self>,
 }
 
-impl Battery {
+impl<'a> Battery<'a> {
     ///* `format`
     ///  * `%c` will be replaced with the charge percentage
     ///  * `%i` will be replaced with the correct icon from `icons`
@@ -41,7 +43,7 @@ impl Battery {
         format: &str,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
-        on_click: Option<fn(&mut Self)>,
+        on_click: Option<&'a SelfCallback<Self>>,
     ) -> Result<Box<Self>> {
         let mut root_path = String::default();
         for path in read_dir("/sys/class/power_supply")
@@ -76,7 +78,7 @@ impl Battery {
     }
 }
 
-impl Widget for Battery {
+impl Widget for Battery<'_> {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -107,6 +109,7 @@ impl Widget for Battery {
             (None, None) => return Ok(()),
         };
 
+        let index = min((percent / 10.0).floor() as usize, 9);
         let text = self
             .format
             .replace(
@@ -114,7 +117,7 @@ impl Widget for Battery {
                 if status.as_ref().map(|s| s == "Charging").unwrap_or(false) {
                     &self.icons.charging
                 } else {
-                    &self.icons.percentages[(percent / 10.0) as usize]
+                    &self.icons.percentages[index]
                 },
             )
             .replace("%c", &percent.round().to_string());
@@ -137,7 +140,7 @@ impl Widget for Battery {
     }
 }
 
-impl Display for Battery {
+impl Display for Battery<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Battery").fmt(f)
     }

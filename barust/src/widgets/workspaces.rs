@@ -1,5 +1,5 @@
-use super::{OptionCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color};
+use super::{Result, Widget, WidgetConfig};
+use crate::corex::{set_source_rgba, Color, OptionCallback, SelfCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -23,18 +23,18 @@ pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
 
 /// Displays informations about the active workspaces
 #[derive(Debug)]
-pub struct Workspace {
+pub struct Workspace<'a> {
     padding: f64,
     fg_color: Color,
     font: String,
     font_size: f64,
-    on_click: OptionCallback<Self>,
+    on_click: OptionCallback<'a, Self>,
     internal_padding: f64,
     active_workspace_color: Color,
     pub workspaces: Vec<(String, bool)>,
 }
 
-impl Workspace {
+impl<'a> Workspace<'a> {
     ///* `active_workspace_color` color of the active workspace
     ///* `internal_padding` space to leave between workspaces name
     ///* `config` a [WidgetConfig]
@@ -43,7 +43,7 @@ impl Workspace {
         active_workspace_color: Color,
         internal_padding: f64,
         config: &WidgetConfig,
-        on_click: Option<fn(&mut Self)>,
+        on_click: Option<&'a SelfCallback<Self>>,
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
@@ -67,7 +67,7 @@ impl Workspace {
     }
 }
 
-impl Widget for Workspace {
+impl Widget for Workspace<'_> {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         context.move_to(self.padding, 0.0);
         let layout = self.get_layout(context)?;
@@ -101,31 +101,6 @@ impl Widget for Workspace {
         Ok(())
     }
 
-    fn size(&self, context: &Context) -> Result<f64> {
-        let layout = self.get_layout(context)?;
-        let big_string = self
-            .workspaces
-            .iter()
-            .map(|(text, _)| text.clone())
-            .collect::<Vec<_>>()
-            .join("");
-        layout.set_text(&big_string);
-        let text_size = layout.pixel_size().0 as f64;
-        Ok(text_size
-            + (2.0 * self.padding)
-            + (self.workspaces.len() as f64 * self.internal_padding))
-    }
-
-    fn padding(&self) -> f64 {
-        self.padding
-    }
-
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
-            cb(self);
-        }
-    }
-
     fn hook(&mut self, sender: chan::Sender<()>) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
@@ -149,9 +124,34 @@ impl Widget for Workspace {
         });
         Ok(())
     }
+
+    fn size(&self, context: &Context) -> Result<f64> {
+        let layout = self.get_layout(context)?;
+        let big_string = self
+            .workspaces
+            .iter()
+            .map(|(text, _)| text.clone())
+            .collect::<Vec<_>>()
+            .join("");
+        layout.set_text(&big_string);
+        let text_size = layout.pixel_size().0 as f64;
+        Ok(text_size
+            + (2.0 * self.padding)
+            + (self.workspaces.len() as f64 * self.internal_padding))
+    }
+
+    fn padding(&self) -> f64 {
+        self.padding
+    }
+
+    fn on_click(&mut self) {
+        if let OptionCallback::Some(cb) = self.on_click {
+            cb(self);
+        }
+    }
 }
 
-impl Display for Workspace {
+impl Display for Workspace<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Workspace").fmt(f)
     }

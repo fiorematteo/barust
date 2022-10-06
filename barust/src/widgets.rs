@@ -28,33 +28,6 @@ pub use workspaces::Workspace;
 
 pub type Result<T> = std::result::Result<T, WidgetError>;
 
-pub enum OptionCallback<T> {
-    Some(fn(&mut T)),
-    None,
-}
-
-impl<T> From<Option<fn(&mut T)>> for OptionCallback<T> {
-    fn from(cb: Option<fn(&mut T)>) -> Self {
-        match cb {
-            Some(cb) => Self::Some(cb),
-            None => Self::None,
-        }
-    }
-}
-
-impl<T> std::fmt::Debug for OptionCallback<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Some(_) => "Some callback",
-                Self::None => "None",
-            }
-        )
-    }
-}
-
 pub trait Widget: std::fmt::Debug + Display + Send {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()>;
     fn first_update(&mut self) -> Result<()> {

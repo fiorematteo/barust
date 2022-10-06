@@ -83,3 +83,34 @@ pub fn debug_times(name: &str, times: Vec<Duration>) {
     println!("{} max: {:?}", name, times.iter().max());
     println!("{} min: {:?}", name, times.iter().min());
 }
+
+pub type Callback<T> = dyn Fn() -> T + Send + Sync;
+
+pub type SelfCallback<T> = dyn Fn(&mut T) + Send + Sync;
+
+pub enum OptionCallback<'a, T> {
+    Some(&'a SelfCallback<T>),
+    None,
+}
+
+impl<'a, T> From<Option<&'a SelfCallback<T>>> for OptionCallback<'a, T> {
+    fn from(cb: Option<&'a SelfCallback<T>>) -> Self {
+        match cb {
+            Some(cb) => Self::Some(cb),
+            None => Self::None,
+        }
+    }
+}
+
+impl<T> std::fmt::Debug for OptionCallback<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Some(_) => "Some callback",
+                Self::None => "None",
+            }
+        )
+    }
+}
