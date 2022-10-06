@@ -5,7 +5,8 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, Clock, Cpu, Network, Widget, WidgetConfig, WidgetError, Workspace,
+        ActiveWindow, Battery, Clock, Cpu, Network, Volume, Widget, WidgetConfig, WidgetError,
+        Workspace,
     },
 };
 
@@ -40,9 +41,44 @@ fn main() -> Result<()> {
             ActiveWindow::new(&wd_config, None),
         ])
         .right_widgets(vec![
-            Cpu::new("%p%", &wd_config, None)?,
             Network::new("%s %n", "wlp1s0".to_string(), None, &wd_config, None),
-            Battery::new("%i  %c%", None, &wd_config, None)?,
+            Cpu::new("%p%", &wd_config, None)?,
+            Battery::new("%i %c%", None, &wd_config, None)?,
+            Volume::new(
+                "%i %p",
+                &|| -> f64 {
+                    (|| -> Option<f64> {
+                        let out = String::from_utf8(
+                            std::process::Command::new("pulsemixer")
+                                .arg("--get-volume")
+                                .output()
+                                .ok()?
+                                .stdout,
+                        )
+                        .ok()?;
+                        let out = out.split(" ").collect::<Vec<_>>();
+                        out.get(0)?.parse::<f64>().ok()
+                    })()
+                    .unwrap_or(0.0)
+                },
+                &|| -> bool {
+                    (|| -> Option<bool> {
+                        String::from_utf8(
+                            std::process::Command::new("pulsemixer")
+                                .arg("--get-mute")
+                                .output()
+                                .ok()?
+                                .stdout,
+                        )
+                        .ok()
+                        .map(|out| out == String::from("1\n"))
+                    })()
+                    .unwrap_or(false)
+                },
+                None,
+                &wd_config,
+                None,
+            ),
             Clock::new("%H:%M %d/%m/%Y", &wd_config, None),
         ])
         .build()?;

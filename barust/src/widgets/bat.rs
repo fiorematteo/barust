@@ -3,12 +3,12 @@ use crate::corex::{OptionCallback, SelfCallback};
 use super::{Result, Text, Widget, WidgetConfig};
 use cairo::{Context, Rectangle};
 use log::debug;
-use std::{fmt::Display, fs::read_dir, cmp::min};
+use std::{cmp::min, fmt::Display, fs::read_dir};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
 pub struct BatteryIcons {
-    pub percentages: [String; 10],
+    pub percentages: Vec<String>,
     ///displayed if the device is charging
     pub charging: String,
 }
@@ -17,7 +17,7 @@ impl Default for BatteryIcons {
     fn default() -> Self {
         let percentages = ['', '', '', '', '', '', '', '', '', ''];
         Self {
-            percentages: percentages.map(String::from),
+            percentages: percentages.map(String::from).to_vec(),
             charging: String::from('🗲'),
         }
     }
@@ -109,7 +109,11 @@ impl Widget for Battery<'_> {
             (None, None) => return Ok(()),
         };
 
-        let index = min((percent / 10.0).floor() as usize, 9);
+        let percentages_len = self.icons.percentages.len();
+        let index = min(
+            (percent / percentages_len as f64).floor() as usize,
+            percentages_len - 1,
+        );
         let text = self
             .format
             .replace(

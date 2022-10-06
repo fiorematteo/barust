@@ -1,5 +1,5 @@
 use super::{Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, SelfCallback, OptionCallback};
+use crate::corex::{set_source_rgba, Color, OptionCallback, SelfCallback};
 use cairo::{Context, Rectangle};
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
