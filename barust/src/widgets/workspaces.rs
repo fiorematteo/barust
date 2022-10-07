@@ -1,5 +1,5 @@
-use super::{Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, OptionCallback, SelfCallback};
+use super::{OnClickCallback, Result, Widget, WidgetConfig};
+use crate::corex::{set_source_rgba, Color, OptionCallback, RawCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -23,18 +23,18 @@ pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
 
 /// Displays informations about the active workspaces
 #[derive(Debug)]
-pub struct Workspace<'a> {
+pub struct Workspace {
     padding: f64,
     fg_color: Color,
     font: String,
     font_size: f64,
-    on_click: OptionCallback<'a, Self>,
+    on_click: OnClickCallback,
     internal_padding: f64,
     active_workspace_color: Color,
     pub workspaces: Vec<(String, bool)>,
 }
 
-impl<'a> Workspace<'a> {
+impl Workspace {
     ///* `active_workspace_color` color of the active workspace
     ///* `internal_padding` space to leave between workspaces name
     ///* `config` a [WidgetConfig]
@@ -43,7 +43,7 @@ impl<'a> Workspace<'a> {
         active_workspace_color: Color,
         internal_padding: f64,
         config: &WidgetConfig,
-        on_click: Option<&'a SelfCallback<Self>>,
+        on_click: Option<&'static RawCallback<(), ()>>,
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
@@ -67,7 +67,7 @@ impl<'a> Workspace<'a> {
     }
 }
 
-impl Widget for Workspace<'_> {
+impl Widget for Workspace {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         context.move_to(self.padding, 0.0);
         let layout = self.get_layout(context)?;
@@ -144,14 +144,14 @@ impl Widget for Workspace<'_> {
         self.padding
     }
 
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
 
-impl Display for Workspace<'_> {
+impl Display for Workspace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Workspace").fmt(f)
     }

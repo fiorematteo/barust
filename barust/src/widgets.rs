@@ -1,4 +1,7 @@
-use crate::{corex::Color, error::Erc};
+use crate::{
+    corex::{Color, OptionCallback},
+    error::Erc,
+};
 use cairo::{Context, Rectangle};
 use std::fmt::Display;
 
@@ -46,7 +49,7 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     }
     fn size(&self, context: &Context) -> Result<f64>;
     fn padding(&self) -> f64;
-    fn on_click(&mut self) {}
+    fn on_click(&self) {}
 }
 
 pub struct WidgetConfig<'a> {
@@ -82,3 +85,5 @@ pub enum WidgetError {
     Workspace(workspaces::Error),
     CustomWidget(Erc),
 }
+
+type OnClickCallback = OptionCallback<(), ()>;

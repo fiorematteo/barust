@@ -1,5 +1,5 @@
-use super::{Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, SelfCallback};
+use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, RawCallback};
 use log::debug;
 use std::{fmt::Display, thread};
 use xcb::{x::Window, Connection};
@@ -21,13 +21,13 @@ pub fn get_active_window_name(connection: &Connection) -> Result<Option<String>>
 }
 
 #[derive(Debug)]
-pub struct ActiveWindow<'a> {
-    inner: Text<'a>,
-    on_click: OptionCallback<'a, Self>,
+pub struct ActiveWindow {
+    inner: Text,
+    on_click: OnClickCallback,
 }
 
-impl<'a> ActiveWindow<'a> {
-    pub fn new(config: &WidgetConfig, on_click: Option<&'a SelfCallback<Self>>) -> Box<Self> {
+impl ActiveWindow {
+    pub fn new(config: &WidgetConfig, on_click: Option<&'static RawCallback<(), ()>>) -> Box<Self> {
         Box::new(Self {
             inner: *Text::new("", config, None),
             on_click: on_click.into(),
@@ -35,7 +35,7 @@ impl<'a> ActiveWindow<'a> {
     }
 }
 
-impl Widget for ActiveWindow<'_> {
+impl Widget for ActiveWindow {
     fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -81,14 +81,14 @@ impl Widget for ActiveWindow<'_> {
         self.inner.padding()
     }
 
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
 
-impl Display for ActiveWindow<'_> {
+impl Display for ActiveWindow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("ActiveWindow").fmt(f)
     }

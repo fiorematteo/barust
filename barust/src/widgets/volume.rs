@@ -1,5 +1,5 @@
-use super::{Result, Text, Widget, WidgetConfig};
-use crate::corex::{Callback, OptionCallback, SelfCallback};
+use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{Callback, OptionCallback, RawCallback};
 use log::debug;
 use std::{cmp::min, fmt::Display};
 
@@ -21,16 +21,17 @@ impl Default for VolumeIcons {
     }
 }
 /// Displays status and volume of the audio device
-pub struct Volume<'a> {
+#[derive(Debug)]
+pub struct Volume {
     format: String,
-    inner: Text<'a>,
-    volume_command: &'a Callback<f64>,
-    muted_command: &'a Callback<bool>,
+    inner: Text,
+    volume_command: Callback<(), f64>,
+    muted_command: Callback<(), bool>,
     icons: VolumeIcons,
-    on_click: OptionCallback<'a, Self>,
+    on_click: OnClickCallback,
 }
 
-impl<'a> Volume<'a> {
+impl Volume {
     ///* `format`
     ///  * *%p* will be replaced with the volume percentage
     ///  * *%i* will be replaced with the correct icon
@@ -41,11 +42,11 @@ impl<'a> Volume<'a> {
     ///* `on_click` callback to run on click
     pub fn new(
         format: &str,
-        volume_command: &'a Callback<f64>,
-        muted_command: &'a Callback<bool>,
+        volume_command: &'static RawCallback<(), f64>,
+        muted_command: &'static RawCallback<(), bool>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'a SelfCallback<Self>>,
+        on_click: Option<&'static RawCallback<(), ()>>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
@@ -58,17 +59,17 @@ impl<'a> Volume<'a> {
     }
 }
 
-impl Widget for Volume<'_> {
+impl Widget for Volume {
     fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let text = if (self.muted_command)() {
+        let text = if self.muted_command.call(()) {
             self.icons.muted.clone()
         } else {
-            let volume = (self.volume_command)();
+            let volume = self.volume_command.call(());
             let percentages_len = self.icons.percentages.len();
             let index = min(
                 (volume / percentages_len as f64).floor() as usize,
@@ -90,20 +91,14 @@ impl Widget for Volume<'_> {
         self.inner.padding()
     }
 
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
 
-impl std::fmt::Debug for Volume<'_> {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
-impl Display for Volume<'_> {
+impl Display for Volume {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Volume").fmt(f)
     }

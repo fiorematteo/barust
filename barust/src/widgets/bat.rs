@@ -1,6 +1,5 @@
-use crate::corex::{OptionCallback, SelfCallback};
-
-use super::{Result, Text, Widget, WidgetConfig};
+use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, RawCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{cmp::min, fmt::Display, fs::read_dir};
@@ -24,15 +23,15 @@ impl Default for BatteryIcons {
 }
 /// Displays status and charge of the battery
 #[derive(Debug)]
-pub struct Battery<'a> {
+pub struct Battery {
     format: String,
-    inner: Text<'a>,
+    inner: Text,
     root_path: String,
     icons: BatteryIcons,
-    on_click: OptionCallback<'a, Self>,
+    on_click: OnClickCallback,
 }
 
-impl<'a> Battery<'a> {
+impl Battery {
     ///* `format`
     ///  * `%c` will be replaced with the charge percentage
     ///  * `%i` will be replaced with the correct icon from `icons`
@@ -43,7 +42,7 @@ impl<'a> Battery<'a> {
         format: &str,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'a SelfCallback<Self>>,
+        on_click: Option<&'static RawCallback<(), ()>>,
     ) -> Result<Box<Self>> {
         let mut root_path = String::default();
         for path in read_dir("/sys/class/power_supply")
@@ -78,7 +77,7 @@ impl<'a> Battery<'a> {
     }
 }
 
-impl Widget for Battery<'_> {
+impl Widget for Battery {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -137,14 +136,14 @@ impl Widget for Battery<'_> {
         self.inner.padding()
     }
 
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
 
-impl Display for Battery<'_> {
+impl Display for Battery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Battery").fmt(f)
     }

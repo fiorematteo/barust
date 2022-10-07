@@ -1,5 +1,5 @@
-use super::{Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, SelfCallback};
+use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, RawCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
@@ -10,16 +10,16 @@ use std::{
 
 /// Displays cpu informations
 #[derive(Debug)]
-pub struct Cpu<'a> {
+pub struct Cpu {
     format: String,
     per: CpuPercentCollector,
     times: CpuTimesPercentCollector,
     last_update: SystemTime,
-    inner: Text<'a>,
-    on_click: OptionCallback<'a, Self>,
+    inner: Text,
+    on_click: OnClickCallback,
 }
 
-impl<'a> Cpu<'a> {
+impl Cpu {
     ///* `format`
     ///  * *%p* will be replaced with the cpu usage percentage
     ///  * *%u* will be replaced with the time spent in user mode
@@ -31,7 +31,7 @@ impl<'a> Cpu<'a> {
     pub fn new(
         format: &str,
         config: &WidgetConfig,
-        on_click: Option<&'a SelfCallback<Self>>,
+        on_click: Option<&'static RawCallback<(), ()>>,
     ) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             format: format.to_string(),
@@ -44,7 +44,7 @@ impl<'a> Cpu<'a> {
     }
 }
 
-impl Widget for Cpu<'_> {
+impl Widget for Cpu {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -82,14 +82,14 @@ impl Widget for Cpu<'_> {
         self.inner.padding()
     }
 
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
 
-impl Display for Cpu<'_> {
+impl Display for Cpu {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Cpu").fmt(f)
     }

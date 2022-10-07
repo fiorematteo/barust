@@ -1,4 +1,5 @@
-use super::{Result, Text, Widget, WidgetConfig};
+use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, RawCallback};
 use cairo::{Context, Rectangle};
 use chrono::Local;
 use log::debug;
@@ -9,14 +10,14 @@ use std::{
 };
 
 /// Displays a datetime
-pub struct Clock<'a> {
+pub struct Clock {
     format: String,
-    inner: Text<'a>,
-    on_click: Option<fn(&mut Self)>,
+    inner: Text,
+    on_click: OnClickCallback,
 }
 
-impl Debug for Clock<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Debug for Clock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "Clock(format: {}, padding: {})",
@@ -26,15 +27,19 @@ impl Debug for Clock<'_> {
     }
 }
 
-impl Clock<'_> {
+impl Clock {
     ///* `format` describes how to display the time following [chrono format rules](chrono::format::strftime)
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: &str, config: &WidgetConfig, on_click: Option<fn(&mut Self)>) -> Box<Self> {
+    pub fn new(
+        format: &str,
+        config: &WidgetConfig,
+        on_click: Option<&'static RawCallback<(), ()>>,
+    ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new(&Self::current_time_str(format), config, None),
-            on_click,
+            on_click: on_click.into(),
         })
     }
 
@@ -44,7 +49,7 @@ impl Clock<'_> {
     }
 }
 
-impl Widget for Clock<'_> {
+impl Widget for Clock {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -71,14 +76,14 @@ impl Widget for Clock<'_> {
         self.inner.padding()
     }
 
-    fn on_click(&mut self) {
-        if let Some(cb) = &self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
 
-impl Display for Clock<'_> {
+impl Display for Clock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", String::from("Clock"))
     }

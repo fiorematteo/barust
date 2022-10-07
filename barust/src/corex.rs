@@ -84,25 +84,47 @@ pub fn debug_times(name: &str, times: Vec<Duration>) {
     println!("{} min: {:?}", name, times.iter().min());
 }
 
-pub type Callback<T> = dyn Fn() -> T + Send + Sync;
+pub type RawCallback<T, R> = dyn Fn(T) -> R + Send + Sync;
 
-pub type SelfCallback<T> = dyn Fn(&mut T) + Send + Sync;
+pub struct Callback<T, R> {
+    callback: Box<RawCallback<T, R>>,
+}
 
-pub enum OptionCallback<'a, T> {
-    Some(&'a SelfCallback<T>),
+impl<T, R> Callback<T, R> {
+    pub fn call(&self, arg: T) -> R {
+        (self.callback)(arg)
+    }
+}
+
+impl<T, R> From<&'static RawCallback<T, R>> for Callback<T, R> {
+    fn from(c: &'static RawCallback<T, R>) -> Self {
+        Self {
+            callback: Box::new(c),
+        }
+    }
+}
+
+impl<T, R> std::fmt::Debug for Callback<T, R> {
+    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+pub enum OptionCallback<T, R> {
+    Some(Callback<T, R>),
     None,
 }
 
-impl<'a, T> From<Option<&'a SelfCallback<T>>> for OptionCallback<'a, T> {
-    fn from(cb: Option<&'a SelfCallback<T>>) -> Self {
+impl<T, R> From<Option<&'static RawCallback<T, R>>> for OptionCallback<T, R> {
+    fn from(cb: Option<&'static RawCallback<T, R>>) -> Self {
         match cb {
-            Some(cb) => Self::Some(cb),
+            Some(cb) => Self::Some(cb.into()),
             None => Self::None,
         }
     }
 }
 
-impl<T> std::fmt::Debug for OptionCallback<'_, T> {
+impl<T, R> std::fmt::Debug for OptionCallback<T, R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

@@ -1,5 +1,5 @@
-use super::{Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, SelfCallback};
+use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use crate::corex::{OptionCallback, RawCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::{memory::virtual_memory, Bytes};
@@ -7,13 +7,13 @@ use std::fmt::Display;
 
 /// Displays memory informations
 #[derive(Debug)]
-pub struct Memory<'a> {
+pub struct Memory {
     format: String,
-    inner: Text<'a>,
-    on_click: OptionCallback<'a, Self>,
+    inner: Text,
+    on_click: OnClickCallback,
 }
 
-impl<'a> Memory<'a> {
+impl Memory {
     ///* `format`
     ///  * *%p* will be replaced with the usage percentage
     ///  * *%t* will be replaced with the total ram
@@ -25,7 +25,7 @@ impl<'a> Memory<'a> {
     pub fn new(
         format: &str,
         config: &WidgetConfig,
-        on_click: Option<&'a SelfCallback<Self>>,
+        on_click: Option<&'static RawCallback<(), ()>>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
@@ -35,7 +35,7 @@ impl<'a> Memory<'a> {
     }
 }
 
-impl Widget for Memory<'_> {
+impl Widget for Memory {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
@@ -62,9 +62,9 @@ impl Widget for Memory<'_> {
         self.inner.padding()
     }
 
-    fn on_click(&mut self) {
-        if let OptionCallback::Some(cb) = self.on_click {
-            cb(self);
+    fn on_click(&self) {
+        if let OptionCallback::Some(cb) = &self.on_click {
+            cb.call(());
         }
     }
 }
@@ -86,7 +86,7 @@ fn bytes_to_closest(value: Bytes) -> String {
     format!("{:.1}{}", value, units[selected_unit])
 }
 
-impl Display for Memory<'_> {
+impl Display for Memory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Memory").fmt(f)
     }

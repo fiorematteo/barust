@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use barust::{
     corex::Color,
     error::{Erc, Result},
@@ -9,6 +7,7 @@ use barust::{
         Workspace,
     },
 };
+use std::fmt::Display;
 
 const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 const _BLACK: Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -25,6 +24,7 @@ fn main() -> Result<()> {
         font_size: 16.0,
         ..WidgetConfig::default()
     };
+
     let mut bar = StatusBar::create()
         .position(Position::Bottom)
         .background(BLANK)
@@ -41,12 +41,18 @@ fn main() -> Result<()> {
             ActiveWindow::new(&wd_config, None),
         ])
         .right_widgets(vec![
-            Network::new("%s %n", "wlp1s0".to_string(), None, &wd_config, None),
+            Network::new(
+                "%s %n",
+                "wlp1s0".to_string(),
+                None,
+                &wd_config,
+                Some(&|()| {}),
+            ),
             Cpu::new("%p%", &wd_config, None)?,
             Battery::new("%i %c%", None, &wd_config, None)?,
             Volume::new(
                 "%i %p",
-                &|| -> f64 {
+                &|()| -> f64 {
                     (|| -> Option<f64> {
                         let out = String::from_utf8(
                             std::process::Command::new("pulsemixer")
@@ -56,12 +62,12 @@ fn main() -> Result<()> {
                                 .stdout,
                         )
                         .ok()?;
-                        let out = out.split(" ").collect::<Vec<_>>();
-                        out.get(0)?.parse::<f64>().ok()
+                        let out = out.split(' ').collect::<Vec<_>>();
+                        out.first()?.parse::<f64>().ok()
                     })()
                     .unwrap_or(0.0)
                 },
-                &|| -> bool {
+                &|()| -> bool {
                     (|| -> Option<bool> {
                         String::from_utf8(
                             std::process::Command::new("pulsemixer")
@@ -71,13 +77,13 @@ fn main() -> Result<()> {
                                 .stdout,
                         )
                         .ok()
-                        .map(|out| out == String::from("1\n"))
+                        .map(|out| out == *"1\n")
                     })()
                     .unwrap_or(false)
                 },
                 None,
                 &wd_config,
-                None,
+                Some(&|()| {}),
             ),
             Clock::new("%H:%M %d/%m/%Y", &wd_config, None),
         ])
@@ -86,12 +92,12 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug)]
-struct FilteredWorkspace<'a> {
-    inner: Workspace<'a>,
+struct FilteredWorkspace {
+    inner: Workspace,
     ignored_workspaces: Vec<String>,
 }
 
-impl FilteredWorkspace<'_> {
+impl FilteredWorkspace {
     fn new<T: ToString>(
         active_workspace_color: Color,
         internal_padding: f64,
@@ -106,7 +112,7 @@ impl FilteredWorkspace<'_> {
     }
 }
 
-impl Widget for FilteredWorkspace<'_> {
+impl Widget for FilteredWorkspace {
     fn draw(
         &self,
         context: &cairo::Context,
@@ -147,7 +153,7 @@ impl Widget for FilteredWorkspace<'_> {
     }
 }
 
-impl Display for FilteredWorkspace<'_> {
+impl Display for FilteredWorkspace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FilteredWorkspace")
     }
