@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, RawCallback};
+use crate::corex::RawCallback;
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
@@ -39,7 +39,7 @@ impl Cpu {
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
             last_update: SystemTime::now(),
             inner: *Text::new("CPU", config, None),
-            on_click: on_click.into(),
+            on_click: on_click.map(|c| c.into()),
         }))
     }
 }
@@ -83,7 +83,7 @@ impl Widget for Cpu {
     }
 
     fn on_click(&self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let Some(cb) = &self.on_click {
             cb.call(());
         }
     }

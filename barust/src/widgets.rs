@@ -1,5 +1,5 @@
 use crate::{
-    corex::{Color, OptionCallback},
+    corex::{Callback, Color},
     error::Erc,
 };
 use cairo::{Context, Rectangle};
@@ -86,4 +86,4 @@ pub enum WidgetError {
     CustomWidget(Erc),
 }
 
-type OnClickCallback = OptionCallback<(), ()>;
+type OnClickCallback = Option<Callback<(), ()>>;

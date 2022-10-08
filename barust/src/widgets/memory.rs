@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, RawCallback};
+use crate::corex::RawCallback;
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::{memory::virtual_memory, Bytes};
@@ -30,7 +30,7 @@ impl Memory {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new("Memory", config, None),
-            on_click: on_click.into(),
+            on_click: on_click.map(|c| c.into()),
         })
     }
 }
@@ -63,7 +63,7 @@ impl Widget for Memory {
     }
 
     fn on_click(&self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let Some(cb) = &self.on_click {
             cb.call(());
         }
     }

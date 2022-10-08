@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, RawCallback};
+use crate::corex::RawCallback;
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{
@@ -69,7 +69,7 @@ impl Network {
             format: format.to_string(),
             interface,
             inner: *Text::new("Up", config, None),
-            on_click: on_click.into(),
+            on_click: on_click.map(|c| c.into()),
             icons: icons.unwrap_or_default(),
         })
     }
@@ -115,7 +115,7 @@ impl Widget for Network {
     }
 
     fn on_click(&self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let Some(cb) = &self.on_click {
             cb.call(());
         }
     }

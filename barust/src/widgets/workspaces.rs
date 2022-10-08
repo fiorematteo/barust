@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, OptionCallback, RawCallback};
+use crate::corex::{set_source_rgba, Color, RawCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -48,7 +48,7 @@ impl Workspace {
         Box::new(Self {
             padding: config.padding,
             fg_color: config.fg_color,
-            on_click: on_click.into(),
+            on_click: on_click.map(|c| c.into()),
             internal_padding,
             active_workspace_color,
             workspaces: Vec::new(),
@@ -145,7 +145,7 @@ impl Widget for Workspace {
     }
 
     fn on_click(&self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let Some(cb) = &self.on_click {
             cb.call(());
         }
     }

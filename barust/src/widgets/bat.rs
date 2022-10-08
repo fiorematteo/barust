@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{OptionCallback, RawCallback};
+use crate::corex::RawCallback;
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{cmp::min, fmt::Display, fs::read_dir};
@@ -64,7 +64,7 @@ impl Battery {
             inner: *Text::new("CPU", config, None),
             root_path,
             icons: icons.unwrap_or_default(),
-            on_click: on_click.into(),
+            on_click: on_click.map(|c| c.into()),
         }))
     }
 
@@ -137,7 +137,7 @@ impl Widget for Battery {
     }
 
     fn on_click(&self) {
-        if let OptionCallback::Some(cb) = &self.on_click {
+        if let Some(cb) = &self.on_click {
             cb.call(());
         }
     }

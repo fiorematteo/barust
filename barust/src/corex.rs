@@ -105,34 +105,7 @@ impl<T, R> From<&'static RawCallback<T, R>> for Callback<T, R> {
 }
 
 impl<T, R> std::fmt::Debug for Callback<T, R> {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
-pub enum OptionCallback<T, R> {
-    Some(Callback<T, R>),
-    None,
-}
-
-impl<T, R> From<Option<&'static RawCallback<T, R>>> for OptionCallback<T, R> {
-    fn from(cb: Option<&'static RawCallback<T, R>>) -> Self {
-        match cb {
-            Some(cb) => Self::Some(cb.into()),
-            None => Self::None,
-        }
-    }
-}
-
-impl<T, R> std::fmt::Debug for OptionCallback<T, R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Some(_) => "Some callback",
-                Self::None => "None",
-            }
-        )
+        write!(f, "Callback")
     }
 }
