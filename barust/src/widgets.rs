@@ -16,6 +16,7 @@ mod systray;
 mod temp;
 mod text;
 mod volume;
+mod wlan;
 mod workspaces;
 
 pub use active_window::ActiveWindow;
@@ -29,6 +30,7 @@ pub use systray::Systray;
 pub use temp::Temperatures;
 pub use text::Text;
 pub use volume::{Volume, VolumeIcons};
+pub use wlan::Wlan;
 pub use workspaces::Workspace;
 
 pub type Result<T> = std::result::Result<T, WidgetError>;
