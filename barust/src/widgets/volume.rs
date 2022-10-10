@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{Callback, RawCallback};
+use crate::corex::{Callback, EmptyCallback, RawCallback};
 use log::debug;
 use std::{cmp::min, fmt::Display};
 
@@ -25,8 +25,8 @@ impl Default for VolumeIcons {
 pub struct Volume {
     format: String,
     inner: Text,
-    volume_command: Callback<(), f64>,
-    muted_command: Callback<(), bool>,
+    volume_command: Callback<(), Option<f64>>,
+    muted_command: Callback<(), Option<bool>>,
     icons: VolumeIcons,
     on_click: OnClickCallback,
 }
@@ -42,11 +42,11 @@ impl Volume {
     ///* `on_click` callback to run on click
     pub fn new(
         format: &str,
-        volume_command: &'static RawCallback<(), f64>,
-        muted_command: &'static RawCallback<(), bool>,
+        volume_command: &'static RawCallback<(), Option<f64>>,
+        muted_command: &'static RawCallback<(), Option<bool>>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static RawCallback<(), ()>>,
+        on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
@@ -66,10 +66,10 @@ impl Widget for Volume {
 
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let text = if self.muted_command.call(()) {
+        let text = if self.muted_command.call(()).unwrap_or_default() {
             self.icons.muted.clone()
         } else {
-            let volume = self.volume_command.call(());
+            let volume = self.volume_command.call(()).unwrap_or_default();
             let percentages_len = self.icons.percentages.len();
             let index = min(
                 (volume / percentages_len as f64).floor() as usize,

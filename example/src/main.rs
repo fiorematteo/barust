@@ -41,43 +41,37 @@ fn main() -> Result<()> {
             ActiveWindow::new(&wd_config, None),
         ])
         .right_widgets(vec![
-            Wlan::new("%e", "wlp1s0".to_string(), &wd_config, Some(&|()| {})),
+            Wlan::new("%e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
             Cpu::new("%p%", &wd_config, None)?,
             Battery::new("%i %c%", None, &wd_config, None)?,
             Volume::new(
                 "%i %p",
-                &|()| -> f64 {
-                    (|| -> Option<f64> {
-                        let out = String::from_utf8(
-                            std::process::Command::new("pulsemixer")
-                                .arg("--get-volume")
-                                .output()
-                                .ok()?
-                                .stdout,
-                        )
-                        .ok()?;
-                        let out = out.split(' ').collect::<Vec<_>>();
-                        out.first()?.parse::<f64>().ok()
-                    })()
-                    .unwrap_or(0.0)
+                &|()| -> Option<f64> {
+                    let out = String::from_utf8(
+                        std::process::Command::new("pulsemixer")
+                            .arg("--get-volume")
+                            .output()
+                            .ok()?
+                            .stdout,
+                    )
+                    .ok()?;
+                    let out = out.split(' ').collect::<Vec<_>>();
+                    out.first()?.parse::<f64>().ok()
                 },
-                &|()| -> bool {
-                    (|| -> Option<bool> {
-                        String::from_utf8(
-                            std::process::Command::new("pulsemixer")
-                                .arg("--get-mute")
-                                .output()
-                                .ok()?
-                                .stdout,
-                        )
-                        .ok()
-                        .map(|out| out == *"1\n")
-                    })()
-                    .unwrap_or(false)
+                &|()| -> Option<bool> {
+                    String::from_utf8(
+                        std::process::Command::new("pulsemixer")
+                            .arg("--get-mute")
+                            .output()
+                            .ok()?
+                            .stdout,
+                    )
+                    .ok()
+                    .map(|out| out == *"1\n")
                 },
                 None,
                 &wd_config,
-                Some(&|()| {}),
+                Some(&|| {}),
             ),
             Clock::new("%H:%M %d/%m/%Y", &wd_config, None),
         ])

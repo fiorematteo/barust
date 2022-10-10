@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, RawCallback};
+use crate::corex::{set_source_rgba, Color, EmptyCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -43,7 +43,7 @@ impl Workspace {
         active_workspace_color: Color,
         internal_padding: f64,
         config: &WidgetConfig,
-        on_click: Option<&'static RawCallback<(), ()>>,
+        on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,

@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::RawCallback;
+use crate::corex::EmptyCallback;
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{cmp::min, fmt::Display, fs::read_dir};
@@ -42,7 +42,7 @@ impl Battery {
         format: &str,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static RawCallback<(), ()>>,
+        on_click: Option<&'static EmptyCallback>,
     ) -> Result<Box<Self>> {
         let mut root_path = String::default();
         for path in read_dir("/sys/class/power_supply")

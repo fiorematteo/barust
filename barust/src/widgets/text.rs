@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, RawCallback};
+use crate::corex::{set_source_rgba, Color, EmptyCallback};
 use cairo::{Context, Rectangle};
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
@@ -23,7 +23,7 @@ impl Text {
     pub fn new(
         text: &str,
         config: &WidgetConfig,
-        on_click: Option<&'static RawCallback<(), ()>>,
+        on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
         Box::new(Self {
             text: text.to_string(),

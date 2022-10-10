@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::RawCallback;
+use crate::corex::EmptyCallback;
 use cairo::{Context, Rectangle};
 use chrono::Local;
 use log::debug;
@@ -34,7 +34,7 @@ impl Clock {
     pub fn new(
         format: &str,
         config: &WidgetConfig,
-        on_click: Option<&'static RawCallback<(), ()>>,
+        on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),

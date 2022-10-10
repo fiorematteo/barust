@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::RawCallback;
+use crate::corex::EmptyCallback;
 use log::debug;
 use std::{fmt::Display, thread};
 use xcb::{x::Window, Connection};
@@ -27,7 +27,7 @@ pub struct ActiveWindow {
 }
 
 impl ActiveWindow {
-    pub fn new(config: &WidgetConfig, on_click: Option<&'static RawCallback<(), ()>>) -> Box<Self> {
+    pub fn new(config: &WidgetConfig, on_click: Option<&'static EmptyCallback>) -> Box<Self> {
         Box::new(Self {
             inner: *Text::new("", config, None),
             on_click: on_click.map(|c| c.into()),

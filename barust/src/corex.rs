@@ -85,6 +85,7 @@ pub fn debug_times(name: &str, times: Vec<Duration>) {
 }
 
 pub type RawCallback<T, R> = dyn Fn(T) -> R + Send + Sync;
+pub type EmptyCallback = dyn Fn() + Send + Sync;
 
 pub struct Callback<T, R> {
     callback: Box<RawCallback<T, R>>,
@@ -100,6 +101,14 @@ impl<T, R> From<&'static RawCallback<T, R>> for Callback<T, R> {
     fn from(c: &'static RawCallback<T, R>) -> Self {
         Self {
             callback: Box::new(c),
+        }
+    }
+}
+
+impl From<&'static EmptyCallback> for Callback<(), ()> {
+    fn from(c: &'static EmptyCallback) -> Self {
+        Self {
+            callback: Box::new(|()| c()),
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::RawCallback;
+use crate::corex::EmptyCallback;
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
@@ -31,7 +31,7 @@ impl Cpu {
     pub fn new(
         format: &str,
         config: &WidgetConfig,
-        on_click: Option<&'static RawCallback<(), ()>>,
+        on_click: Option<&'static EmptyCallback>,
     ) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             format: format.to_string(),
