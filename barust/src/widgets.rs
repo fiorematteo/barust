@@ -3,6 +3,7 @@ use crate::{
     error::Erc,
 };
 use cairo::{Context, Rectangle};
+use crossbeam_channel::Sender;
 use std::fmt::Display;
 
 mod active_window;
@@ -46,7 +47,7 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     fn last_update(&mut self) -> Result<()> {
         Ok(())
     }
-    fn hook(&mut self, _sender: chan::Sender<()>) -> Result<()> {
+    fn hook(&mut self, _sender: Sender<()>) -> Result<()> {
         Ok(())
     }
     fn size(&self, context: &Context) -> Result<f64>;

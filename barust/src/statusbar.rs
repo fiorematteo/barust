@@ -1,14 +1,16 @@
 use crate::{
     corex::{
-        set_source_rgba, Atoms, BarustEvent, Color, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
+        notify, set_source_rgba, Atoms, BarustEvent, Color, _NET_WM_WINDOW_TYPE,
+        _NET_WM_WINDOW_TYPE_DOCK,
     },
     error::{BarustError, Result},
     log_error_and_replace,
     widgets::{Text, Widget},
 };
 use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
-use chan::{chan_select, Receiver};
+use crossbeam_channel::{bounded, select, tick, Receiver};
 use log::{debug, error, info};
+use signal_hook::consts::{SIGINT, SIGTERM};
 use std::{sync::Arc, thread, time::Duration};
 use xcb::{
     x::{
@@ -48,7 +50,7 @@ impl StatusBar {
     /// Starts the [StatusBar] drawing and event loop
     pub fn start(&mut self) -> Result<()> {
         info!("Starting loop");
-        let (tx, widgets_events) = chan::sync(0);
+        let (tx, widgets_events) = bounded(10);
         debug!("First update");
         for wd in self
             .left_widgets
@@ -58,8 +60,8 @@ impl StatusBar {
             log_error_and_replace!(wd, wd.first_update());
             log_error_and_replace!(wd, wd.hook(tx.clone()));
         }
-        let signal = chan_signal::notify(&[chan_signal::Signal::INT, chan_signal::Signal::TERM]);
-        let timeout = chan::tick(Duration::from_secs(10));
+        let signal = notify(&[SIGINT, SIGTERM])?;
+        let timeout = tick(Duration::from_secs(10));
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.show()?;
@@ -67,17 +69,16 @@ impl StatusBar {
             debug!("Looping");
             self.update()?;
             self.draw()?;
-            chan_select!(
-                timeout.recv() => (),
-                widgets_events.recv() => (),
-                bar_events.recv() -> event => {
-                    if let Some(BarustEvent::Click(x, y)) = event{
+            select!(
+                recv(timeout) ->  _ => (),
+                recv(widgets_events) -> _ => (),
+                recv(bar_events) -> event => {
+                    if let Ok(BarustEvent::Click(x, y)) = event {
                          self.event(x, y);
                     }
                 },
-                signal.recv() => {
+                recv(signal) -> _ => {
                     for wd in self.left_widgets.iter_mut().chain(&mut self.right_widgets){
-                        eprintln!("finishing");
                         log_error_and_replace!(wd, wd.last_update());
                     }
                     return Ok(());
@@ -308,7 +309,7 @@ impl StatusBarBuilder {
 }
 
 pub(crate) fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<BarustEvent>> {
-    let (tx, rx) = chan::sync(0);
+    let (tx, rx) = bounded(10);
     thread::spawn(move || loop {
         if let Ok(Event::X(event)) = connection.wait_for_event() {
             let to_send = match event {
@@ -317,7 +318,9 @@ pub(crate) fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver
                 }
                 _ => BarustEvent::Wake,
             };
-            tx.send(to_send);
+            if tx.send(to_send).is_err() {
+                break;
+            }
         }
     });
     Ok(rx)

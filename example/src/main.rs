@@ -7,6 +7,7 @@ use barust::{
         Workspace,
     },
 };
+use crossbeam_channel::Sender;
 use std::fmt::Display;
 
 const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
@@ -41,8 +42,8 @@ fn main() -> Result<()> {
             ActiveWindow::new(&wd_config, None),
         ])
         .right_widgets(vec![
-            Wlan::new("%e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
-            Cpu::new("%p%", &wd_config, None)?,
+            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
+            Cpu::new("💻 %p%", &wd_config, None)?,
             Battery::new("%i %c%", None, &wd_config, None)?,
             Volume::new(
                 "%i %p",
@@ -73,7 +74,7 @@ fn main() -> Result<()> {
                 &wd_config,
                 Some(&|| {}),
             ),
-            Clock::new("%H:%M %d/%m/%Y", &wd_config, None),
+            Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config, None),
         ])
         .build()?;
     bar.start()
@@ -136,7 +137,7 @@ impl Widget for FilteredWorkspace {
         Ok(())
     }
 
-    fn hook(&mut self, sender: chan::Sender<()>) -> barust::widgets::Result<()> {
+    fn hook(&mut self, sender: Sender<()>) -> barust::widgets::Result<()> {
         self.inner.hook(sender)
     }
 }

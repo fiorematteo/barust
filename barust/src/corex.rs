@@ -1,6 +1,9 @@
+use crate::error::BarustError;
 use cairo::Context;
 pub use cairo::{FontSlant, FontWeight};
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, time::Duration};
+use crossbeam_channel::{bounded, Receiver};
+use signal_hook::iterator::Signals;
+use std::{cell::RefCell, collections::HashMap, ffi::c_int, fmt::Debug, thread, time::Duration};
 use xcb::{
     x::{Atom, InternAtom},
     Connection,
@@ -75,6 +78,19 @@ impl<'a> Atoms<'a> {
             atom
         }
     }
+}
+
+pub fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
+    let (s, r): _ = bounded(10);
+    let mut signals = Signals::new(signals).unwrap();
+    thread::spawn(move || {
+        for signal in signals.forever() {
+            if s.send(signal).is_err() {
+                break;
+            }
+        }
+    });
+    Ok(r)
 }
 
 pub fn debug_times(name: &str, times: Vec<Duration>) {
