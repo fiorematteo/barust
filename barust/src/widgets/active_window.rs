@@ -1,6 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
-use crossbeam_channel::Sender;
+use crate::corex::{EmptyCallback, HookSender};
 use log::debug;
 use std::{fmt::Display, thread};
 use xcb::{x::Window, Connection};
@@ -50,7 +49,7 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    fn hook(&mut self, sender: Sender<()>) -> Result<()> {
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()
@@ -68,7 +67,7 @@ impl Widget for ActiveWindow {
         thread::spawn(move || loop {
             if let Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_))) = connection.wait_for_event()
             {
-                if sender.send(()).is_err() {
+                if sender.send().is_err() {
                     break;
                 }
             }

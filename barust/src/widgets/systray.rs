@@ -1,9 +1,8 @@
 use super::{Result, Widget, WidgetConfig, WidgetError};
 use crate::corex::{
-    set_source_rgba, Atoms, Color, MANAGER, _NET_SYSTEM_TRAY_ORIENTATION, _NET_SYSTEM_TRAY_S0,
-    _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
+    set_source_rgba, Atoms, Color, HookSender, MANAGER, _NET_SYSTEM_TRAY_ORIENTATION,
+    _NET_SYSTEM_TRAY_S0, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
 };
-use crossbeam_channel::Sender;
 use log::{debug, warn};
 use std::{fmt::Display, thread};
 use xcb::{
@@ -382,7 +381,7 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn hook(&mut self, sender: Sender<()>) -> Result<()> {
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
         connection
             .send_and_check_request(&xcb::x::ChangeWindowAttributes {
@@ -394,7 +393,7 @@ impl Widget for Systray {
         thread::spawn(move || loop {
             if let Ok(xcb::Event::X(xcb::x::Event::ClientMessage(_))) = connection.wait_for_event()
             {
-                if sender.send(()).is_err() {
+                if sender.send().is_err() {
                     break;
                 }
             }

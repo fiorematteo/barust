@@ -1,9 +1,8 @@
 use crate::{
-    corex::{Callback, Color},
+    corex::{Callback, Color, HookSender},
     error::Erc,
 };
 use cairo::{Context, Rectangle};
-use crossbeam_channel::Sender;
 use std::fmt::Display;
 
 mod active_window;
@@ -47,7 +46,7 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     fn last_update(&mut self) -> Result<()> {
         Ok(())
     }
-    fn hook(&mut self, _sender: Sender<()>) -> Result<()> {
+    fn hook(&mut self, _sender: HookSender) -> Result<()> {
         Ok(())
     }
     fn size(&self, context: &Context) -> Result<f64>;

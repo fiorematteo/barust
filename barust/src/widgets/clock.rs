@@ -1,12 +1,10 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
+use crate::corex::{timed_hook, EmptyCallback, HookSender};
 use cairo::{Context, Rectangle};
 use chrono::Local;
-use crossbeam_channel::Sender;
 use log::debug;
 use std::{
     fmt::{Debug, Display},
-    thread,
     time::Duration,
 };
 
@@ -61,13 +59,8 @@ impl Widget for Clock {
         Ok(())
     }
 
-    fn hook(&mut self, sender: Sender<()>) -> Result<()> {
-        thread::spawn(move || loop {
-            thread::sleep(Duration::from_secs(1));
-            if sender.send(()).is_err() {
-                break;
-            }
-        });
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
+        timed_hook(sender, Duration::from_secs(1));
         Ok(())
     }
 

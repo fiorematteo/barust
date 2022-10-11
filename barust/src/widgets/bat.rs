@@ -1,8 +1,8 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
+use crate::corex::{timed_hook, EmptyCallback, HookSender};
 use cairo::{Context, Rectangle};
 use log::debug;
-use std::{cmp::min, fmt::Display, fs::read_dir};
+use std::{cmp::min, fmt::Display, fs::read_dir, time::Duration};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
@@ -61,7 +61,7 @@ impl Battery {
 
         Ok(Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("CPU", config, None),
+            inner: *Text::new("BAT", config, None),
             root_path,
             icons: icons.unwrap_or_default(),
             on_click: on_click.map(|c| c.into()),
@@ -125,6 +125,11 @@ impl Widget for Battery {
             )
             .replace("%c", &percent.round().to_string());
         self.inner.set_text(text);
+        Ok(())
+    }
+
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
+        timed_hook(sender, Duration::from_secs(5));
         Ok(())
     }
 

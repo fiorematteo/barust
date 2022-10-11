@@ -1,7 +1,7 @@
 use crate::{
     corex::{
-        notify, set_source_rgba, Atoms, BarustEvent, Color, _NET_WM_WINDOW_TYPE,
-        _NET_WM_WINDOW_TYPE_DOCK,
+        notify, set_source_rgba, Atoms, BarustEvent, Color, HookSender, WidgetID,
+        _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
     },
     error::{BarustError, Result},
     log_error_and_replace,
@@ -24,6 +24,12 @@ use xcb::{
 pub enum Position {
     Top,
     Bottom,
+}
+
+#[derive(Clone, Copy)]
+pub enum RightLeft {
+    Right,
+    Left,
 }
 
 /// Represents the Bar displayed on the screen
@@ -50,28 +56,40 @@ impl StatusBar {
     /// Starts the [StatusBar] drawing and event loop
     pub fn start(&mut self) -> Result<()> {
         info!("Starting loop");
-        let (tx, widgets_events) = bounded(10);
+        let (tx, widgets_events) = bounded::<WidgetID>(10);
         debug!("First update");
-        for wd in self
-            .left_widgets
-            .iter_mut()
-            .chain(self.right_widgets.iter_mut())
-        {
+        for (index, wd) in self.left_widgets.iter_mut().enumerate() {
             log_error_and_replace!(wd, wd.first_update());
-            log_error_and_replace!(wd, wd.hook(tx.clone()));
+            log_error_and_replace!(
+                wd,
+                wd.hook(HookSender::new(tx.clone(), (RightLeft::Left, index)))
+            );
+        }
+        for (index, wd) in self.right_widgets.iter_mut().enumerate() {
+            log_error_and_replace!(wd, wd.first_update());
+            log_error_and_replace!(
+                wd,
+                wd.hook(HookSender::new(tx.clone(), (RightLeft::Right, index)))
+            );
         }
         let signal = notify(&[SIGINT, SIGTERM])?;
         let timeout = tick(Duration::from_secs(10));
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
+        self.generate_regions()?;
+        self.draw()?;
+
         self.show()?;
         loop {
             debug!("Looping");
-            self.update()?;
-            self.draw()?;
+            let mut to_update: Vec<WidgetID> = vec![];
             select!(
-                recv(timeout) ->  _ => (),
-                recv(widgets_events) -> _ => (),
+                recv(timeout) ->  _ => debug!("timeout triggered"),
+                recv(widgets_events) -> id => {
+                    if let Ok(id) = id{
+                        to_update.push(id)
+                    }
+                },
                 recv(bar_events) -> event => {
                     if let Ok(BarustEvent::Click(x, y)) = event {
                          self.event(x, y);
@@ -84,6 +102,10 @@ impl StatusBar {
                     return Ok(());
                 }
             );
+            self.update(&to_update)?;
+            self.generate_regions()?;
+            self.draw()?;
+            to_update.clear();
         }
     }
 
@@ -95,16 +117,24 @@ impl StatusBar {
         }
     }
 
-    pub(crate) fn update(&mut self) -> Result<()> {
+    pub(crate) fn update(&mut self, to_update: &Vec<WidgetID>) -> Result<()> {
         debug!("Updating");
-        for wd in self
-            .right_widgets
-            .iter_mut()
-            .chain(self.left_widgets.iter_mut())
-        {
-            log_error_and_replace!(wd, wd.update());
+        for (side, index) in to_update {
+            match side {
+                RightLeft::Left => {
+                    let wd = &mut self.left_widgets[*index];
+                    log_error_and_replace!(wd, wd.update());
+                }
+                RightLeft::Right => {
+                    let wd = &mut self.right_widgets[*index];
+                    log_error_and_replace!(wd, wd.update());
+                }
+            }
         }
+        Ok(())
+    }
 
+    pub(crate) fn generate_regions(&mut self) -> Result<()> {
         let context = Context::new(&self.surface)?;
         let mut rectangle = Rectangle {
             x: 0.0,

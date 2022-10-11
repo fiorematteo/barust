@@ -1,7 +1,7 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{Callback, EmptyCallback, RawCallback};
+use crate::corex::{timed_hook, Callback, EmptyCallback, HookSender, RawCallback};
 use log::debug;
-use std::{cmp::min, fmt::Display};
+use std::{cmp::min, fmt::Display, time::Duration};
 
 /// Icons used by [Volume]
 #[derive(Debug)]
@@ -63,7 +63,6 @@ impl Widget for Volume {
     fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
-
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
         let text = if self.muted_command.call(()).unwrap_or_default() {
@@ -80,6 +79,11 @@ impl Widget for Volume {
                 .replace("%i", &self.icons.percentages[index].to_string())
         };
         self.inner.set_text(text);
+        Ok(())
+    }
+
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
+        timed_hook(sender, Duration::from_secs(1));
         Ok(())
     }
 

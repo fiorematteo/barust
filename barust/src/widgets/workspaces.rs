@@ -1,7 +1,6 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, EmptyCallback};
+use crate::corex::{set_source_rgba, Color, EmptyCallback, HookSender};
 use cairo::{Context, Rectangle};
-use crossbeam_channel::Sender;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
@@ -102,7 +101,7 @@ impl Widget for Workspace {
         Ok(())
     }
 
-    fn hook(&mut self, sender: Sender<()>) -> Result<()> {
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()
@@ -120,7 +119,7 @@ impl Widget for Workspace {
         thread::spawn(move || loop {
             if let Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_))) = connection.wait_for_event()
             {
-                if sender.send(()).is_err() {
+                if sender.send().is_err() {
                     break;
                 }
             }

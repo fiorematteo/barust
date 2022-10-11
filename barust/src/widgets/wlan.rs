@@ -1,8 +1,8 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
+use crate::corex::{timed_hook, EmptyCallback, HookSender};
 use cairo::{Context, Rectangle};
 use log::debug;
-use std::fmt::Display;
+use std::{fmt::Display, time::Duration};
 
 /// Displays informations about a network interface
 #[derive(Debug)]
@@ -41,7 +41,6 @@ impl Widget for Wlan {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
-
     fn update(&mut self) -> Result<()> {
         debug!("updating wlan");
         let text = if let Some(data) = iwlib::get_wireless_info(self.interface.clone()) {
@@ -53,6 +52,11 @@ impl Widget for Wlan {
             "No interface".to_string()
         };
         self.inner.set_text(text);
+        Ok(())
+    }
+
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
+        timed_hook(sender, Duration::from_secs(5));
         Ok(())
     }
 

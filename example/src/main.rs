@@ -1,5 +1,5 @@
 use barust::{
-    corex::Color,
+    corex::{Color, HookSender},
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
@@ -7,7 +7,6 @@ use barust::{
         Workspace,
     },
 };
-use crossbeam_channel::Sender;
 use std::fmt::Display;
 
 const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
@@ -137,7 +136,7 @@ impl Widget for FilteredWorkspace {
         Ok(())
     }
 
-    fn hook(&mut self, sender: Sender<()>) -> barust::widgets::Result<()> {
+    fn hook(&mut self, sender: HookSender) -> barust::widgets::Result<()> {
         self.inner.hook(sender)
     }
 }

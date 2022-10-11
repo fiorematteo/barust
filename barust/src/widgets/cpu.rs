@@ -1,12 +1,9 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
+use crate::corex::{timed_hook, EmptyCallback, HookSender};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
-use std::{
-    fmt::Display,
-    time::{Duration, SystemTime, SystemTimeError},
-};
+use std::{fmt::Display, time::Duration};
 
 /// Displays cpu informations
 #[derive(Debug)]
@@ -14,7 +11,6 @@ pub struct Cpu {
     format: String,
     per: CpuPercentCollector,
     times: CpuTimesPercentCollector,
-    last_update: SystemTime,
     inner: Text,
     on_click: OnClickCallback,
 }
@@ -37,7 +33,6 @@ impl Cpu {
             format: format.to_string(),
             per: CpuPercentCollector::new().map_err(Error::from)?,
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
-            last_update: SystemTime::now(),
             inner: *Text::new("CPU", config, None),
             on_click: on_click.map(|c| c.into()),
         }))
@@ -49,7 +44,7 @@ impl Widget for Cpu {
         self.inner.draw(context, rectangle)
     }
 
-    fn first_update(&mut self) -> Result<()> {
+    fn update(&mut self) -> Result<()> {
         debug!("updating cpu");
         let times = self.times.cpu_times_percent().map_err(Error::from)?;
         let text = self
@@ -66,14 +61,6 @@ impl Widget for Cpu {
         Ok(())
     }
 
-    fn update(&mut self) -> Result<()> {
-        if self.last_update.elapsed().map_err(Error::from)? < Duration::from_secs(1) {
-            return Ok(());
-        }
-        self.last_update = SystemTime::now();
-        self.first_update()
-    }
-
     fn size(&self, context: &Context) -> Result<f64> {
         self.inner.size(context)
     }
@@ -87,6 +74,11 @@ impl Widget for Cpu {
             cb.call(());
         }
     }
+
+    fn hook(&mut self, sender: HookSender) -> Result<()> {
+        timed_hook(sender, Duration::from_secs(1));
+        Ok(())
+    }
 }
 
 impl Display for Cpu {
@@ -98,5 +90,4 @@ impl Display for Cpu {
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
     Psutil(psutil::Error),
-    SystemTime(SystemTimeError),
 }

@@ -1,7 +1,7 @@
-use crate::error::BarustError;
+use crate::{error::BarustError, statusbar::RightLeft};
 use cairo::Context;
 pub use cairo::{FontSlant, FontWeight};
-use crossbeam_channel::{bounded, Receiver};
+use crossbeam_channel::{bounded, Receiver, SendError, Sender};
 use signal_hook::iterator::Signals;
 use std::{cell::RefCell, collections::HashMap, ffi::c_int, fmt::Debug, thread, time::Duration};
 use xcb::{
@@ -93,6 +93,15 @@ pub fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustE
     Ok(r)
 }
 
+pub fn timed_hook(sender: HookSender, duration: Duration) {
+    thread::spawn(move || loop {
+        thread::sleep(duration);
+        if sender.send().is_err() {
+            break;
+        }
+    });
+}
+
 pub fn debug_times(name: &str, times: Vec<Duration>) {
     let total = times.iter().sum::<std::time::Duration>();
     println!("{} avg: {:?}", name, total / times.len() as u32);
@@ -132,5 +141,22 @@ impl From<&'static EmptyCallback> for Callback<(), ()> {
 impl<T, R> std::fmt::Debug for Callback<T, R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Callback")
+    }
+}
+
+pub type WidgetID = (RightLeft, usize);
+
+pub struct HookSender {
+    sender: Sender<WidgetID>,
+    id: WidgetID,
+}
+
+impl HookSender {
+    pub fn new(sender: Sender<WidgetID>, id: WidgetID) -> Self {
+        Self { sender, id }
+    }
+
+    pub fn send(&self) -> Result<(), SendError<WidgetID>> {
+        self.sender.send(self.id)
     }
 }
