@@ -174,6 +174,25 @@ impl StatusBar {
             return Err(BarustError::DrawBeforeUpdate);
         }
 
+        let widgets = self
+            .left_widgets
+            .iter_mut()
+            .chain(self.right_widgets.iter_mut());
+
+        let regions: Vec<&Rectangle> = self
+            .left_regions
+            .iter()
+            .chain(self.right_regions.iter())
+            .collect();
+
+        let contexts: Vec<_> = regions
+            .iter()
+            .map(|region| -> Result<Context> {
+                let surface = &self.surface.create_for_rectangle(**region)?;
+                Ok(Context::new(surface)?)
+            })
+            .collect();
+
         let context = Context::new(&self.surface)?;
         context.set_operator(Operator::Clear);
         context.paint()?;
@@ -181,16 +200,8 @@ impl StatusBar {
         set_source_rgba(&context, self.background);
         context.paint()?;
 
-        let widgets = self
-            .left_widgets
-            .iter_mut()
-            .chain(self.right_widgets.iter_mut());
-
-        let regions = self.left_regions.iter().chain(self.right_regions.iter());
-
-        for (wd, rectangle) in widgets.zip(regions) {
-            let context = Context::new(&self.surface.create_for_rectangle(*rectangle)?)?;
-            log_error_and_replace!(wd, wd.draw(&context, rectangle));
+        for ((wd, rectangle), context) in widgets.zip(regions).zip(contexts) {
+            log_error_and_replace!(wd, wd.draw(&context?, rectangle));
         }
 
         self.connection.flush()?;
