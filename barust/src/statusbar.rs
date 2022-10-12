@@ -20,16 +20,39 @@ use xcb::{
     Connection, Event, Xid,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Position {
     Top,
     Bottom,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum RightLeft {
     Right,
     Left,
+}
+
+#[derive(Debug)]
+pub struct StatusBarInfo {
+    pub background: Color,
+    pub left_regions: Vec<Rectangle>,
+    pub right_regions: Vec<Rectangle>,
+    pub height: f64,
+    pub width: f64,
+    pub position: Position,
+}
+
+impl StatusBarInfo {
+    pub fn new(bar: &StatusBar) -> Self {
+        Self {
+            background: bar.background,
+            left_regions: bar.left_regions.clone(),
+            right_regions: bar.right_regions.clone(),
+            height: bar.height,
+            width: bar.width,
+            position: bar.position,
+        }
+    }
 }
 
 /// Represents the Bar displayed on the screen
@@ -44,6 +67,7 @@ pub struct StatusBar {
     height: f64,
     width: f64,
     window: Window,
+    position: Position,
 }
 
 impl StatusBar {
@@ -58,15 +82,16 @@ impl StatusBar {
         info!("Starting loop");
         let (tx, widgets_events) = bounded::<WidgetID>(10);
         debug!("First update");
+        let info = StatusBarInfo::new(self);
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
-            log_error_and_replace!(wd, wd.first_update());
+            log_error_and_replace!(wd, wd.setup(&info));
             log_error_and_replace!(
                 wd,
                 wd.hook(HookSender::new(tx.clone(), (RightLeft::Left, index)))
             );
         }
         for (index, wd) in self.right_widgets.iter_mut().enumerate() {
-            log_error_and_replace!(wd, wd.first_update());
+            log_error_and_replace!(wd, wd.setup(&info));
             log_error_and_replace!(
                 wd,
                 wd.hook(HookSender::new(tx.clone(), (RightLeft::Right, index)))

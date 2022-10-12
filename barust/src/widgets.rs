@@ -1,6 +1,7 @@
 use crate::{
     corex::{Callback, Color, HookSender},
     error::Erc,
+    statusbar::StatusBarInfo,
 };
 use cairo::{Context, Rectangle};
 use std::fmt::Display;
@@ -37,7 +38,7 @@ pub type Result<T> = std::result::Result<T, WidgetError>;
 
 pub trait Widget: std::fmt::Debug + Display + Send {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()>;
-    fn first_update(&mut self) -> Result<()> {
+    fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
         Ok(())
     }
     fn update(&mut self) -> Result<()> {
