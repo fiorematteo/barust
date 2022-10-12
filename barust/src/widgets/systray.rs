@@ -1,10 +1,14 @@
 use super::{Result, Widget, WidgetConfig, WidgetError};
-use crate::corex::{
-    set_source_rgba, Atoms, Color, HookSender, MANAGER, _NET_SYSTEM_TRAY_ORIENTATION,
-    _NET_SYSTEM_TRAY_S0, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
+use crate::{
+    corex::{
+        set_source_rgba, Atoms, Color, HookSender, MANAGER, _NET_SYSTEM_TRAY_ORIENTATION,
+        _NET_SYSTEM_TRAY_S0, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
+    },
+    statusbar::{screen_true_height, Position, StatusBarInfo},
 };
-use log::{debug, warn};
-use std::{fmt::Display, thread};
+use crossbeam_channel::{bounded, Receiver};
+use log::{debug, error, warn};
+use std::{fmt::Display, sync::Arc, thread};
 use xcb::{
     x::{
         ChangeWindowAttributes, ClientMessageData, ConfigWindow, ConfigureWindow, CreateWindow, Cw,
@@ -23,9 +27,10 @@ pub struct Systray {
     padding: f64,
     icon_size: f64,
     window: Option<Window>,
-    connection: Connection,
+    connection: Arc<Connection>,
     screen_id: i32,
     children: Vec<Window>,
+    event_receiver: Option<Receiver<SystrayEvent>>,
 }
 
 impl std::fmt::Debug for Systray {
@@ -49,9 +54,10 @@ impl Systray {
             padding: config.padding,
             icon_size,
             window: None,
-            connection,
+            connection: Arc::new(connection),
             screen_id,
             children: Vec::new(),
+            event_receiver: None,
         }))
     }
 
@@ -126,7 +132,7 @@ impl Systray {
         Ok(())
     }
 
-    fn create_tray_window(&self) -> Result<Window> {
+    fn create_tray_window(&self, y: i16) -> Result<Window> {
         let window: Window = self.connection.generate_id();
         let screen = self
             .connection
@@ -141,7 +147,7 @@ impl Systray {
                 wid: window,
                 parent: screen.root(),
                 x: 0,
-                y: 0,
+                y,
                 width: 1,
                 height: 1,
                 border_width: 0,
@@ -240,7 +246,7 @@ impl Systray {
             .send_and_check_request(&xcb::x::SendEvent {
                 propagate: false,
                 destination: SendEventDest::Window(screen.root()),
-                event_mask: xcb::x::EventMask::STRUCTURE_NOTIFY,
+                event_mask: EventMask::STRUCTURE_NOTIFY,
                 event: &client_event,
             })
             .map_err(Error::from)?;
@@ -261,23 +267,36 @@ impl Widget for Systray {
             },
         );
         context.fill().map_err(Error::from)?;
-        self.connection
-            .send_and_check_request(&ConfigureWindow {
-                window: self.window.unwrap(),
-                value_list: &[
-                    ConfigWindow::X(rectangle.x as _),
-                    ConfigWindow::Y(rectangle.y as _),
-                    ConfigWindow::Width(rectangle.width as _),
-                    ConfigWindow::Height(rectangle.height as _),
-                ],
-            })
+        let geometry = self
+            .connection
+            .wait_for_reply(self.connection.send_request(&xcb::x::GetGeometry {
+                drawable: xcb::x::Drawable::Window(self.window.unwrap()),
+            }))
             .map_err(Error::from)?;
 
+        if geometry.x() != rectangle.x as i16 || geometry.width() != rectangle.width as u16 {
+            self.connection
+                .send_and_check_request(&ConfigureWindow {
+                    window: self.window.unwrap(),
+                    value_list: &[
+                        ConfigWindow::X(rectangle.x as _),
+                        ConfigWindow::Width(rectangle.width as _),
+                        ConfigWindow::Height(rectangle.height as _),
+                    ],
+                })
+                .map_err(Error::from)?;
+        }
         Ok(())
     }
 
-    fn first_update(&mut self) -> Result<()> {
-        self.window = Some(self.create_tray_window()?);
+    fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
+        let y = match info.position {
+            Position::Top => 0,
+            Position::Bottom => {
+                screen_true_height(&self.connection, self.screen_id) - info.height as u16
+            }
+        };
+        self.window = Some(self.create_tray_window(y as _)?);
         self.connection
             .send_and_check_request(&MapWindow {
                 window: self.window.unwrap(),
@@ -288,16 +307,10 @@ impl Widget for Systray {
 
     fn update(&mut self) -> Result<()> {
         debug!("updating systray");
-        while let Some(xcb::Event::X(event)) =
-            self.connection.poll_for_event().map_err(Error::from)?
-        {
+        let event_receiver = self.event_receiver.take().unwrap();
+        for event in event_receiver.try_iter() {
             match event {
-                xcb::x::Event::PropertyNotify(event) => {
-                    if !self.take_selection(event.time())? {
-                        panic!("NO SELECTION");
-                    }
-                }
-                xcb::x::Event::ClientMessage(event) => {
+                SystrayEvent::ClientMessage(event) => {
                     if let ClientMessageData::Data32(data) = event.data() {
                         let opcode = data[1];
                         let window = data[2];
@@ -322,20 +335,21 @@ impl Widget for Systray {
                         };
                     }
                 }
-                xcb::x::Event::ReparentNotify(event) => {
+                SystrayEvent::DestroyNotify(event) => self.forget(event.window())?,
+                SystrayEvent::PropertyNotify(event) => {
+                    if !self.take_selection(event.time())? {
+                        return Err(Error::NoSelection)?;
+                    }
+                }
+                SystrayEvent::ReparentNotify(event) => {
                     if event.parent() != self.window.unwrap() {
                         self.forget(event.window())?;
                     }
                 }
-                xcb::x::Event::DestroyNotify(event) => {
-                    self.forget(event.window())?;
-                }
-                xcb::x::Event::SelectionClear(_) => {
-                    self.last_update()?;
-                }
-                _ => (),
+                SystrayEvent::SelectionClear => self.last_update()?,
             }
         }
+        self.event_receiver.replace(event_receiver);
         Ok(())
     }
 
@@ -382,19 +396,27 @@ impl Widget for Systray {
     }
 
     fn hook(&mut self, sender: HookSender) -> Result<()> {
-        let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        connection
-            .send_and_check_request(&xcb::x::ChangeWindowAttributes {
-                window: self.window.unwrap(),
-                value_list: &[xcb::x::Cw::EventMask(xcb::x::EventMask::PROPERTY_CHANGE)],
-            })
-            .map_err(Error::from)?;
-        connection.flush().map_err(Error::from)?;
+        let connection = self.connection.clone();
+        let (tx, rx) = bounded::<SystrayEvent>(10);
+        self.event_receiver = Some(rx);
         thread::spawn(move || loop {
-            if let Ok(xcb::Event::X(xcb::x::Event::ClientMessage(_))) = connection.wait_for_event()
-            {
-                if sender.send().is_err() {
-                    break;
+            if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
+                let to_send = match event {
+                    xcb::x::Event::ClientMessage(e) => Some(SystrayEvent::ClientMessage(e)),
+                    xcb::x::Event::DestroyNotify(e) => Some(SystrayEvent::DestroyNotify(e)),
+                    xcb::x::Event::PropertyNotify(e) => Some(SystrayEvent::PropertyNotify(e)),
+                    xcb::x::Event::ReparentNotify(e) => Some(SystrayEvent::ReparentNotify(e)),
+                    xcb::x::Event::SelectionClear(_) => Some(SystrayEvent::SelectionClear),
+                    _ => {
+                        //error!("{:#?}", event);
+                        None
+                    }
+                };
+                if let Some(to_send) = to_send {
+                    if tx.send(to_send).is_err() || sender.send().is_err() {
+                        error!("breaking systray hook loop");
+                        break;
+                    }
                 }
             }
         });
@@ -419,11 +441,21 @@ impl Display for Systray {
     }
 }
 
+#[derive(Debug)]
+enum SystrayEvent {
+    ClientMessage(xcb::x::ClientMessageEvent),
+    DestroyNotify(xcb::x::DestroyNotifyEvent),
+    PropertyNotify(xcb::x::PropertyNotifyEvent),
+    ReparentNotify(xcb::x::ReparentNotifyEvent),
+    SelectionClear,
+}
+
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
     Xcb(xcb::Error),
     Cairo(cairo::Error),
     MissingWindow,
+    NoSelection,
 }
 
 impl From<xcb::ConnError> for Error {

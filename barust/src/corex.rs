@@ -9,7 +9,7 @@ use xcb::{
     Connection,
 };
 
-pub(crate) enum BarustEvent {
+pub(crate) enum StatusBarEvent {
     Wake,
     Click(i16, i16),
 }

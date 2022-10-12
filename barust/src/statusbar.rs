@@ -1,6 +1,6 @@
 use crate::{
     corex::{
-        notify, set_source_rgba, Atoms, BarustEvent, Color, HookSender, WidgetID,
+        notify, set_source_rgba, Atoms, Color, HookSender, StatusBarEvent, WidgetID,
         _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
     },
     error::{BarustError, Result},
@@ -116,7 +116,7 @@ impl StatusBar {
                     }
                 },
                 recv(bar_events) -> event => {
-                    if let Ok(BarustEvent::Click(x, y)) = event {
+                    if let Ok(StatusBarEvent::Click(x, y)) = event {
                          self.event(x, y);
                     }
                 },
@@ -370,21 +370,22 @@ impl StatusBarBuilder {
             surface,
             width: width as _,
             window,
+            position: self.position,
         })
     }
 }
 
-pub(crate) fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<BarustEvent>> {
+pub(crate) fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<StatusBarEvent>> {
     let (tx, rx) = bounded(10);
     thread::spawn(move || loop {
         if let Ok(Event::X(event)) = connection.wait_for_event() {
-            let to_send = match event {
+            let event = match event {
                 xcb::x::Event::ButtonPress(data) => {
-                    BarustEvent::Click(data.event_x(), data.event_y())
+                    StatusBarEvent::Click(data.event_x(), data.event_y())
                 }
-                _ => BarustEvent::Wake,
+                _ => StatusBarEvent::Wake,
             };
-            if tx.send(to_send).is_err() {
+            if tx.send(event).is_err() {
                 break;
             }
         }

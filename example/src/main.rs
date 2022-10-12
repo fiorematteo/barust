@@ -3,8 +3,8 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, Clock, Cpu, Volume, Widget, WidgetConfig, WidgetError, Wlan,
-        Workspace,
+        ActiveWindow, Battery, Clock, Cpu, Systray, Volume, Widget, WidgetConfig, WidgetError,
+        Wlan, Workspace,
     },
 };
 use std::fmt::Display;
@@ -41,6 +41,7 @@ fn main() -> Result<()> {
             ActiveWindow::new(&wd_config, None),
         ])
         .right_widgets(vec![
+            Systray::new(20.0, &wd_config)?,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
             Cpu::new("💻 %p%", &wd_config, None)?,
             Battery::new("%i %c%", None, &wd_config, None)?,
