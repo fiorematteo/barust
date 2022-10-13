@@ -30,7 +30,7 @@ pub struct Systray {
     connection: Arc<Connection>,
     screen_id: i32,
     children: Vec<Window>,
-    event_receiver: Option<Receiver<SystrayEvent>>,
+    event_receiver: Option<Receiver<xcb::x::Event>>,
 }
 
 impl std::fmt::Debug for Systray {
@@ -307,49 +307,55 @@ impl Widget for Systray {
 
     fn update(&mut self) -> Result<()> {
         debug!("updating systray");
-        let event_receiver = self.event_receiver.take().unwrap();
-        for event in event_receiver.try_iter() {
-            match event {
-                SystrayEvent::ClientMessage(event) => {
-                    if let ClientMessageData::Data32(data) = event.data() {
-                        let opcode = data[1];
-                        let window = data[2];
-                        match opcode {
-                            SYSTEM_TRAY_REQUEST_DOCK => {
-                                if let Err(e) = self.adopt(unsafe { Window::new(window) }) {
-                                    if let WidgetError::Systray(Error::Xcb(xcb::Error::Protocol(
-                                        xcb::ProtocolError::X(xcb::x::Error::Window(ref e), _),
-                                    ))) = e
-                                    {
-                                        println!("possible bad window error: {:?}", e);
-                                    } else {
-                                        return Err(e);
+        //NOTE xcb::x::Event doesn't implement copy :(
+        if let Some(events) = self.event_receiver.take() {
+            for event in events.try_recv() {
+                match event {
+                    xcb::x::Event::ClientMessage(event) => {
+                        if let ClientMessageData::Data32(data) = event.data() {
+                            let opcode = data[1];
+                            let window = data[2];
+                            match opcode {
+                                SYSTEM_TRAY_REQUEST_DOCK => {
+                                    if let Err(e) = self.adopt(unsafe { Window::new(window) }) {
+                                        if let WidgetError::Systray(Error::Xcb(
+                                            xcb::Error::Protocol(xcb::ProtocolError::X(
+                                                xcb::x::Error::Window(ref e),
+                                                _,
+                                            )),
+                                        )) = e
+                                        {
+                                            println!("possible bad window error: {:?}", e);
+                                        } else {
+                                            return Err(e);
+                                        }
                                     }
                                 }
-                            }
-                            SYSTEM_TRAY_BEGIN_MESSAGE => {}
-                            SYSTEM_TRAY_CANCEL_MESSAGE => {}
-                            _ => {
-                                unreachable!("Invalid opcode")
-                            }
-                        };
+                                SYSTEM_TRAY_BEGIN_MESSAGE => {}
+                                SYSTEM_TRAY_CANCEL_MESSAGE => {}
+                                _ => {
+                                    unreachable!("Invalid opcode")
+                                }
+                            };
+                        }
                     }
-                }
-                SystrayEvent::DestroyNotify(event) => self.forget(event.window())?,
-                SystrayEvent::PropertyNotify(event) => {
-                    if !self.take_selection(event.time())? {
-                        return Err(Error::NoSelection)?;
+                    xcb::x::Event::DestroyNotify(event) => self.forget(event.window())?,
+                    xcb::x::Event::PropertyNotify(event) => {
+                        if !self.take_selection(event.time())? {
+                            return Err(Error::NoSelection)?;
+                        }
                     }
-                }
-                SystrayEvent::ReparentNotify(event) => {
-                    if event.parent() != self.window.unwrap() {
-                        self.forget(event.window())?;
+                    xcb::x::Event::ReparentNotify(event) => {
+                        if event.parent() != self.window.unwrap() {
+                            self.forget(event.window())?;
+                        }
                     }
+                    xcb::x::Event::SelectionClear(_) => self.last_update()?,
+                    _ => (),
                 }
-                SystrayEvent::SelectionClear => self.last_update()?,
             }
+            self.event_receiver.replace(events);
         }
-        self.event_receiver.replace(event_receiver);
         Ok(())
     }
 
@@ -397,26 +403,13 @@ impl Widget for Systray {
 
     fn hook(&mut self, sender: HookSender) -> Result<()> {
         let connection = self.connection.clone();
-        let (tx, rx) = bounded::<SystrayEvent>(10);
+        let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);
         thread::spawn(move || loop {
             if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
-                let to_send = match event {
-                    xcb::x::Event::ClientMessage(e) => Some(SystrayEvent::ClientMessage(e)),
-                    xcb::x::Event::DestroyNotify(e) => Some(SystrayEvent::DestroyNotify(e)),
-                    xcb::x::Event::PropertyNotify(e) => Some(SystrayEvent::PropertyNotify(e)),
-                    xcb::x::Event::ReparentNotify(e) => Some(SystrayEvent::ReparentNotify(e)),
-                    xcb::x::Event::SelectionClear(_) => Some(SystrayEvent::SelectionClear),
-                    _ => {
-                        //error!("{:#?}", event);
-                        None
-                    }
-                };
-                if let Some(to_send) = to_send {
-                    if tx.send(to_send).is_err() || sender.send().is_err() {
-                        error!("breaking systray hook loop");
-                        break;
-                    }
+                if tx.send(event).is_err() || sender.send().is_err() {
+                    error!("breaking systray hook loop");
+                    break;
                 }
             }
         });
@@ -441,21 +434,13 @@ impl Display for Systray {
     }
 }
 
-#[derive(Debug)]
-enum SystrayEvent {
-    ClientMessage(xcb::x::ClientMessageEvent),
-    DestroyNotify(xcb::x::DestroyNotifyEvent),
-    PropertyNotify(xcb::x::PropertyNotifyEvent),
-    ReparentNotify(xcb::x::ReparentNotifyEvent),
-    SelectionClear,
-}
-
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
     Xcb(xcb::Error),
     Cairo(cairo::Error),
     MissingWindow,
     NoSelection,
+    Mutex,
 }
 
 impl From<xcb::ConnError> for Error {

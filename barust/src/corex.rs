@@ -95,10 +95,10 @@ pub fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustE
 
 pub fn timed_hook(sender: HookSender, duration: Duration) {
     thread::spawn(move || loop {
-        thread::sleep(duration);
         if sender.send().is_err() {
             break;
         }
+        thread::sleep(duration);
     });
 }
 
