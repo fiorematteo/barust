@@ -2,6 +2,7 @@ use crate::{error::BarustError, statusbar::RightLeft};
 use cairo::Context;
 pub use cairo::{FontSlant, FontWeight};
 use crossbeam_channel::{bounded, Receiver, SendError, Sender};
+use psutil::Bytes;
 use signal_hook::iterator::Signals;
 use std::{cell::RefCell, collections::HashMap, ffi::c_int, fmt::Debug, thread, time::Duration};
 use xcb::{
@@ -100,6 +101,23 @@ pub fn timed_hook(sender: HookSender, duration: Duration) {
         }
         thread::sleep(duration);
     });
+}
+
+pub fn bytes_to_closest(value: Bytes) -> String {
+    if value == 0 {
+        return "0B".to_string();
+    }
+    let units = ["B", "KB", "MB", "GB", "TB"];
+    let mut selected_unit: usize = 0;
+    let mut value = value as f64;
+    while value > 1024.0 {
+        if selected_unit == 4 {
+            break;
+        }
+        value /= 1024.0;
+        selected_unit += 1;
+    }
+    format!("{}{}", value as u64, units[selected_unit])
 }
 
 pub fn debug_times(name: &str, times: Vec<Duration>) {

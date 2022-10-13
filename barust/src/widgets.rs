@@ -10,6 +10,7 @@ mod active_window;
 mod bat;
 mod clock;
 mod cpu;
+mod disk;
 mod memory;
 mod network;
 mod spacer;
@@ -24,6 +25,7 @@ pub use active_window::ActiveWindow;
 pub use bat::{Battery, BatteryIcons};
 pub use clock::Clock;
 pub use cpu::Cpu;
+pub use disk::Disk;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
 pub use spacer::Spacer;
@@ -79,6 +81,7 @@ pub enum WidgetError {
     Battery(bat::Error),
     Clock,
     Cpu(cpu::Error),
+    Disk(disk::Error),
     Memory(memory::Error),
     Network(network::Error),
     Spacer,

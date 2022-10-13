@@ -1,8 +1,8 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
+use crate::corex::{bytes_to_closest, EmptyCallback};
 use cairo::{Context, Rectangle};
 use log::debug;
-use psutil::{memory::virtual_memory, Bytes};
+use psutil::memory::virtual_memory;
 use std::fmt::Display;
 
 /// Displays memory informations
@@ -67,23 +67,6 @@ impl Widget for Memory {
             cb.call(());
         }
     }
-}
-
-fn bytes_to_closest(value: Bytes) -> String {
-    if value == 0 {
-        return "0B".to_string();
-    }
-    let units = ["B", "KB", "MB", "GB", "TB"];
-    let mut selected_unit: usize = 0;
-    let mut value = value as f64;
-    while value > 1024.0 {
-        if selected_unit == 4 {
-            break;
-        }
-        value /= 1024.0;
-        selected_unit += 1;
-    }
-    format!("{:.1}{}", value, units[selected_unit])
 }
 
 impl Display for Memory {

@@ -3,7 +3,7 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, Clock, Cpu, Spacer, Systray, Volume, Widget, WidgetConfig,
+        ActiveWindow, Battery, Clock, Cpu, Disk, Spacer, Systray, Volume, Widget, WidgetConfig,
         WidgetError, Wlan, Workspace,
     },
 };
@@ -43,6 +43,7 @@ fn main() -> Result<()> {
         ])
         .right_widgets(vec![
             Systray::new(20.0, &wd_config)?,
+            Disk::new("💾 %f", "/", &wd_config, None),
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
             Cpu::new("💻 %p%", &wd_config, None)?,
             Battery::new("%i %c%", None, &wd_config, None)?,
