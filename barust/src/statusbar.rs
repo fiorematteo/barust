@@ -170,9 +170,10 @@ impl StatusBar {
 
         self.left_regions.clear();
         for wd in &mut self.left_widgets {
-            rectangle.width = wd.size(&context)?;
+            let widget_width = wd.size(&context)?;
+            rectangle.width = widget_width;
             self.left_regions.push(rectangle);
-            rectangle.x += wd.size(&context).unwrap_or(0.0);
+            rectangle.x += widget_width;
         }
 
         let right_size: f64 = self
@@ -185,9 +186,10 @@ impl StatusBar {
 
         self.right_regions.clear();
         for wd in &mut self.right_widgets {
-            rectangle.width = wd.size(&context)?;
+            let widget_width = wd.size(&context)?;
+            rectangle.width = widget_width;
             self.right_regions.push(rectangle);
-            rectangle.x += rectangle.width;
+            rectangle.x += widget_width;
         }
         Ok(())
     }

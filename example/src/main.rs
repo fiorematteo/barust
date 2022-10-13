@@ -3,8 +3,8 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, Clock, Cpu, Systray, Volume, Widget, WidgetConfig, WidgetError,
-        Wlan, Workspace,
+        ActiveWindow, Battery, Clock, Cpu, Spacer, Systray, Volume, Widget, WidgetConfig,
+        WidgetError, Wlan, Workspace,
     },
 };
 use std::fmt::Display;
@@ -29,6 +29,7 @@ fn main() -> Result<()> {
         .position(Position::Bottom)
         .background(BLANK)
         .left_widgets(vec![
+            Spacer::new(20.0),
             FilteredWorkspace::new::<&str>(
                 PURPLE,
                 10.0,
