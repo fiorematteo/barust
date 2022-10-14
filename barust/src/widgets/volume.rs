@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{timed_hook, Callback, EmptyCallback, HookSender, RawCallback};
+use crate::corex::{Callback, EmptyCallback, HookSender, RawCallback, TimedHooks};
 use log::debug;
 use std::{cmp::min, fmt::Display, time::Duration};
 
@@ -82,8 +82,8 @@ impl Widget for Volume {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
-        timed_hook(sender, Duration::from_secs(1));
+    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+        timed_hooks.subscribe(Duration::from_secs(1), sender);
         Ok(())
     }
 

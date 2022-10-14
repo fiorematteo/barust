@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{EmptyCallback, HookSender};
+use crate::corex::{EmptyCallback, HookSender, TimedHooks};
 use log::debug;
 use std::{fmt::Display, thread};
 use xcb::{x::Window, Connection};
@@ -49,7 +49,7 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
+    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()

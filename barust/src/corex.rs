@@ -2,9 +2,17 @@ use crate::{error::BarustError, statusbar::RightLeft};
 use cairo::Context;
 pub use cairo::{FontSlant, FontWeight};
 use crossbeam_channel::{bounded, Receiver, SendError, Sender};
+use log::error;
 use psutil::Bytes;
 use signal_hook::iterator::Signals;
-use std::{cell::RefCell, collections::HashMap, ffi::c_int, fmt::Debug, thread, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::{hash_map::Iter, HashMap},
+    ffi::c_int,
+    fmt::Debug,
+    thread,
+    time::Duration,
+};
 use xcb::{
     x::{Atom, InternAtom},
     Connection,
@@ -94,15 +102,6 @@ pub fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustE
     Ok(r)
 }
 
-pub fn timed_hook(sender: HookSender, duration: Duration) {
-    thread::spawn(move || loop {
-        if sender.send().is_err() {
-            break;
-        }
-        thread::sleep(duration);
-    });
-}
-
 pub fn bytes_to_closest(value: Bytes) -> String {
     if value == 0 {
         return "0B".to_string();
@@ -164,6 +163,7 @@ impl<T, R> std::fmt::Debug for Callback<T, R> {
 
 pub type WidgetID = (RightLeft, usize);
 
+#[derive(Debug)]
 pub struct HookSender {
     sender: Sender<WidgetID>,
     id: WidgetID,
@@ -176,5 +176,53 @@ impl HookSender {
 
     pub fn send(&self) -> Result<(), SendError<WidgetID>> {
         self.sender.send(self.id)
+    }
+}
+
+#[derive(Debug)]
+pub struct TimedHooks {
+    workers: HashMap<Duration, Sender<HookSender>>,
+}
+
+impl TimedHooks {
+    pub fn new() -> Self {
+        Self {
+            workers: HashMap::new(),
+        }
+    }
+
+    pub fn subscribe(&mut self, duration: Duration, sender: HookSender) {
+        if let Some(interal_sender) = self.workers.get(&duration) {
+            interal_sender.send(sender).ok();
+        } else {
+            let (tx, rx) = bounded::<HookSender>(10);
+            thread::spawn(move || {
+                let mut senders = vec![sender];
+                loop {
+                    for id in rx.try_recv() {
+                        senders.push(id)
+                    }
+                    for sender in &senders {
+                        if sender.send().is_err() {
+                            error!("breaking thread loop")
+                        }
+                    }
+                    thread::sleep(duration);
+                }
+            });
+            self.workers.insert(duration, tx);
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.workers.len()
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.workers.capacity()
+    }
+
+    pub fn iter(&self) -> Iter<Duration, Sender<HookSender>> {
+        self.workers.iter()
     }
 }

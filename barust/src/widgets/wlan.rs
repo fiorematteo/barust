@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{timed_hook, EmptyCallback, HookSender};
+use crate::corex::{EmptyCallback, HookSender, TimedHooks};
 use cairo::{Context, Rectangle};
 use log::debug;
 use std::{fmt::Display, time::Duration};
@@ -55,8 +55,8 @@ impl Widget for Wlan {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
-        timed_hook(sender, Duration::from_secs(5));
+    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+        timed_hooks.subscribe(Duration::from_secs(5), sender);
         Ok(())
     }
 

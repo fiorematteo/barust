@@ -1,6 +1,6 @@
 use crate::{
     corex::{
-        notify, set_source_rgba, Atoms, Color, HookSender, StatusBarEvent, WidgetID,
+        notify, set_source_rgba, Atoms, Color, HookSender, StatusBarEvent, TimedHooks, WidgetID,
         _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
     },
     error::{BarustError, Result},
@@ -81,20 +81,28 @@ impl StatusBar {
     pub fn start(&mut self) -> Result<()> {
         info!("Starting loop");
         let (tx, widgets_events) = bounded::<WidgetID>(10);
-        debug!("First update");
+
+        debug!("Widget setup");
         let info = StatusBarInfo::new(self);
+        let mut pool = TimedHooks::new();
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
             log_error_and_replace!(wd, wd.setup(&info));
             log_error_and_replace!(
                 wd,
-                wd.hook(HookSender::new(tx.clone(), (RightLeft::Left, index)))
+                wd.hook(
+                    HookSender::new(tx.clone(), (RightLeft::Left, index)),
+                    &mut pool
+                )
             );
         }
         for (index, wd) in self.right_widgets.iter_mut().enumerate() {
             log_error_and_replace!(wd, wd.setup(&info));
             log_error_and_replace!(
                 wd,
-                wd.hook(HookSender::new(tx.clone(), (RightLeft::Right, index)))
+                wd.hook(
+                    HookSender::new(tx.clone(), (RightLeft::Right, index)),
+                    &mut pool
+                )
             );
         }
         let signal = notify(&[SIGINT, SIGTERM])?;

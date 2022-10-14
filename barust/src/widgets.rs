@@ -1,5 +1,5 @@
 use crate::{
-    corex::{Callback, Color, HookSender},
+    corex::{Callback, Color, HookSender, TimedHooks},
     error::Erc,
     statusbar::StatusBarInfo,
 };
@@ -49,7 +49,7 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     fn last_update(&mut self) -> Result<()> {
         Ok(())
     }
-    fn hook(&mut self, _sender: HookSender) -> Result<()> {
+    fn hook(&mut self, _sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
         Ok(())
     }
     fn size(&self, context: &Context) -> Result<f64>;

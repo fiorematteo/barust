@@ -1,8 +1,9 @@
 use super::{Result, Widget, WidgetConfig, WidgetError};
 use crate::{
     corex::{
-        set_source_rgba, Atoms, Color, HookSender, MANAGER, _NET_SYSTEM_TRAY_ORIENTATION,
-        _NET_SYSTEM_TRAY_S0, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
+        set_source_rgba, Atoms, Color, HookSender, TimedHooks, MANAGER,
+        _NET_SYSTEM_TRAY_ORIENTATION, _NET_SYSTEM_TRAY_S0, _NET_WM_WINDOW_TYPE,
+        _NET_WM_WINDOW_TYPE_DOCK,
     },
     statusbar::{screen_true_height, Position, StatusBarInfo},
 };
@@ -401,7 +402,7 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
+    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);

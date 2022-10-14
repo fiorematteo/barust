@@ -1,5 +1,5 @@
 use barust::{
-    corex::{Color, HookSender},
+    corex::{Color, HookSender, TimedHooks},
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
@@ -139,8 +139,8 @@ impl Widget for FilteredWorkspace {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> barust::widgets::Result<()> {
-        self.inner.hook(sender)
+    fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> barust::widgets::Result<()> {
+        self.inner.hook(sender, pool)
     }
 }
 

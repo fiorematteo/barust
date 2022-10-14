@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{timed_hook, EmptyCallback, HookSender};
+use crate::corex::{EmptyCallback, HookSender, TimedHooks};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
@@ -61,6 +61,11 @@ impl Widget for Cpu {
         Ok(())
     }
 
+    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+        timed_hooks.subscribe(Duration::from_secs(1), sender);
+        Ok(())
+    }
+
     fn size(&self, context: &Context) -> Result<f64> {
         self.inner.size(context)
     }
@@ -73,11 +78,6 @@ impl Widget for Cpu {
         if let Some(cb) = &self.on_click {
             cb.call(());
         }
-    }
-
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
-        timed_hook(sender, Duration::from_secs(1));
-        Ok(())
     }
 }
 

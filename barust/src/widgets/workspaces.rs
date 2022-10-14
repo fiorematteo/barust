@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, EmptyCallback, HookSender};
+use crate::corex::{set_source_rgba, Color, EmptyCallback, HookSender, TimedHooks};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -101,7 +101,7 @@ impl Widget for Workspace {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
+    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()

@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{timed_hook, EmptyCallback, HookSender};
+use crate::corex::{EmptyCallback, HookSender, TimedHooks};
 use cairo::{Context, Rectangle};
 use chrono::Local;
 use log::debug;
@@ -60,8 +60,8 @@ impl Widget for Clock {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
-        timed_hook(sender, Duration::from_secs(1));
+    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+        timed_hooks.subscribe(Duration::from_secs(1), sender);
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::bytes_to_closest;
-use crate::corex::{timed_hook, HookSender};
+use crate::corex::HookSender;
+use crate::corex::{bytes_to_closest, TimedHooks};
 use cairo::{Context, Rectangle};
 use std::{fmt::Display, time::Duration};
 
@@ -52,8 +52,8 @@ impl Widget for Disk {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender) -> Result<()> {
-        timed_hook(sender, Duration::from_secs(5));
+    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+        timed_hooks.subscribe(Duration::from_secs(5), sender);
         Ok(())
     }
 
