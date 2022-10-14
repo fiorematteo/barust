@@ -31,13 +31,14 @@ impl Clock {
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
+        let format = format.to_string();
         Box::new(Self {
-            format: format.to_string(),
-            inner: *Text::new(&Self::current_time_str(format), config, None),
+            inner: *Text::new(&Self::current_time_str(&format), config, None),
+            format,
             on_click: on_click.map(|c| c.into()),
         })
     }

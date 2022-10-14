@@ -59,7 +59,7 @@ impl Network {
     ///* `fg_color` foreground color
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         interface: String,
         icons: Option<NetworkIcons>,
         config: &WidgetConfig,

@@ -21,7 +21,7 @@ impl Text {
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
     pub fn new(
-        text: &str,
+        text: impl ToString,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {

@@ -39,7 +39,7 @@ impl Battery {
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
@@ -61,7 +61,7 @@ impl Battery {
 
         Ok(Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("BAT", config, None),
+            inner: *Text::new("", config, None),
             root_path,
             icons: icons.unwrap_or_default(),
             on_click: on_click.map(|c| c.into()),

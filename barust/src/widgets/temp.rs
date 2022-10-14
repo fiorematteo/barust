@@ -19,13 +19,13 @@ impl Temperatures {
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("CPU", config, None),
+            inner: *Text::new("", config, None),
             on_click: on_click.map(|c| c.into()),
         })
     }

@@ -23,7 +23,7 @@ impl Memory {
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {

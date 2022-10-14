@@ -23,7 +23,7 @@ impl Wlan {
     ///* `fg_color` foreground color
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         interface: String,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,

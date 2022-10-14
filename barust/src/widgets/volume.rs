@@ -41,7 +41,7 @@ impl Volume {
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
     pub fn new(
-        format: &str,
+        format: impl ToString,
         volume_command: &'static RawCallback<(), Option<f64>>,
         muted_command: &'static RawCallback<(), Option<bool>>,
         icons: Option<VolumeIcons>,
