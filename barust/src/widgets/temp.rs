@@ -1,9 +1,9 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::EmptyCallback;
+use crate::corex::{EmptyCallback, HookSender};
 use cairo::{Context, Rectangle};
 use log::debug;
 use psutil::sensors::temperatures;
-use std::fmt::Display;
+use std::{fmt::Display, time::Duration};
 
 /// Displays the average temperature read by the device sensors
 #[derive(Debug)]
@@ -62,10 +62,21 @@ impl Widget for Temperatures {
             cb.call(());
         }
     }
+
+    fn hook(&mut self, sender: HookSender, pool: &mut crate::corex::TimedHooks) -> Result<()> {
+        pool.subscribe(Duration::from_secs(5), sender)
+            .map_err(Error::from)?;
+        Ok(())
+    }
 }
 
 impl Display for Temperatures {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Temperatures").fmt(f)
     }
+}
+
+#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+pub enum Error {
+    HookChannel(crossbeam_channel::SendError<HookSender>),
 }

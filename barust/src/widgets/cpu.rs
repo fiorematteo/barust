@@ -62,7 +62,9 @@ impl Widget for Cpu {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(Duration::from_secs(1), sender);
+        timed_hooks
+            .subscribe(Duration::from_secs(1), sender)
+            .map_err(Error::from)?;
         Ok(())
     }
 
@@ -89,5 +91,6 @@ impl Display for Cpu {
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
+    HookChannel(crossbeam_channel::SendError<HookSender>),
     Psutil(psutil::Error),
 }

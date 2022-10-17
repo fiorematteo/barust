@@ -44,16 +44,18 @@ impl Widget for Disk {
         let disk_usage = psutil::disk::disk_usage(self.path.clone()).map_err(Error::from)?;
         let text = self
             .format
-            .replace("%p", &format!("{}", disk_usage.percent()))
-            .replace("%u", &format!("{}", bytes_to_closest(disk_usage.used())))
-            .replace("%f", &format!("{}", bytes_to_closest(disk_usage.free())))
-            .replace("%t", &format!("{}", bytes_to_closest(disk_usage.total())));
+            .replace("%p", &disk_usage.percent().to_string())
+            .replace("%u", &bytes_to_closest(disk_usage.used()))
+            .replace("%f", &bytes_to_closest(disk_usage.free()))
+            .replace("%t", &bytes_to_closest(disk_usage.total()));
         self.inner.set_text(text);
         Ok(())
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(Duration::from_secs(5), sender);
+        timed_hooks
+            .subscribe(Duration::from_secs(5), sender)
+            .map_err(Error::from)?;
         Ok(())
     }
 
@@ -80,5 +82,6 @@ impl Display for Disk {
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
+    HookChannel(crossbeam_channel::SendError<HookSender>),
     Psutil(psutil::Error),
 }

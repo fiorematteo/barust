@@ -84,7 +84,7 @@ impl StatusBar {
 
         debug!("Widget setup");
         let info = StatusBarInfo::new(self);
-        let mut pool = TimedHooks::new();
+        let mut pool = TimedHooks::default();
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
             log_error_and_replace!(wd, wd.setup(&info));
             log_error_and_replace!(

@@ -179,50 +179,57 @@ impl HookSender {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TimedHooks {
-    workers: HashMap<Duration, Sender<HookSender>>,
+    threads: HashMap<Duration, Sender<HookSender>>,
 }
 
 impl TimedHooks {
-    pub fn new() -> Self {
-        Self {
-            workers: HashMap::new(),
-        }
+    pub fn new(threads: HashMap<Duration, Sender<HookSender>>) -> Self {
+        Self { threads }
     }
 
-    pub fn subscribe(&mut self, duration: Duration, sender: HookSender) {
-        if let Some(interal_sender) = self.workers.get(&duration) {
-            interal_sender.send(sender).ok();
+    pub fn subscribe(
+        &mut self,
+        duration: Duration,
+        sender: HookSender,
+    ) -> Result<(), SendError<HookSender>> {
+        if let Some(interal_sender) = self.threads.get(&duration) {
+            interal_sender.send(sender)?;
         } else {
             let (tx, rx) = bounded::<HookSender>(10);
             thread::spawn(move || {
                 let mut senders = vec![sender];
                 loop {
-                    for id in rx.try_recv() {
+                    while let Ok(id) = rx.try_recv() {
                         senders.push(id)
                     }
                     for sender in &senders {
                         if sender.send().is_err() {
                             error!("breaking thread loop")
                         }
+                        thread::sleep(duration);
                     }
-                    thread::sleep(duration);
                 }
             });
-            self.workers.insert(duration, tx);
+            self.threads.insert(duration, tx);
         }
+        Ok(())
     }
 
     pub fn len(&self) -> usize {
-        self.workers.len()
+        self.threads.len()
     }
 
     pub fn capacity(&self) -> usize {
-        self.workers.capacity()
+        self.threads.capacity()
     }
 
     pub fn iter(&self) -> Iter<Duration, Sender<HookSender>> {
-        self.workers.iter()
+        self.threads.iter()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.threads.is_empty()
     }
 }

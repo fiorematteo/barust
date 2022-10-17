@@ -310,7 +310,7 @@ impl Widget for Systray {
         debug!("updating systray");
         //NOTE xcb::x::Event doesn't implement copy :(
         if let Some(events) = self.event_receiver.take() {
-            for event in events.try_recv() {
+            while let Ok(event) = events.try_recv() {
                 match event {
                     xcb::x::Event::ClientMessage(event) => {
                         if let ClientMessageData::Data32(data) = event.data() {
