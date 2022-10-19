@@ -343,7 +343,7 @@ impl Widget for Systray {
                     xcb::x::Event::DestroyNotify(event) => self.forget(event.window())?,
                     xcb::x::Event::PropertyNotify(event) => {
                         if !self.take_selection(event.time())? {
-                            return Err(Error::NoSelection)?;
+                            return Err(Error::NoSelection.into());
                         }
                     }
                     xcb::x::Event::ReparentNotify(event) => {

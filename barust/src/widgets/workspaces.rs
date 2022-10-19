@@ -1,5 +1,8 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Color, EmptyCallback, HookSender, TimedHooks};
+use crate::corex::{
+    set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks, UTF8_STRING,
+    _NET_CURRENT_DESKTOP, _NET_DESKTOP_NAMES,
+};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -8,17 +11,39 @@ use std::{fmt::Display, thread};
 use xcb::Connection;
 
 pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
-    let ewmh_connection = xcb_wm::ewmh::Connection::connect(connection);
-    let cookie = ewmh_connection.send_request(&xcb_wm::ewmh::proto::GetDesktopNames);
-    let reply = ewmh_connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
-    Ok(reply.names)
+    let atoms = Atoms::new(connection);
+    let cookie = connection.send_request(&xcb::x::GetProperty {
+        delete: false,
+        window: connection.get_setup().roots().next().unwrap().root(),
+        property: atoms.get(_NET_DESKTOP_NAMES),
+        r#type: atoms.get(UTF8_STRING),
+        long_offset: 0,
+        long_length: u32::MAX,
+    });
+    let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
+    Ok(reply
+        .value::<u8>()
+        .split(|c| *c == 0)
+        .filter_map(|s| String::from_utf8(s.to_vec()).ok())
+        .collect::<Vec<String>>())
 }
 
 pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
-    let ewmh_connection = xcb_wm::ewmh::Connection::connect(connection);
-    let cookie = ewmh_connection.send_request(&xcb_wm::ewmh::proto::GetCurrentDesktop);
-    let reply = ewmh_connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
-    Ok(reply.desktop)
+    let atoms = Atoms::new(connection);
+    let cookie = connection.send_request(&xcb::x::GetProperty {
+        delete: false,
+        window: connection.get_setup().roots().next().unwrap().root(),
+        property: atoms.get(_NET_CURRENT_DESKTOP),
+        r#type: xcb::x::ATOM_CARDINAL,
+        long_offset: 0,
+        long_length: u32::MAX,
+    });
+    let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
+    reply
+        .value::<u32>()
+        .get(0)
+        .ok_or(Error::Ewmh.into())
+        .map(|v| *v)
 }
 
 /// Displays informations about the active workspaces
@@ -58,7 +83,7 @@ impl Workspace {
     }
 
     fn get_layout(&self, context: &Context) -> Result<Layout> {
-        let pango_context = create_context(context).ok_or(Error::PangoError)?;
+        let pango_context = create_context(context).ok_or(Error::Pango)?;
         let layout = Layout::new(&pango_context);
         let mut font = FontDescription::from_string(&self.font);
         font.set_absolute_size(self.font_size * pango::SCALE as f64);
@@ -92,11 +117,13 @@ impl Widget for Workspace {
     fn update(&mut self) -> Result<()> {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let workspace = get_desktops_names(&connection)?;
-        let index = get_current_desktop(&connection)?;
-        self.workspaces = workspace.iter().map(|w| (w.to_owned(), false)).collect();
-        if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
-            active_workspace.1 = true;
+        if let Ok(workspace) = get_desktops_names(&connection) {
+            if let Ok(index) = get_current_desktop(&connection) {
+                self.workspaces = workspace.iter().map(|w| (w.to_owned(), false)).collect();
+                if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
+                    active_workspace.1 = true;
+                }
+            }
         }
         Ok(())
     }
@@ -161,7 +188,8 @@ impl Display for Workspace {
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
-    PangoError,
+    Ewmh,
+    Pango,
     Xcb(xcb::Error),
 }
 

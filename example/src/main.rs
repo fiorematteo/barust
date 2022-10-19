@@ -7,6 +7,7 @@ use barust::{
         WidgetError, Wlan, Workspace,
     },
 };
+use log::LevelFilter;
 use std::fmt::Display;
 
 const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
@@ -17,7 +18,12 @@ const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
 fn main() -> Result<()> {
-    env_logger::init();
+    log_panics::Config::new()
+        .backtrace_mode(log_panics::BacktraceMode::Resolved)
+        .install_panic_hook();
+
+    let level = LevelFilter::Debug;
+    simple_logging::log_to_file("~/.local/share/barust.log", level).unwrap();
 
     let wd_config = WidgetConfig {
         font: "DejaVu Sans Mono",
@@ -26,7 +32,7 @@ fn main() -> Result<()> {
     };
 
     let mut bar = StatusBar::create()
-        .position(Position::Bottom)
+        .position(Position::Top)
         .background(BLANK)
         .left_widgets(vec![
             Spacer::new(20.0),

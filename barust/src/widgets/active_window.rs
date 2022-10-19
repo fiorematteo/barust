@@ -1,23 +1,38 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{EmptyCallback, HookSender, TimedHooks};
+use crate::corex::{
+    Atoms, EmptyCallback, HookSender, TimedHooks, UTF8_STRING, _NET_ACTIVE_WINDOW, _NET_WM_NAME,
+};
 use log::debug;
 use std::{fmt::Display, thread};
+use xcb::XidNew;
 use xcb::{x::Window, Connection};
 
-pub fn get_active_window_name(connection: &Connection) -> Result<Option<String>> {
-    let ewmh_connection = xcb_wm::ewmh::Connection::connect(connection);
-    let cookie = ewmh_connection.send_request(&xcb_wm::ewmh::proto::GetActiveWindow);
-    let active_window_id: Window = ewmh_connection
-        .wait_for_reply(cookie)
-        .map_err(Error::from)?
-        .window;
-    let cookie = ewmh_connection.send_request(&xcb_wm::ewmh::proto::GetWmName(active_window_id));
-    let active_window_name = ewmh_connection
-        .wait_for_reply(cookie)
-        .map(|a| Some(a.name))
-        .unwrap_or(None);
-
-    Ok(active_window_name)
+pub fn get_active_window_name(connection: &Connection) -> Result<String> {
+    let atoms = Atoms::new(connection);
+    let cookie = connection.send_request(&xcb::x::GetProperty {
+        delete: false,
+        window: connection.get_setup().roots().next().unwrap().root(),
+        property: atoms.get(_NET_ACTIVE_WINDOW),
+        r#type: xcb::x::ATOM_WINDOW,
+        long_offset: 0,
+        long_length: u32::MAX,
+    });
+    let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
+    let active_window_id = if let Some(data) = reply.value::<u32>().get(0) {
+        unsafe { Window::new(*data) }
+    } else {
+        return Err(Error::Ewmh.into());
+    };
+    let cookie = connection.send_request(&xcb::x::GetProperty {
+        delete: false,
+        window: active_window_id,
+        property: atoms.get(_NET_WM_NAME),
+        r#type: atoms.get(UTF8_STRING),
+        long_offset: 0,
+        long_length: u32::MAX,
+    });
+    let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
+    String::from_utf8(reply.value::<u8>().into()).map_err(|_| Error::Ewmh.into())
 }
 
 #[derive(Debug)]
@@ -43,7 +58,7 @@ impl Widget for ActiveWindow {
     fn update(&mut self) -> Result<()> {
         debug!("updating active_window");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        if let Some(window_name) = get_active_window_name(&connection)? {
+        if let Ok(window_name) = get_active_window_name(&connection) {
             self.inner.set_text(window_name);
         }
         Ok(())
@@ -98,6 +113,7 @@ impl Display for ActiveWindow {
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
+    Ewmh,
     Xcb(xcb::Error),
 }
 
