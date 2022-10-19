@@ -13,3 +13,7 @@ derive_more = "0.99.17"
 log = "0.4.17"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 simple-logging = "2.0.2"
+
+[[bin]]
+name = "barust"
+path = "src/main.rs"
