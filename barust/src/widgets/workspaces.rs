@@ -41,8 +41,8 @@ pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
     let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
     reply
         .value::<u32>()
-        .get(0)
-        .ok_or(Error::Ewmh.into())
+        .first()
+        .ok_or_else(|| Error::Ewmh.into())
         .map(|v| *v)
 }
 

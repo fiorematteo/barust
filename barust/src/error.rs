@@ -4,6 +4,7 @@ use std::rc::Rc;
 pub enum BarustError {
     Cairo(cairo::Error),
     DrawBeforeUpdate,
+    Io(std::io::Error),
     Widget(crate::widgets::WidgetError),
     Xcb(xcb::Error),
 }

@@ -18,7 +18,7 @@ pub fn get_active_window_name(connection: &Connection) -> Result<String> {
         long_length: u32::MAX,
     });
     let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
-    let active_window_id = if let Some(data) = reply.value::<u32>().get(0) {
+    let active_window_id = if let Some(data) = reply.value::<u32>().first() {
         unsafe { Window::new(*data) }
     } else {
         return Err(Error::Ewmh.into());

@@ -18,12 +18,12 @@ const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
 fn main() -> Result<()> {
+    let level = LevelFilter::Debug;
+    simple_logging::log_to_file("/home/matteo/.local/share/barust.log", level)?;
+
     log_panics::Config::new()
         .backtrace_mode(log_panics::BacktraceMode::Resolved)
         .install_panic_hook();
-
-    let level = LevelFilter::Debug;
-    simple_logging::log_to_file("~/.local/share/barust.log", level).unwrap();
 
     let wd_config = WidgetConfig {
         font: "DejaVu Sans Mono",
