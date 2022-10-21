@@ -110,16 +110,16 @@ impl StatusBar {
 
         self.generate_regions()?;
         self.draw()?;
-
         self.show()?;
+
         loop {
+            let mut to_update: Option<WidgetID> = None;
             debug!("Looping");
-            let mut to_update: Vec<WidgetID> = vec![];
             select!(
                 recv(timeout) ->  _ => debug!("timeout triggered"),
                 recv(widgets_events) -> id => {
                     if let Ok(id) = id{
-                        to_update.push(id)
+                        to_update=Some(id)
                     }
                 },
                 recv(bar_events) -> event => {
@@ -134,10 +134,11 @@ impl StatusBar {
                     return Ok(());
                 }
             );
-            self.update(&to_update)?;
+            if let Some(to_update) = to_update {
+                self.update(to_update)?;
+            }
             self.generate_regions()?;
             self.draw()?;
-            to_update.clear();
         }
     }
 
@@ -149,18 +150,16 @@ impl StatusBar {
         }
     }
 
-    pub(crate) fn update(&mut self, to_update: &Vec<WidgetID>) -> Result<()> {
+    pub(crate) fn update(&mut self, to_update: WidgetID) -> Result<()> {
         debug!("Updating");
-        for (side, index) in to_update {
-            match side {
-                RightLeft::Left => {
-                    let wd = &mut self.left_widgets[*index];
-                    log_error_and_replace!(wd, wd.update());
-                }
-                RightLeft::Right => {
-                    let wd = &mut self.right_widgets[*index];
-                    log_error_and_replace!(wd, wd.update());
-                }
+        match to_update {
+            (RightLeft::Left, index) => {
+                let wd = &mut self.left_widgets[index];
+                log_error_and_replace!(wd, wd.update());
+            }
+            (RightLeft::Right, index) => {
+                let wd = &mut self.right_widgets[index];
+                log_error_and_replace!(wd, wd.update());
             }
         }
         Ok(())
