@@ -6,7 +6,6 @@ use log::error;
 use psutil::Bytes;
 use signal_hook::iterator::Signals;
 use std::{
-    cell::RefCell,
     collections::{hash_map::Iter, HashMap},
     ffi::c_int,
     fmt::Debug,
@@ -42,13 +41,33 @@ pub fn set_source_rgba(context: &Context, color: Color) {
 }
 
 macro_rules! atoms {
-    ( $( $x:ident ),* ) => {
+    ( $struct_name:ident, $( $x:ident ),* ) => {
         #[allow(non_snake_case)]
-        $(pub(crate) const $x: &'static str = stringify!($x);)*
+        pub struct $struct_name{
+            $(pub $x: Atom,)*
+        }
+
+        impl $struct_name {
+            pub fn new(connection: &Connection) -> Result<Self, xcb::Error>{
+                Ok(Self {
+                    $($x: Self::intern(connection, stringify!($x))?,)*
+                })
+            }
+            pub fn intern(connection: &Connection, name: &str) -> Result<Atom, xcb::Error> {
+                Ok(connection
+                    .wait_for_reply(connection.send_request(&InternAtom {
+                        only_if_exists: false,
+                        name: name.as_bytes(),
+                    }))
+                    .unwrap()
+                    .atom())
+            }
+        }
     }
 }
 
 atoms!(
+    Atoms,
     UTF8_STRING,
     _NET_ACTIVE_WINDOW,
     _NET_CURRENT_DESKTOP,
@@ -61,38 +80,6 @@ atoms!(
     _NET_WM_WINDOW_TYPE_DOCK,
     MANAGER
 );
-
-pub(crate) struct Atoms<'a> {
-    conn: &'a Connection,
-    cache: RefCell<HashMap<&'a str, Atom>>,
-}
-
-impl<'a> Atoms<'a> {
-    pub fn new(conn: &Connection) -> Atoms {
-        Atoms {
-            conn,
-            cache: RefCell::new(HashMap::new()),
-        }
-    }
-
-    pub fn get(&self, name: &'a str) -> Atom {
-        let mut cache = self.cache.borrow_mut();
-        if let Some(atom) = cache.get(name) {
-            *atom
-        } else {
-            let atom = self
-                .conn
-                .wait_for_reply(self.conn.send_request(&InternAtom {
-                    only_if_exists: false,
-                    name: name.as_bytes(),
-                }))
-                .unwrap()
-                .atom();
-            cache.insert(name, atom);
-            atom
-        }
-    }
-}
 
 pub fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
     let (s, r): _ = bounded(10);

@@ -1,8 +1,5 @@
 use super::{OnClickCallback, Result, Widget, WidgetConfig};
-use crate::corex::{
-    set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks, UTF8_STRING,
-    _NET_CURRENT_DESKTOP, _NET_DESKTOP_NAMES,
-};
+use crate::corex::{set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks};
 use cairo::{Context, Rectangle};
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -10,13 +7,12 @@ use pangocairo::{create_context, show_layout};
 use std::{fmt::Display, thread};
 use xcb::Connection;
 
-pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
-    let atoms = Atoms::new(connection);
+pub fn get_desktops_names(connection: &Connection, atoms: &Atoms) -> Result<Vec<String>> {
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
-        property: atoms.get(_NET_DESKTOP_NAMES),
-        r#type: atoms.get(UTF8_STRING),
+        property: atoms._NET_DESKTOP_NAMES,
+        r#type: atoms.UTF8_STRING,
         long_offset: 0,
         long_length: u32::MAX,
     });
@@ -28,12 +24,11 @@ pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
         .collect::<Vec<String>>())
 }
 
-pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
-    let atoms = Atoms::new(connection);
+pub fn get_current_desktop(connection: &Connection, atoms: &Atoms) -> Result<u32> {
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
-        property: atoms.get(_NET_CURRENT_DESKTOP),
+        property: atoms._NET_CURRENT_DESKTOP,
         r#type: xcb::x::ATOM_CARDINAL,
         long_offset: 0,
         long_length: u32::MAX,
@@ -117,8 +112,9 @@ impl Widget for Workspace {
     fn update(&mut self) -> Result<()> {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        if let Ok(workspace) = get_desktops_names(&connection) {
-            if let Ok(index) = get_current_desktop(&connection) {
+        let atoms = Atoms::new(&connection).map_err(Error::from)?;
+        if let Ok(workspace) = get_desktops_names(&connection, &atoms) {
+            if let Ok(index) = get_current_desktop(&connection, &atoms) {
                 self.workspaces = workspace.iter().map(|w| (w.to_owned(), false)).collect();
                 if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
                     active_workspace.1 = true;

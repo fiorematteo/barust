@@ -1,10 +1,6 @@
 use super::{Result, Widget, WidgetConfig, WidgetError};
 use crate::{
-    corex::{
-        set_source_rgba, Atoms, Color, HookSender, TimedHooks, MANAGER,
-        _NET_SYSTEM_TRAY_ORIENTATION, _NET_SYSTEM_TRAY_S0, _NET_WM_WINDOW_TYPE,
-        _NET_WM_WINDOW_TYPE_DOCK,
-    },
+    corex::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
     statusbar::{screen_true_height, Position, StatusBarInfo},
 };
 use crossbeam_channel::{bounded, Receiver};
@@ -162,14 +158,14 @@ impl Systray {
             })
             .map_err(Error::from)?;
 
-        let atoms = Atoms::new(&self.connection);
+        let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
         self.connection
             .send_and_check_request(&xcb::x::ChangeProperty {
                 mode: xcb::x::PropMode::Replace,
                 window,
-                property: atoms.get(_NET_WM_WINDOW_TYPE),
+                property: atoms._NET_WM_WINDOW_TYPE,
                 r#type: xcb::x::ATOM_ATOM,
-                data: &[atoms.get(_NET_WM_WINDOW_TYPE_DOCK)],
+                data: &[atoms._NET_WM_WINDOW_TYPE_DOCK],
             })
             .map_err(Error::from)?;
 
@@ -177,7 +173,7 @@ impl Systray {
             .send_and_check_request(&xcb::x::ChangeProperty {
                 mode: xcb::x::PropMode::Replace,
                 window,
-                property: atoms.get(_NET_SYSTEM_TRAY_ORIENTATION),
+                property: atoms._NET_SYSTEM_TRAY_ORIENTATION,
                 r#type: xcb::x::ATOM_CARDINAL,
                 data: &[0_u32],
             })
@@ -188,8 +184,8 @@ impl Systray {
     }
 
     fn take_selection(&self, time: u32) -> Result<bool> {
-        let atoms = Atoms::new(&self.connection);
-        let selection = atoms.get(_NET_SYSTEM_TRAY_S0);
+        let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
+        let selection = atoms._NET_SYSTEM_TRAY_S0;
         let window = self.window.ok_or(Error::MissingWindow)?;
 
         let owner = self
@@ -234,7 +230,7 @@ impl Systray {
         let screen = setup.roots().next().unwrap();
         let client_event = xcb::x::ClientMessageEvent::new(
             screen.root(),
-            atoms.get(MANAGER),
+            atoms.MANAGER,
             xcb::x::ClientMessageData::Data32([
                 time,
                 selection.resource_id(),

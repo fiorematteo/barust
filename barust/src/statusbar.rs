@@ -1,7 +1,6 @@
 use crate::{
     corex::{
         notify, set_source_rgba, Atoms, Color, HookSender, StatusBarEvent, TimedHooks, WidgetID,
-        _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DOCK,
     },
     error::{BarustError, Result},
     log_error_and_replace,
@@ -462,13 +461,13 @@ pub(crate) fn create_xwindow(
         ],
     })?;
 
-    let atoms = Atoms::new(connection);
+    let atoms = Atoms::new(connection)?;
     connection.send_and_check_request(&xcb::x::ChangeProperty {
         mode: xcb::x::PropMode::Replace,
         window,
-        property: atoms.get(_NET_WM_WINDOW_TYPE),
+        property: atoms._NET_WM_WINDOW_TYPE,
         r#type: xcb::x::ATOM_ATOM,
-        data: &[atoms.get(_NET_WM_WINDOW_TYPE_DOCK)],
+        data: &[atoms._NET_WM_WINDOW_TYPE_DOCK],
     })?;
 
     let surface = unsafe {

@@ -1,18 +1,16 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{
-    Atoms, EmptyCallback, HookSender, TimedHooks, UTF8_STRING, _NET_ACTIVE_WINDOW, _NET_WM_NAME,
-};
+use crate::corex::{Atoms, EmptyCallback, HookSender, TimedHooks};
 use log::debug;
 use std::{fmt::Display, thread};
 use xcb::XidNew;
 use xcb::{x::Window, Connection};
 
 pub fn get_active_window_name(connection: &Connection) -> Result<String> {
-    let atoms = Atoms::new(connection);
+    let atoms = Atoms::new(connection).map_err(Error::from)?;
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
-        property: atoms.get(_NET_ACTIVE_WINDOW),
+        property: atoms._NET_ACTIVE_WINDOW,
         r#type: xcb::x::ATOM_WINDOW,
         long_offset: 0,
         long_length: u32::MAX,
@@ -26,8 +24,8 @@ pub fn get_active_window_name(connection: &Connection) -> Result<String> {
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: active_window_id,
-        property: atoms.get(_NET_WM_NAME),
-        r#type: atoms.get(UTF8_STRING),
+        property: atoms._NET_WM_NAME,
+        r#type: atoms.UTF8_STRING,
         long_offset: 0,
         long_length: u32::MAX,
     });
