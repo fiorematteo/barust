@@ -18,7 +18,7 @@ const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
 fn main() -> Result<()> {
-    let level = LevelFilter::Debug;
+    let level = LevelFilter::Info;
     simple_logging::log_to_file("/home/matteo/.local/share/barust.log", level)?;
 
     log_panics::Config::new()
@@ -45,7 +45,7 @@ fn main() -> Result<()> {
                 },
                 &["scratchpad", "pulsemixer"],
             ),
-            ActiveWindow::new(&wd_config, None),
+            ActiveWindow::new(&wd_config, None)?,
         ])
         .right_widgets(vec![
             Systray::new(20.0, &wd_config)?,

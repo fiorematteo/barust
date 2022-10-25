@@ -1,12 +1,14 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
 use crate::corex::{Atoms, EmptyCallback, HookSender, TimedHooks};
-use log::debug;
+use log::{debug, error};
+use std::sync::Arc;
+use std::time::Duration;
 use std::{fmt::Display, thread};
+use xcb::x::{ChangeWindowAttributes, Cw, Event, EventMask};
 use xcb::XidNew;
 use xcb::{x::Window, Connection};
 
-pub fn get_active_window_name(connection: &Connection) -> Result<String> {
-    let atoms = Atoms::new(connection).map_err(Error::from)?;
+pub fn get_active_window_name(connection: &Connection, atoms: &Atoms) -> Result<String> {
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
@@ -34,18 +36,32 @@ pub fn get_active_window_name(connection: &Connection) -> Result<String> {
     String::from_utf8(reply.value::<u8>().into()).map_err(|_| Error::Ewmh.into())
 }
 
-#[derive(Debug)]
 pub struct ActiveWindow {
     inner: Text,
+    connection: Connection,
+    atoms: Atoms,
     on_click: OnClickCallback,
 }
 
+impl std::fmt::Debug for ActiveWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "inner: {:?}", self.inner)
+    }
+}
+
 impl ActiveWindow {
-    pub fn new(config: &WidgetConfig, on_click: Option<&'static EmptyCallback>) -> Box<Self> {
-        Box::new(Self {
+    pub fn new(
+        config: &WidgetConfig,
+        on_click: Option<&'static EmptyCallback>,
+    ) -> Result<Box<Self>> {
+        let (connection, _) = Connection::connect(None).map_err(Error::from)?;
+        let atoms = Atoms::new(&connection).map_err(Error::from)?;
+        Ok(Box::new(Self {
             inner: *Text::new("", config, None),
+            connection,
+            atoms,
             on_click: on_click.map(|c| c.into()),
-        })
+        }))
     }
 }
 
@@ -56,8 +72,7 @@ impl Widget for ActiveWindow {
 
     fn update(&mut self) -> Result<()> {
         debug!("updating active_window");
-        let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        if let Ok(window_name) = get_active_window_name(&connection) {
+        if let Ok(window_name) = get_active_window_name(&self.connection, &self.atoms) {
             self.inner.set_text(window_name);
         }
         Ok(())
@@ -72,19 +87,42 @@ impl Widget for ActiveWindow {
             .unwrap()
             .root();
         connection
-            .send_and_check_request(&xcb::x::ChangeWindowAttributes {
+            .send_and_check_request(&ChangeWindowAttributes {
                 window: root_window,
-                value_list: &[xcb::x::Cw::EventMask(xcb::x::EventMask::PROPERTY_CHANGE)],
+                value_list: &[Cw::EventMask(EventMask::PROPERTY_CHANGE)],
             })
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
+        let atoms = Atoms::new(&connection).map_err(Error::from)?;
+
+        let property_sender = Arc::new(sender);
+        let property_connection = Arc::new(connection);
+        let name_sender = property_sender.clone();
+        let name_connection = property_connection.clone();
+
         thread::spawn(move || loop {
-            if let Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_))) = connection.wait_for_event()
+            if let Ok(xcb::Event::X(Event::PropertyNotify(_))) =
+                property_connection.wait_for_event()
             {
-                if sender.send().is_err() {
+                if property_sender.send().is_err() {
+                    error!("breaking active_window hook");
                     break;
                 }
             }
+        });
+
+        let mut old_name = "".into();
+        thread::spawn(move || loop {
+            if let Ok(new_name) = get_active_window_name(&name_connection, &atoms) {
+                if old_name != new_name {
+                    old_name = new_name;
+                    if name_sender.send().is_err() {
+                        error!("breaking active_window hook");
+                        break;
+                    }
+                }
+            }
+            thread::sleep(Duration::from_secs(1));
         });
         Ok(())
     }
