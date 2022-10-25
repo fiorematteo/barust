@@ -35,8 +35,8 @@ impl Text {
         })
     }
 
-    pub fn set_text(&mut self, text: String) -> &Self {
-        self.text = text;
+    pub fn set_text(&mut self, text: impl ToString) -> &Self {
+        self.text = text.to_string();
         self
     }
 

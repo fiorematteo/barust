@@ -43,14 +43,14 @@ impl Widget for Wlan {
     }
     fn update(&mut self) -> Result<()> {
         debug!("updating wlan");
-        let text = if let Some(data) = iwlib::get_wireless_info(self.interface.clone()) {
-            self.format
-                .replace("%i", &self.interface)
-                .replace("%e", &data.wi_essid)
-                .replace("%q", &data.wi_quality.to_string())
-        } else {
-            "No interface".to_string()
-        };
+        let text = iwlib::get_wireless_info(self.interface.clone())
+            .map(|data| {
+                self.format
+                    .replace("%i", &self.interface)
+                    .replace("%e", &data.wi_essid)
+                    .replace("%q", &data.wi_quality.to_string())
+            })
+            .unwrap_or_else(|| "No interface".into());
         self.inner.set_text(text);
         Ok(())
     }

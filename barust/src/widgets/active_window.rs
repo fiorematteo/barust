@@ -16,11 +16,12 @@ pub fn get_active_window_name(connection: &Connection) -> Result<String> {
         long_length: u32::MAX,
     });
     let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
-    let active_window_id = if let Some(data) = reply.value::<u32>().first() {
-        unsafe { Window::new(*data) }
-    } else {
-        return Err(Error::Ewmh.into());
-    };
+    let active_window_id = reply
+        .value::<u32>()
+        .first()
+        .map(|data| unsafe { Window::new(*data) })
+        .ok_or(Error::Ewmh)?;
+
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: active_window_id,
