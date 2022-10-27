@@ -1,2 +1,4 @@
 **/target/
 Makefile
+test.py
+.ropeproject

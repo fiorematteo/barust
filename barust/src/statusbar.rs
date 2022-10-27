@@ -10,7 +10,11 @@ use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface
 use crossbeam_channel::{bounded, select, tick, Receiver};
 use log::{debug, error, info};
 use signal_hook::consts::{SIGINT, SIGTERM};
-use std::{sync::Arc, thread, time::Duration};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -77,12 +81,12 @@ impl StatusBar {
     }
 
     /// Starts the [StatusBar] drawing and event loop
-    pub fn start(&mut self) -> Result<()> {
+    pub fn start(mut self) -> Result<()> {
         info!("Starting loop");
         let (tx, widgets_events) = bounded::<WidgetID>(10);
 
         debug!("Widget setup");
-        let info = StatusBarInfo::new(self);
+        let info = StatusBarInfo::new(&self);
         let mut pool = TimedHooks::default();
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
             log_error_and_replace!(wd, wd.setup(&info));
@@ -112,6 +116,7 @@ impl StatusBar {
         self.draw()?;
         self.show()?;
 
+        let mut draw_timer = Instant::now();
         loop {
             let mut to_update: Option<WidgetID> = None;
             debug!("Looping");
@@ -138,7 +143,11 @@ impl StatusBar {
                 self.update(to_update)?;
             }
             self.generate_regions()?;
-            self.draw()?;
+
+            if draw_timer.elapsed() > Duration::from_millis(10) {
+                draw_timer = Instant::now();
+                self.draw()?;
+            }
         }
     }
 
@@ -218,24 +227,36 @@ impl StatusBar {
             .chain(self.right_regions.iter())
             .collect();
 
+        // double buffer to prevent flickering
+        let tmp_surface = self.surface.create_similar_image(
+            cairo::Format::ARgb32,
+            self.width as _,
+            self.height as _,
+        )?;
+
         let contexts: Vec<_> = regions
             .iter()
             .map(|region| -> Result<Context> {
-                let surface = &self.surface.create_for_rectangle(**region)?;
+                let surface = &tmp_surface.create_for_rectangle(**region)?;
                 Ok(Context::new(surface)?)
             })
             .collect();
 
-        let context = Context::new(&self.surface)?;
-        context.set_operator(Operator::Clear);
-        context.paint()?;
-        context.set_operator(Operator::Over);
-        set_source_rgba(&context, self.background);
-        context.paint()?;
-
         for ((wd, rectangle), context) in widgets.zip(regions).zip(contexts) {
             log_error_and_replace!(wd, wd.draw(&context?, rectangle));
         }
+
+        let context = Context::new(&self.surface)?;
+        // clear surface
+        context.set_operator(Operator::Clear);
+        context.paint()?;
+        // paint background
+        context.set_operator(Operator::Over);
+        set_source_rgba(&context, self.background);
+        context.paint()?;
+        // copy tmp_surface
+        context.set_source_surface(&tmp_surface, 0.0, 0.0)?;
+        context.paint()?;
 
         self.connection.flush()?;
         Ok(())

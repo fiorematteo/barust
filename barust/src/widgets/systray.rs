@@ -73,14 +73,7 @@ impl Systray {
             })
             .map_err(Error::from)?;
 
-        self.connection
-            .send_and_check_request(&ChangeWindowAttributes {
-                window,
-                value_list: &[Cw::EventMask(EventMask::STRUCTURE_NOTIFY)],
-            })
-            .map_err(Error::from)?;
-
-        if self.children.is_empty() {
+        if !self.children.is_empty() {
             self.connection
                 .send_and_check_request(&MapWindow {
                     window: self.window.unwrap(),
@@ -93,7 +86,6 @@ impl Systray {
         self.connection
             .send_and_check_request(&MapWindow { window })
             .map_err(Error::from)?;
-
         self.connection.flush().map_err(Error::from)?;
         Ok(())
     }
@@ -111,7 +103,7 @@ impl Systray {
                         y: 0,
                     }),
                 )
-                .map_err(Error::from)?;
+                .ok(); // destroyed windows can still be in self.children
         }
         Ok(())
     }
@@ -152,7 +144,6 @@ impl Systray {
                 visual: xcb::x::COPY_FROM_PARENT,
                 value_list: &[
                     Cw::BackPixmap(Pixmap::none()),
-                    //Cw::BackPixel(screen.black_pixel()),
                     Cw::EventMask(EventMask::PROPERTY_CHANGE | EventMask::STRUCTURE_NOTIFY),
                 ],
             })
@@ -322,7 +313,7 @@ impl Widget for Systray {
                                             )),
                                         )) = e
                                         {
-                                            println!("possible bad window error: {:?}", e);
+                                            warn!("possible bad window error: {:?}", e);
                                         } else {
                                             return Err(e);
                                         }

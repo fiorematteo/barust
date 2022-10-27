@@ -31,7 +31,7 @@ fn main() -> Result<()> {
         ..WidgetConfig::default()
     };
 
-    let mut bar = StatusBar::create()
+    let bar = StatusBar::create()
         .position(Position::Top)
         .background(BLANK)
         .left_widgets(vec![
