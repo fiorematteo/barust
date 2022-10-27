@@ -10,11 +10,7 @@ use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface
 use crossbeam_channel::{bounded, select, tick, Receiver};
 use log::{debug, error, info};
 use signal_hook::consts::{SIGINT, SIGTERM};
-use std::{
-    sync::Arc,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, thread, time::Duration};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -116,7 +112,6 @@ impl StatusBar {
         self.draw()?;
         self.show()?;
 
-        let mut draw_timer = Instant::now();
         loop {
             let mut to_update: Option<WidgetID> = None;
             debug!("Looping");
@@ -137,17 +132,13 @@ impl StatusBar {
                         log_error_and_replace!(wd, wd.last_update());
                     }
                     return Ok(());
-                }
+                },
             );
             if let Some(to_update) = to_update {
                 self.update(to_update)?;
             }
             self.generate_regions()?;
-
-            if draw_timer.elapsed() > Duration::from_millis(10) {
-                draw_timer = Instant::now();
-                self.draw()?;
-            }
+            self.draw()?;
         }
     }
 
@@ -245,6 +236,7 @@ impl StatusBar {
         for ((wd, rectangle), context) in widgets.zip(regions).zip(contexts) {
             log_error_and_replace!(wd, wd.draw(&context?, rectangle));
         }
+        tmp_surface.flush();
 
         let context = Context::new(&self.surface)?;
         // clear surface
@@ -257,6 +249,7 @@ impl StatusBar {
         // copy tmp_surface
         context.set_source_surface(&tmp_surface, 0.0, 0.0)?;
         context.paint()?;
+        self.surface.flush();
 
         self.connection.flush()?;
         Ok(())
