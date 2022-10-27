@@ -200,8 +200,8 @@ impl TimedHooks {
                         if sender.send().is_err() {
                             error!("breaking thread loop")
                         }
-                        thread::sleep(duration);
                     }
+                    thread::sleep(duration);
                 }
             });
             self.threads.insert(duration, tx);
