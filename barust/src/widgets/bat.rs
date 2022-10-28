@@ -159,6 +159,6 @@ impl Display for Battery {
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
     IO(std::io::Error),
-    HookChannel(crossbeam_channel::SendError<HookSender>),
+    HookChannel(crossbeam_channel::SendError<(Duration, HookSender)>),
     NoBattery,
 }

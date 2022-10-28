@@ -6,11 +6,10 @@ use log::error;
 use psutil::Bytes;
 use signal_hook::iterator::Signals;
 use std::{
-    collections::{hash_map::Iter, HashMap},
     ffi::c_int,
     fmt::Debug,
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use xcb::{
     x::{Atom, InternAtom},
@@ -171,57 +170,46 @@ impl HookSender {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TimedHooks {
-    threads: HashMap<Duration, Sender<HookSender>>,
+    thread: Sender<(Duration, HookSender)>,
+}
+
+impl Default for TimedHooks {
+    fn default() -> Self {
+        let (thread, rx) = bounded::<(Duration, HookSender)>(10);
+        let mut senders = vec![];
+        thread::spawn(move || loop {
+            while let Ok(id) = rx.try_recv() {
+                senders.push((Instant::now(), id.0, id.1));
+            }
+            for (time, duration, sender) in &mut senders {
+                if time.elapsed() > *duration {
+                    *time = Instant::now();
+                    if sender.send().is_err() {
+                        error!("breaking thread loop")
+                    }
+                }
+            }
+
+            let smallest_time = senders
+                .iter()
+                .map(|(t, d, _)| (d.saturating_sub(t.elapsed())))
+                .min()
+                .unwrap_or_else(|| Duration::from_secs(1));
+            thread::sleep(smallest_time);
+        });
+        Self { thread }
+    }
 }
 
 impl TimedHooks {
-    pub fn new(threads: HashMap<Duration, Sender<HookSender>>) -> Self {
-        Self { threads }
-    }
-
     pub fn subscribe(
         &mut self,
         duration: Duration,
         sender: HookSender,
-    ) -> Result<(), SendError<HookSender>> {
-        if let Some(interal_sender) = self.threads.get(&duration) {
-            interal_sender.send(sender)?;
-        } else {
-            let (tx, rx) = bounded::<HookSender>(10);
-            thread::spawn(move || {
-                let mut senders = vec![sender];
-                loop {
-                    while let Ok(id) = rx.try_recv() {
-                        senders.push(id)
-                    }
-                    for sender in &senders {
-                        if sender.send().is_err() {
-                            error!("breaking thread loop")
-                        }
-                    }
-                    thread::sleep(duration);
-                }
-            });
-            self.threads.insert(duration, tx);
-        }
+    ) -> Result<(), SendError<(Duration, HookSender)>> {
+        self.thread.send((duration, sender))?;
         Ok(())
-    }
-
-    pub fn len(&self) -> usize {
-        self.threads.len()
-    }
-
-    pub fn capacity(&self) -> usize {
-        self.threads.capacity()
-    }
-
-    pub fn iter(&self) -> Iter<Duration, Sender<HookSender>> {
-        self.threads.iter()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.threads.is_empty()
     }
 }

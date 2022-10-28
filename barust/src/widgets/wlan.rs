@@ -85,5 +85,5 @@ impl Display for Wlan {
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
-    HookChannel(crossbeam_channel::SendError<HookSender>),
+    HookChannel(crossbeam_channel::SendError<(Duration, HookSender)>),
 }
