@@ -3,12 +3,12 @@ use barust::{
     error::{Erc, Result},
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, Clock, Cpu, Disk, Spacer, Systray, Volume, Widget, WidgetConfig,
-        WidgetError, Wlan, Workspace,
+        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, Spacer, Systray, Volume, Widget,
+        WidgetConfig, WidgetError, Wlan, Workspace,
     },
 };
 use log::LevelFilter;
-use std::fmt::Display;
+use std::{fmt::Display, fs::OpenOptions, process::Command};
 
 const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 const _BLACK: Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
                 "%i %p",
                 &|()| -> Option<f64> {
                     let out = String::from_utf8(
-                        std::process::Command::new("pulsemixer")
+                        Command::new("pulsemixer")
                             .arg("--get-volume")
                             .output()
                             .ok()?
@@ -69,7 +69,7 @@ fn main() -> Result<()> {
                 },
                 &|()| -> Option<bool> {
                     String::from_utf8(
-                        std::process::Command::new("pulsemixer")
+                        Command::new("pulsemixer")
                             .arg("--get-mute")
                             .output()
                             .ok()?
@@ -80,7 +80,20 @@ fn main() -> Result<()> {
                 },
                 None,
                 &wd_config,
-                Some(&|| {}),
+                None,
+            ),
+            Brightness::new(
+                "%b%",
+                &|()| -> Option<i32> {
+                    String::from_utf8(Command::new("light").output().ok()?.stdout)
+                        .ok()?
+                        .strip_suffix("\n")?
+                        .parse::<f64>()
+                        .ok()
+                        .map(|n| n as _)
+                },
+                &wd_config,
+                None,
             ),
             Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config, None),
         ])

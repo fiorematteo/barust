@@ -8,6 +8,7 @@ use std::fmt::Display;
 
 mod active_window;
 mod bat;
+mod brightness;
 mod clock;
 mod cpu;
 mod disk;
@@ -23,6 +24,7 @@ mod workspaces;
 
 pub use active_window::ActiveWindow;
 pub use bat::{Battery, BatteryIcons};
+pub use brightness::Brightness;
 pub use clock::Clock;
 pub use cpu::Cpu;
 pub use disk::Disk;
@@ -79,6 +81,7 @@ impl<'a> Default for WidgetConfig<'a> {
 pub enum WidgetError {
     ActiveWindow(active_window::Error),
     Battery(bat::Error),
+    Brightness(brightness::Error),
     Clock(clock::Error),
     Cpu(cpu::Error),
     Disk(disk::Error),
@@ -95,3 +98,24 @@ pub enum WidgetError {
 }
 
 type OnClickCallback = Option<Callback<(), ()>>;
+
+#[macro_export]
+macro_rules! forward_to_inner {
+    (size) => {
+        fn size(&self, context: &cairo::Context) -> Result<f64> {
+            self.inner.size(context)
+        }
+    };
+    (padding) => {
+        fn padding(&self) -> f64 {
+            self.inner.padding()
+        }
+    };
+    (on_click) => {
+        fn on_click(&self) {
+            if let Some(cb) = &self.on_click {
+                cb.call(());
+            }
+        }
+    };
+}

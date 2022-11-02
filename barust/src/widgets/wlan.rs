@@ -18,7 +18,6 @@ impl Wlan {
     ///  * `%i` will be replaced with the interface name
     ///  * `%e` will be replaced with the essid
     ///  * `%q` will be replaced with the signal quality
-    ///* `icons` sets a custom [NetworkIcons]
     ///* `interface` name of the network interface
     ///* `fg_color` foreground color
     ///* `on_click` callback to run on click

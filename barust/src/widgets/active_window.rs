@@ -93,7 +93,6 @@ impl Widget for ActiveWindow {
             })
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
-        let atoms = Atoms::new(&connection).map_err(Error::from)?;
 
         let property_sender = Arc::new(sender);
         let property_connection = Arc::new(connection);
@@ -111,6 +110,7 @@ impl Widget for ActiveWindow {
             }
         });
 
+        let atoms = self.atoms;
         let mut old_name = "".into();
         thread::spawn(move || loop {
             if let Ok(new_name) = get_active_window_name(&name_connection, &atoms) {

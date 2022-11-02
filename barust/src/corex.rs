@@ -42,6 +42,7 @@ pub fn set_source_rgba(context: &Context, color: Color) {
 macro_rules! atoms {
     ( $struct_name:ident, $( $x:ident ),* ) => {
         #[allow(non_snake_case)]
+        #[derive(Debug, Clone, Copy)]
         pub struct $struct_name{
             $(pub $x: Atom,)*
         }
@@ -52,7 +53,7 @@ macro_rules! atoms {
                     $($x: Self::intern(connection, stringify!($x))?,)*
                 })
             }
-            pub fn intern(connection: &Connection, name: &str) -> Result<Atom, xcb::Error> {
+            fn intern(connection: &Connection, name: &str) -> Result<Atom, xcb::Error> {
                 Ok(connection
                     .wait_for_reply(connection.send_request(&InternAtom {
                         only_if_exists: false,

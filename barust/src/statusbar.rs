@@ -3,7 +3,6 @@ use crate::{
         notify, set_source_rgba, Atoms, Color, HookSender, StatusBarEvent, TimedHooks, WidgetID,
     },
     error::{BarustError, Result},
-    log_error_and_replace,
     widgets::{Text, Widget},
 };
 use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
@@ -526,7 +525,6 @@ pub(crate) fn find_collision(regions: &[Rectangle], x: i16, y: i16) -> Option<us
         .map(|(index, _)| index)
 }
 
-#[macro_export]
 macro_rules! log_error_and_replace {
     ( $wd:expr, $r:expr ) => {
         if let Err(e) = $r {
@@ -540,3 +538,4 @@ macro_rules! log_error_and_replace {
         }
     };
 }
+pub(crate) use log_error_and_replace;
