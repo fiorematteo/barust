@@ -18,8 +18,11 @@ const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
 fn main() -> Result<()> {
-    let level = LevelFilter::Info;
-    simple_logging::log_to_file("/home/matteo/.local/share/barust.log", level)?;
+    let level = LevelFilter::Debug;
+    let log_file = OpenOptions::new()
+        .append(true)
+        .open("/home/matteo/.local/share/barust.log")?;
+    simple_logging::log_to(log_file, level);
 
     log_panics::Config::new()
         .backtrace_mode(log_panics::BacktraceMode::Resolved)
