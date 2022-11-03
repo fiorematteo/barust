@@ -285,11 +285,6 @@ impl Widget for Systray {
             }
         };
         self.window = Some(self.create_tray_window(y as _)?);
-        self.connection
-            .send_and_check_request(&MapWindow {
-                window: self.window.unwrap(),
-            })
-            .map_err(Error::from)?;
         Ok(())
     }
 
