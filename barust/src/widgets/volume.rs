@@ -28,6 +28,8 @@ pub struct Volume {
     volume_command: Callback<(), Option<f64>>,
     muted_command: Callback<(), Option<bool>>,
     icons: VolumeIcons,
+    previous_volume: f64,
+    previous_muted: bool,
     on_click: OnClickCallback,
 }
 
@@ -55,6 +57,8 @@ impl Volume {
             icons: icons.unwrap_or_default(),
             inner: *Text::new("", config, None),
             on_click: on_click.map(|c| c.into()),
+            previous_volume: 0.0,
+            previous_muted: false,
         })
     }
 }
@@ -66,17 +70,28 @@ impl Widget for Volume {
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
         let text = if self.muted_command.call(()).unwrap_or_default() {
-            self.icons.muted.clone()
+            if !self.previous_muted {
+                self.previous_muted = true;
+                self.icons.muted.clone()
+            } else {
+                String::from("")
+            }
         } else {
+            self.previous_muted = false;
             let volume = self.volume_command.call(()).unwrap_or_default();
-            let percentages_len = self.icons.percentages.len();
-            let index = min(
-                (volume / percentages_len as f64).floor() as usize,
-                percentages_len - 1,
-            );
-            self.format
-                .replace("%p", &format!("{:.1}", volume))
-                .replace("%i", &self.icons.percentages[index].to_string())
+            if self.previous_volume != volume {
+                self.previous_volume = volume;
+                let percentages_len = self.icons.percentages.len();
+                let index = min(
+                    (volume / percentages_len as f64).floor() as usize,
+                    percentages_len - 1,
+                );
+                self.format
+                    .replace("%p", &format!("{:.1}", volume))
+                    .replace("%i", &self.icons.percentages[index].to_string())
+            } else {
+                String::from("")
+            }
         };
         self.inner.set_text(text);
         Ok(())
