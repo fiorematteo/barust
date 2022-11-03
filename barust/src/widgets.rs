@@ -12,6 +12,7 @@ mod brightness;
 mod clock;
 mod cpu;
 mod disk;
+mod filtered_workspaces;
 mod memory;
 mod network;
 mod spacer;
@@ -28,6 +29,7 @@ pub use brightness::Brightness;
 pub use clock::Clock;
 pub use cpu::Cpu;
 pub use disk::Disk;
+pub use filtered_workspaces::FilteredWorkspaces;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
 pub use spacer::Spacer;
@@ -36,7 +38,7 @@ pub use temp::Temperatures;
 pub use text::Text;
 pub use volume::{Volume, VolumeIcons};
 pub use wlan::Wlan;
-pub use workspaces::Workspace;
+pub use workspaces::Workspaces;
 
 pub type Result<T> = std::result::Result<T, WidgetError>;
 
@@ -85,6 +87,7 @@ pub enum WidgetError {
     Clock(clock::Error),
     Cpu(cpu::Error),
     Disk(disk::Error),
+    FilteredWorkspaces(filtered_workspaces::Error),
     Memory(memory::Error),
     Network(network::Error),
     Spacer,
@@ -93,7 +96,7 @@ pub enum WidgetError {
     Text(text::Error),
     Volume(volume::Error),
     Wlan(wlan::Error),
-    Workspace(workspaces::Error),
+    Workspaces(workspaces::Error),
     CustomWidget(Erc),
 }
 

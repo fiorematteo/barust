@@ -1,14 +1,14 @@
 use barust::{
-    corex::{Color, HookSender, TimedHooks},
-    error::{Erc, Result},
+    corex::Color,
+    error::Result,
     statusbar::{Position, StatusBar},
     widgets::{
-        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, Spacer, Systray, Volume, Widget,
-        WidgetConfig, WidgetError, Wlan, Workspace,
+        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, FilteredWorkspaces, Spacer, Systray,
+        Volume, WidgetConfig, Wlan,
     },
 };
 use log::LevelFilter;
-use std::{fmt::Display, fs::OpenOptions, process::Command};
+use std::{fs::OpenOptions, process::Command};
 
 const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 const _BLACK: Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
         .background(BLANK)
         .left_widgets(vec![
             Spacer::new(20.0),
-            FilteredWorkspace::new::<&str>(
+            FilteredWorkspaces::new::<&str>(
                 PURPLE,
                 10.0,
                 &WidgetConfig {
@@ -102,84 +102,4 @@ fn main() -> Result<()> {
         ])
         .build()?;
     bar.start()
-}
-
-#[derive(Debug)]
-struct FilteredWorkspace {
-    inner: Workspace,
-    ignored_workspaces: Vec<String>,
-}
-
-impl FilteredWorkspace {
-    fn new<T: ToString>(
-        active_workspace_color: Color,
-        internal_padding: f64,
-        config: &WidgetConfig,
-        ignored_workspaces: &[T],
-    ) -> Box<Self> {
-        let inner = *Workspace::new(active_workspace_color, internal_padding, config, None);
-        Box::new(Self {
-            inner,
-            ignored_workspaces: ignored_workspaces.iter().map(|w| w.to_string()).collect(),
-        })
-    }
-}
-
-impl Widget for FilteredWorkspace {
-    fn draw(
-        &self,
-        context: &cairo::Context,
-        rectangle: &cairo::Rectangle,
-    ) -> barust::widgets::Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
-    fn size(&self, context: &cairo::Context) -> barust::widgets::Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
-    }
-
-    fn update(&mut self) -> barust::widgets::Result<()> {
-        self.inner.update().map_err(FilteredWorkspaceError::from)?;
-
-        if self.ignored_workspaces.is_empty() {
-            return Err(FilteredWorkspaceError::EmptyFilter.into());
-        }
-
-        let mut i = 0;
-        while i < self.inner.workspaces.len() {
-            let (ref name, _) = self.inner.workspaces[i];
-            if self.ignored_workspaces.contains(name) {
-                self.inner.workspaces.remove(i);
-            } else {
-                i += 1;
-            }
-        }
-        Ok(())
-    }
-
-    fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> barust::widgets::Result<()> {
-        self.inner.hook(sender, pool)
-    }
-}
-
-impl Display for FilteredWorkspace {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FilteredWorkspace")
-    }
-}
-
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
-enum FilteredWorkspaceError {
-    EmptyFilter,
-    Inner(WidgetError),
-}
-
-impl From<FilteredWorkspaceError> for WidgetError {
-    fn from(v: FilteredWorkspaceError) -> Self {
-        Self::CustomWidget(Erc::new(v))
-    }
 }

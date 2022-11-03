@@ -43,7 +43,7 @@ pub fn get_current_desktop(connection: &Connection, atoms: &Atoms) -> Result<u32
 
 /// Displays informations about the active workspaces
 #[derive(Debug)]
-pub struct Workspace {
+pub struct Workspaces {
     padding: f64,
     fg_color: Color,
     font: String,
@@ -54,7 +54,7 @@ pub struct Workspace {
     pub workspaces: Vec<(String, bool)>,
 }
 
-impl Workspace {
+impl Workspaces {
     ///* `active_workspace_color` color of the active workspace
     ///* `internal_padding` space to leave between workspaces name
     ///* `config` a [WidgetConfig]
@@ -87,7 +87,7 @@ impl Workspace {
     }
 }
 
-impl Widget for Workspace {
+impl Widget for Workspaces {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         context.move_to(self.padding, 0.0);
         let layout = self.get_layout(context)?;
@@ -176,7 +176,7 @@ impl Widget for Workspace {
     }
 }
 
-impl Display for Workspace {
+impl Display for Workspaces {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Workspace").fmt(f)
     }
