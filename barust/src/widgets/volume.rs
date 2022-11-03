@@ -53,7 +53,7 @@ impl Volume {
             volume_command: volume_command.into(),
             muted_command: muted_command.into(),
             icons: icons.unwrap_or_default(),
-            inner: *Text::new("VOLUME", config, None),
+            inner: *Text::new("", config, None),
             on_click: on_click.map(|c| c.into()),
         })
     }

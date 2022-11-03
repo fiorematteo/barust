@@ -87,7 +87,7 @@ fn main() -> Result<()> {
                 &|()| -> Option<i32> {
                     String::from_utf8(Command::new("light").output().ok()?.stdout)
                         .ok()?
-                        .strip_suffix("\n")?
+                        .strip_suffix('\n')?
                         .parse::<f64>()
                         .ok()
                         .map(|n| n as _)

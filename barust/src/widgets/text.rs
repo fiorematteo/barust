@@ -66,11 +66,15 @@ impl Widget for Text {
     fn size(&self, context: &Context) -> Result<f64> {
         let layout = self.get_layout(context)?;
         layout.set_text(&self.text);
-        Ok(2.0 * self.padding + layout.pixel_size().0 as f64)
+        Ok(2.0 * self.padding() + layout.pixel_size().0 as f64)
     }
 
     fn padding(&self) -> f64 {
-        self.padding
+        if self.text.is_empty() {
+            0.0
+        } else {
+            self.padding
+        }
     }
 
     fn on_click(&self) {

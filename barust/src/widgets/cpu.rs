@@ -33,7 +33,7 @@ impl Cpu {
             format: format.to_string(),
             per: CpuPercentCollector::new().map_err(Error::from)?,
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
-            inner: *Text::new("CPU", config, None),
+            inner: *Text::new("", config, None),
             on_click: on_click.map(|c| c.into()),
         }))
     }

@@ -103,6 +103,13 @@ impl StatusBar {
                 )
             );
         }
+        for wd in self.left_widgets.iter_mut() {
+            log_error_and_replace!(wd, wd.update());
+        }
+        for wd in self.right_widgets.iter_mut() {
+            log_error_and_replace!(wd, wd.update());
+        }
+
         let signal = notify(&[SIGINT, SIGTERM])?;
         let timeout = tick(Duration::from_secs(10));
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;

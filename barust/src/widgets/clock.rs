@@ -37,7 +37,7 @@ impl Clock {
     ) -> Box<Self> {
         let format = format.to_string();
         Box::new(Self {
-            inner: *Text::new(&Self::current_time_str(&format), config, None),
+            inner: *Text::new("", config, None),
             format,
             on_click: on_click.map(|c| c.into()),
         })

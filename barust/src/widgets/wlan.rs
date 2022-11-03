@@ -30,7 +30,7 @@ impl Wlan {
         Box::new(Self {
             format: format.to_string(),
             interface,
-            inner: *Text::new("Up", config, None),
+            inner: *Text::new("", config, None),
             on_click: on_click.map(|c| c.into()),
         })
     }
