@@ -28,7 +28,7 @@ impl Brightness {
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
             on_click: on_click.map(|c| c.into()),
-            show_counter: ResettableTimer::new(Duration::from_secs(5)),
+            show_counter: ResettableTimer::new(config.hide_timeout),
         })
     }
 }
@@ -60,9 +60,9 @@ impl Widget for Brightness {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hook: &mut TimedHooks) -> Result<()> {
-        timed_hook
-            .subscribe(Duration::from_secs(1), sender)
+    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+        timed_hooks
+            .subscribe(self.show_counter.duration / 4, sender)
             .map_err(Error::from)?;
         Ok(())
     }

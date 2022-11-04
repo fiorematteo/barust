@@ -4,7 +4,7 @@ use crate::{
     statusbar::StatusBarInfo,
 };
 use cairo::{Context, Rectangle};
-use std::fmt::Display;
+use std::{fmt::Display, time::Duration};
 
 mod active_window;
 mod bat;
@@ -66,15 +66,35 @@ pub struct WidgetConfig<'a> {
     pub font_size: f64,
     pub padding: f64,
     pub fg_color: Color,
+    pub hide_timeout: Duration,
 }
 
-impl<'a> Default for WidgetConfig<'a> {
+impl<'a> WidgetConfig<'a> {
+    pub fn new(
+        font: &'a str,
+        font_size: f64,
+        padding: f64,
+        fg_color: Color,
+        hide_timeout: Duration,
+    ) -> Self {
+        Self {
+            font,
+            font_size,
+            padding,
+            fg_color,
+            hide_timeout,
+        }
+    }
+}
+
+impl Default for WidgetConfig<'_> {
     fn default() -> Self {
         Self {
             font: "DejaVu Sans",
             font_size: 15.0,
             padding: 10.0,
             fg_color: Color::new(1.0, 1.0, 1.0, 1.0),
+            hide_timeout: Duration::from_secs(1),
         }
     }
 }

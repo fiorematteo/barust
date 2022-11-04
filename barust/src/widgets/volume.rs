@@ -60,7 +60,7 @@ impl Volume {
             on_click: on_click.map(|c| c.into()),
             previous_volume: 0.0,
             previous_muted: false,
-            show_counter: ResettableTimer::new(Duration::from_secs(5)),
+            show_counter: ResettableTimer::new(config.hide_timeout),
         })
     }
 }
@@ -88,7 +88,7 @@ impl Widget for Volume {
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks
-            .subscribe(Duration::from_secs(1), sender)
+            .subscribe(self.show_counter.duration / 4, sender)
             .map_err(Error::from)?;
         Ok(())
     }

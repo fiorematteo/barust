@@ -6,10 +6,10 @@ use crate::{
     widgets::{Text, Widget},
 };
 use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
-use crossbeam_channel::{bounded, select, tick, Receiver};
+use crossbeam_channel::{bounded, select, Receiver};
 use log::{debug, error, info};
 use signal_hook::consts::{SIGINT, SIGTERM};
-use std::{sync::Arc, thread, time::Duration};
+use std::{sync::Arc, thread};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -111,7 +111,6 @@ impl StatusBar {
         }
 
         let signal = notify(&[SIGINT, SIGTERM])?;
-        let timeout = tick(Duration::from_secs(10));
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.generate_regions()?;
@@ -120,9 +119,7 @@ impl StatusBar {
 
         loop {
             let mut to_update: Option<WidgetID> = None;
-            debug!("Looping");
             select!(
-                recv(timeout) ->  _ => debug!("timeout triggered"),
                 recv(widgets_events) -> id => {
                     if let Ok(id) = id{
                         to_update=Some(id)
@@ -157,7 +154,7 @@ impl StatusBar {
     }
 
     pub(crate) fn update(&mut self, to_update: WidgetID) -> Result<()> {
-        debug!("Updating");
+        debug!("Updating {:?}", to_update);
         match to_update {
             (RightLeft::Left, index) => {
                 let wd = &mut self.left_widgets[index];

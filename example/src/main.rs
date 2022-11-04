@@ -8,12 +8,8 @@ use barust::{
     },
 };
 use log::LevelFilter;
-use std::{fs::OpenOptions, process::Command};
+use std::{fs::OpenOptions, process::Command, time::Duration};
 
-const _WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
-const _BLACK: Color = Color::new(0.0, 0.0, 0.0, 1.0);
-const _GREEN: Color = Color::new(0.0, 1.0, 0.0, 1.0);
-const _RED: Color = Color::new(1.0, 0.2, 0.2, 1.0);
 const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
@@ -24,13 +20,14 @@ fn main() -> Result<()> {
         .open("/home/matteo/.local/share/barust.log")?;
     simple_logging::log_to(log_file, level);
 
-    log_panics::Config::new()
-        .backtrace_mode(log_panics::BacktraceMode::Resolved)
-        .install_panic_hook();
+    //log_panics::Config::new()
+    //    .backtrace_mode(log_panics::BacktraceMode::Resolved)
+    //    .install_panic_hook();
 
     let wd_config = WidgetConfig {
         font: "DejaVu Sans Mono",
         font_size: 16.0,
+        hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()
     };
 

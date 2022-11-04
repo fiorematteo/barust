@@ -217,7 +217,7 @@ impl TimedHooks {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ResettableTimer {
-    duration: Duration,
+    pub duration: Duration,
     timer: Instant,
 }
 
