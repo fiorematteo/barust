@@ -1,5 +1,7 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{Callback, EmptyCallback, HookSender, RawCallback, TimedHooks};
+use crate::corex::{
+    Callback, EmptyCallback, HookSender, RawCallback, ResettableCounter, TimedHooks,
+};
 use log::debug;
 use std::{cmp::min, fmt::Display, time::Duration};
 
@@ -30,6 +32,7 @@ pub struct Volume {
     icons: VolumeIcons,
     previous_volume: f64,
     previous_muted: bool,
+    show_counter: ResettableCounter,
     on_click: OnClickCallback,
 }
 
@@ -59,6 +62,7 @@ impl Volume {
             on_click: on_click.map(|c| c.into()),
             previous_volume: 0.0,
             previous_muted: false,
+            show_counter: ResettableCounter::new(5),
         })
     }
 }
@@ -67,32 +71,21 @@ impl Widget for Volume {
     fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
+
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let text = if self.muted_command.call(()).unwrap_or_default() {
-            if !self.previous_muted {
-                self.previous_muted = true;
-                self.icons.muted.clone()
-            } else {
-                String::from("")
-            }
+        let muted = self.muted_command.call(()).unwrap_or(false);
+        let volume = self.volume_command.call(()).unwrap_or(0.0);
+
+        if self.previous_muted == muted && self.previous_volume == volume {
+            self.show_counter.tick();
         } else {
-            self.previous_muted = false;
-            let volume = self.volume_command.call(()).unwrap_or_default();
-            if self.previous_volume != volume {
-                self.previous_volume = volume;
-                let percentages_len = self.icons.percentages.len();
-                let index = min(
-                    (volume / percentages_len as f64).floor() as usize,
-                    percentages_len - 1,
-                );
-                self.format
-                    .replace("%p", &format!("{:.1}", volume))
-                    .replace("%i", &self.icons.percentages[index].to_string())
-            } else {
-                String::from("")
-            }
-        };
+            self.previous_muted = muted;
+            self.previous_volume = volume;
+            self.show_counter.reset();
+        }
+        let text = self.build_string(volume, muted);
+
         self.inner.set_text(text);
         Ok(())
     }
@@ -116,6 +109,25 @@ impl Widget for Volume {
         if let Some(cb) = &self.on_click {
             cb.call(());
         }
+    }
+}
+
+impl Volume {
+    fn build_string(&mut self, volume: f64, muted: bool) -> String {
+        if self.show_counter.is_done() {
+            return String::from("");
+        }
+        if muted {
+            return self.icons.muted.clone();
+        }
+        let percentages_len = self.icons.percentages.len();
+        let index = min(
+            (volume / percentages_len as f64).floor() as usize,
+            percentages_len - 1,
+        );
+        self.format
+            .replace("%p", &format!("{:.1}", volume))
+            .replace("%i", &self.icons.percentages[index].to_string())
     }
 }
 

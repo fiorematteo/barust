@@ -214,3 +214,30 @@ impl TimedHooks {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct ResettableCounter {
+    max_value: u32,
+    value: u32,
+}
+
+impl ResettableCounter {
+    pub fn new(max_value: u32) -> Self {
+        Self {
+            max_value,
+            value: max_value,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.value = self.value.saturating_sub(1);
+    }
+
+    pub fn reset(&mut self) {
+        self.value = self.max_value
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.value == 0
+    }
+}

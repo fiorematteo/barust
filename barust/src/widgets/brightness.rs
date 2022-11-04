@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{Callback, EmptyCallback, HookSender, RawCallback, TimedHooks},
+    corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableCounter, TimedHooks},
     forward_to_inner,
 };
 use std::{fmt::Display, time::Duration};
@@ -10,6 +10,7 @@ pub struct Brightness {
     format: String,
     brightness_command: Callback<(), Option<i32>>,
     previous_brightness: i32,
+    show_counter: ResettableCounter,
     inner: Text,
     on_click: OnClickCallback,
 }
@@ -27,6 +28,7 @@ impl Brightness {
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
             on_click: on_click.map(|c| c.into()),
+            show_counter: ResettableCounter::new(5),
         })
     }
 }
@@ -37,18 +39,26 @@ impl Widget for Brightness {
     }
 
     fn update(&mut self) -> Result<()> {
-        let text = if let Some(current_brightness) = self.brightness_command.call(()) {
-            if current_brightness == self.previous_brightness {
-                String::from("")
-            } else {
-                self.previous_brightness = current_brightness;
-                self.format
-                    .replace("%b", &format!("{:.0}", current_brightness))
-            }
+        let current_brightness = self
+            .brightness_command
+            .call(())
+            .ok_or(Error::CommandError)?;
+
+        if current_brightness == self.previous_brightness {
+            self.show_counter.tick();
         } else {
+            self.previous_brightness = current_brightness;
+            self.show_counter.reset();
+        }
+
+        let text = if self.show_counter.is_done() {
             String::from("")
+        } else {
+            self.format
+                .replace("%b", &format!("{:.0}", current_brightness))
         };
         self.inner.set_text(text);
+
         Ok(())
     }
 
@@ -77,5 +87,6 @@ impl Display for Brightness {
 
 #[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
 pub enum Error {
+    CommandError,
     HookChannel(crossbeam_channel::SendError<(Duration, HookSender)>),
 }
