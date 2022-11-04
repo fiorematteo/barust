@@ -1,7 +1,5 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{
-    Callback, EmptyCallback, HookSender, RawCallback, ResettableCounter, TimedHooks,
-};
+use crate::corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks};
 use log::debug;
 use std::{cmp::min, fmt::Display, time::Duration};
 
@@ -32,7 +30,7 @@ pub struct Volume {
     icons: VolumeIcons,
     previous_volume: f64,
     previous_muted: bool,
-    show_counter: ResettableCounter,
+    show_counter: ResettableTimer,
     on_click: OnClickCallback,
 }
 
@@ -62,7 +60,7 @@ impl Volume {
             on_click: on_click.map(|c| c.into()),
             previous_volume: 0.0,
             previous_muted: false,
-            show_counter: ResettableCounter::new(5),
+            show_counter: ResettableTimer::new(Duration::from_secs(5)),
         })
     }
 }
@@ -77,9 +75,7 @@ impl Widget for Volume {
         let muted = self.muted_command.call(()).unwrap_or(false);
         let volume = self.volume_command.call(()).unwrap_or(0.0);
 
-        if self.previous_muted == muted && self.previous_volume == volume {
-            self.show_counter.tick();
-        } else {
+        if self.previous_muted != muted || self.previous_volume != volume {
             self.previous_muted = muted;
             self.previous_volume = volume;
             self.show_counter.reset();

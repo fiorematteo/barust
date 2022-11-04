@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableCounter, TimedHooks},
+    corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks},
     forward_to_inner,
 };
 use std::{fmt::Display, time::Duration};
@@ -10,7 +10,7 @@ pub struct Brightness {
     format: String,
     brightness_command: Callback<(), Option<i32>>,
     previous_brightness: i32,
-    show_counter: ResettableCounter,
+    show_counter: ResettableTimer,
     inner: Text,
     on_click: OnClickCallback,
 }
@@ -28,7 +28,7 @@ impl Brightness {
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
             on_click: on_click.map(|c| c.into()),
-            show_counter: ResettableCounter::new(5),
+            show_counter: ResettableTimer::new(Duration::from_secs(5)),
         })
     }
 }
@@ -44,9 +44,7 @@ impl Widget for Brightness {
             .call(())
             .ok_or(Error::CommandError)?;
 
-        if current_brightness == self.previous_brightness {
-            self.show_counter.tick();
-        } else {
+        if current_brightness != self.previous_brightness {
             self.previous_brightness = current_brightness;
             self.show_counter.reset();
         }
