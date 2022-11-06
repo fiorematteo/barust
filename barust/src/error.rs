@@ -1,12 +1,15 @@
 use std::rc::Rc;
+use thiserror::Error;
 
-#[derive(Debug, derive_more::Error, derive_more::From, derive_more::Display)]
+#[derive(Debug, Error)]
+#[error(transparent)]
 pub enum BarustError {
-    Cairo(cairo::Error),
+    Cairo(#[from] cairo::Error),
+    #[error("Draw was called without any regions defined")]
     DrawBeforeUpdate,
-    Io(std::io::Error),
-    Widget(crate::widgets::WidgetError),
-    Xcb(xcb::Error),
+    Io(#[from] std::io::Error),
+    Widget(#[from] crate::widgets::WidgetError),
+    Xcb(#[from] xcb::Error),
 }
 
 impl From<xcb::ConnError> for BarustError {
@@ -24,7 +27,7 @@ impl From<xcb::ProtocolError> for BarustError {
 pub type Result<T> = std::result::Result<T, BarustError>;
 
 /// Rc that implements [std::error::Error]
-#[derive(Debug, derive_more::Error)]
+#[derive(Debug, Error)]
 pub struct Erc {
     inner: Rc<dyn std::error::Error>,
 }

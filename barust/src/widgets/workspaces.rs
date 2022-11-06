@@ -186,11 +186,14 @@ impl Display for Workspaces {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
 pub enum Error {
+    #[error("Ewmh")]
     Ewmh,
+    #[error("Pango")]
     Pango,
-    Xcb(xcb::Error),
+    Xcb(#[from] xcb::Error),
 }
 
 impl From<xcb::ConnError> for Error {

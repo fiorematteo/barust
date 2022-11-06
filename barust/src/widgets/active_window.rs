@@ -148,10 +148,12 @@ impl Display for ActiveWindow {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
 pub enum Error {
+    #[error("Ewmh")]
     Ewmh,
-    Xcb(xcb::Error),
+    Xcb(#[from] xcb::Error),
 }
 
 impl From<xcb::ConnError> for Error {

@@ -417,12 +417,16 @@ impl Display for Systray {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
 pub enum Error {
-    Xcb(xcb::Error),
-    Cairo(cairo::Error),
+    Xcb(#[from] xcb::Error),
+    Cairo(#[from] cairo::Error),
+    #[error("Missing window")]
     MissingWindow,
+    #[error("No selection")]
     NoSelection,
+    #[error("Mutex error")]
     Mutex,
 }
 

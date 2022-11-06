@@ -89,13 +89,13 @@ dependencies = [
  "cairo-rs",
  "chrono",
  "crossbeam-channel",
- "derive_more",
  "iwlib",
  "log",
  "pango",
  "pangocairo",
  "psutil",
  "signal-hook",
+ "thiserror",
  "xcb",
 ]
 

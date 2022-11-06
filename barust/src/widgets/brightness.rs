@@ -83,8 +83,10 @@ impl Display for Brightness {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
 pub enum Error {
+    #[error("Failed to execute brightness command")]
     CommandError,
-    HookChannel(crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
 }

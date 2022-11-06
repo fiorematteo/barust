@@ -66,7 +66,8 @@ impl Display for FilteredWorkspaces {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("The filter is empty")]
     EmptyFilter,
 }

@@ -5,6 +5,7 @@ use crate::{
 };
 use cairo::{Context, Rectangle};
 use std::{fmt::Display, time::Duration};
+use thiserror::Error;
 
 mod active_window;
 mod bat;
@@ -99,25 +100,27 @@ impl Default for WidgetConfig<'_> {
     }
 }
 
-#[derive(Debug, derive_more::Error, derive_more::Display, derive_more::From)]
+#[derive(Debug, Error)]
+#[error(transparent)]
 pub enum WidgetError {
-    ActiveWindow(active_window::Error),
-    Battery(bat::Error),
-    Brightness(brightness::Error),
-    Clock(clock::Error),
-    Cpu(cpu::Error),
-    Disk(disk::Error),
-    FilteredWorkspaces(filtered_workspaces::Error),
-    Memory(memory::Error),
-    Network(network::Error),
+    ActiveWindow(#[from] active_window::Error),
+    Battery(#[from] bat::Error),
+    Brightness(#[from] brightness::Error),
+    Clock(#[from] clock::Error),
+    Cpu(#[from] cpu::Error),
+    Disk(#[from] disk::Error),
+    FilteredWorkspaces(#[from] filtered_workspaces::Error),
+    Memory(#[from] memory::Error),
+    Network(#[from] network::Error),
+    #[error("Spacer")]
     Spacer,
-    Systray(systray::Error),
-    Temperatures(temp::Error),
-    Text(text::Error),
-    Volume(volume::Error),
-    Wlan(wlan::Error),
-    Workspaces(workspaces::Error),
-    CustomWidget(Erc),
+    Systray(#[from] systray::Error),
+    Temperatures(#[from] temp::Error),
+    Text(#[from] text::Error),
+    Volume(#[from] volume::Error),
+    Wlan(#[from] wlan::Error),
+    Workspaces(#[from] workspaces::Error),
+    CustomWidget(#[from] Erc),
 }
 
 type OnClickCallback = Option<Callback<(), ()>>;

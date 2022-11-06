@@ -156,9 +156,11 @@ impl Display for Battery {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
 pub enum Error {
-    IO(std::io::Error),
-    HookChannel(crossbeam_channel::SendError<(Duration, HookSender)>),
+    IO(#[from] std::io::Error),
+    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    #[error("No battery found")]
     NoBattery,
 }

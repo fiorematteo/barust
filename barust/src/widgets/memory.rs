@@ -75,8 +75,9 @@ impl Display for Memory {
     }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::From, derive_more::Error)]
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
 pub enum Error {
-    Cairo(cairo::Error),
-    Psutil(psutil::Error),
+    Cairo(#[from] cairo::Error),
+    Psutil(#[from] psutil::Error),
 }
