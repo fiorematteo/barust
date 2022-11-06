@@ -403,16 +403,17 @@ impl StatusBarBuilder {
 pub(crate) fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<StatusBarEvent>> {
     let (tx, rx) = bounded(10);
     thread::spawn(move || loop {
-        if let Ok(Event::X(event)) = connection.wait_for_event() {
-            let event = match event {
-                xcb::x::Event::ButtonPress(data) => {
-                    StatusBarEvent::Click(data.event_x(), data.event_y())
-                }
-                _ => StatusBarEvent::Wake,
-            };
-            if tx.send(event).is_err() {
-                break;
+        let Ok(Event::X(event)) = connection.wait_for_event() else {
+            continue
+        };
+        let event = match event {
+            xcb::x::Event::ButtonPress(data) => {
+                StatusBarEvent::Click(data.event_x(), data.event_y())
             }
+            _ => StatusBarEvent::Wake,
+        };
+        if tx.send(event).is_err() {
+            break;
         }
     });
     Ok(rx)

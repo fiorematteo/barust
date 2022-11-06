@@ -113,14 +113,18 @@ impl Widget for Workspaces {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
         let atoms = Atoms::new(&connection).map_err(Error::from)?;
-        if let Ok(workspace) = get_desktops_names(&connection, &atoms) {
-            if let Ok(index) = get_current_desktop(&connection, &atoms) {
-                self.workspaces = workspace.iter().map(|w| (w.to_owned(), false)).collect();
-                if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
-                    active_workspace.1 = true;
-                }
-            }
+
+        let Ok(workspace) = get_desktops_names(&connection, &atoms) else {
+            return Ok(())
+        };
+        let Ok(index) = get_current_desktop(&connection, &atoms) else {
+            return Ok(())
+        };
+        self.workspaces = workspace.iter().map(|w| (w.to_owned(), false)).collect();
+        if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
+            active_workspace.1 = true;
         }
+
         Ok(())
     }
 
