@@ -62,7 +62,7 @@ impl Widget for Brightness {
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks
-            .subscribe(self.show_counter.duration / 4, sender)
+            .subscribe(self.show_counter.duration / 10, sender)
             .map_err(Error::from)?;
         Ok(())
     }

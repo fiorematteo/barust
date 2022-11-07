@@ -8,21 +8,14 @@ use barust::{
     },
 };
 use log::LevelFilter;
+use std::env;
 use std::{fs::OpenOptions, process::Command, time::Duration};
 
 const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
 fn main() -> Result<()> {
-    let level = LevelFilter::Debug;
-    let log_file = OpenOptions::new()
-        .append(true)
-        .open("/home/matteo/.local/share/barust.log")?;
-    simple_logging::log_to(log_file, level);
-
-    //log_panics::Config::new()
-    //    .backtrace_mode(log_panics::BacktraceMode::Resolved)
-    //    .install_panic_hook();
+    setup_logger();
 
     let wd_config = WidgetConfig {
         font: "DejaVu Sans Mono",
@@ -99,4 +92,39 @@ fn main() -> Result<()> {
         ])
         .build()?;
     bar.start()
+}
+
+fn setup_logger() {
+    let args = env::args().collect::<Vec<_>>();
+
+    let level = args
+        .iter()
+        .map(|s| {
+            let s: &str = s;
+            match s {
+                "--trace" => LevelFilter::Trace,
+                "--debug" => LevelFilter::Debug,
+                "--info" => LevelFilter::Info,
+                "--warn" => LevelFilter::Warn,
+                "--error" => LevelFilter::Error,
+                _ => LevelFilter::Error,
+            }
+        })
+        .max()
+        .unwrap_or(LevelFilter::Warn);
+
+    if args.contains(&String::from("--stderr")) {
+        simple_logging::log_to_stderr(level);
+    } else {
+        simple_logging::log_to(
+            OpenOptions::new()
+                .append(true)
+                .open("/home/matteo/.local/share/barust.log")
+                .unwrap(),
+            level,
+        );
+        log_panics::Config::new()
+            .backtrace_mode(log_panics::BacktraceMode::Resolved)
+            .install_panic_hook();
+    }
 }

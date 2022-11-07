@@ -154,17 +154,11 @@ impl StatusBar {
     }
 
     pub(crate) fn update(&mut self, to_update: WidgetID) -> Result<()> {
-        debug!("Updating {:?}", to_update);
-        match to_update {
-            (RightLeft::Left, index) => {
-                let wd = &mut self.left_widgets[index];
-                log_error_and_replace!(wd, wd.update());
-            }
-            (RightLeft::Right, index) => {
-                let wd = &mut self.right_widgets[index];
-                log_error_and_replace!(wd, wd.update());
-            }
-        }
+        let wd = match to_update {
+            (RightLeft::Left, index) => &mut self.left_widgets[index],
+            (RightLeft::Right, index) => &mut self.right_widgets[index],
+        };
+        log_error_and_replace!(wd, wd.update());
         Ok(())
     }
 

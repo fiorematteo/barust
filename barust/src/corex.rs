@@ -126,6 +126,10 @@ pub struct Callback<T, R> {
 }
 
 impl<T, R> Callback<T, R> {
+    pub fn new(callback: Box<RawCallback<T, R>>) -> Self {
+        Self { callback }
+    }
+
     pub fn call(&self, arg: T) -> R {
         (self.callback)(arg)
     }
