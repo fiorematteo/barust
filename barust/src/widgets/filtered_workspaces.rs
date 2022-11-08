@@ -43,12 +43,9 @@ impl Widget for FilteredWorkspaces {
             return Err(Error::EmptyFilter.into());
         }
 
-        self.inner.workspaces = self
-            .inner
+        self.inner
             .workspaces
-            .drain(..)
-            .filter(|name| !self.ignored_workspaces.contains(&name.0))
-            .collect::<Vec<_>>();
+            .retain(|name| !self.ignored_workspaces.contains(&name.0));
         Ok(())
     }
 

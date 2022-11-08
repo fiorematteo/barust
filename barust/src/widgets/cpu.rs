@@ -47,16 +47,14 @@ impl Widget for Cpu {
     fn update(&mut self) -> Result<()> {
         debug!("updating cpu");
         let times = self.times.cpu_times_percent().map_err(Error::from)?;
+        let cpu_percent = self.per.cpu_percent().map_err(Error::from)?;
         let text = self
             .format
-            .replace(
-                "%p",
-                &format!("{:.1}", self.per.cpu_percent().map_err(Error::from)?),
-            )
-            .replace("%u", &format!("{:.1}", times.user()))
-            .replace("%s", &format!("{:.1}", times.system()))
-            .replace("%i", &format!("{:.1}", times.idle()))
-            .replace("%b", &format!("{:.1}", times.busy()));
+            .replace("%p", &format!("{: >4.1}", cpu_percent))
+            .replace("%u", &format!("{: >4.1}", times.user()))
+            .replace("%s", &format!("{: >4.1}", times.system()))
+            .replace("%i", &format!("{: >4.1}", times.idle()))
+            .replace("%b", &format!("{: >4.1}", times.busy()));
         self.inner.set_text(text);
         Ok(())
     }

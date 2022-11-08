@@ -97,21 +97,17 @@ fn main() -> Result<()> {
 fn setup_logger() {
     let args = env::args().collect::<Vec<_>>();
 
-    let level = args
-        .iter()
-        .map(|s| {
-            let s: &str = s;
-            match s {
-                "--trace" => LevelFilter::Trace,
-                "--debug" => LevelFilter::Debug,
-                "--info" => LevelFilter::Info,
-                "--warn" => LevelFilter::Warn,
-                "--error" => LevelFilter::Error,
-                _ => LevelFilter::Error,
-            }
-        })
-        .max()
-        .unwrap_or(LevelFilter::Warn);
+    let mut level = LevelFilter::Info;
+    for arg in &args {
+        level = match arg.as_str() {
+            "--trace" => LevelFilter::Trace,
+            "--debug" => LevelFilter::Debug,
+            "--info" => LevelFilter::Info,
+            "--warn" => LevelFilter::Warn,
+            "--error" => LevelFilter::Error,
+            _ => continue,
+        }
+    }
 
     if args.contains(&String::from("--stderr")) {
         simple_logging::log_to_stderr(level);
