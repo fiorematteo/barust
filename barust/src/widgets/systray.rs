@@ -8,9 +8,9 @@ use log::{debug, error, warn};
 use std::{fmt::Display, sync::Arc, thread};
 use xcb::{
     x::{
-        ChangeWindowAttributes, ClientMessageData, ConfigWindow, ConfigureWindow, CreateWindow, Cw,
-        DestroyWindow, EventMask, MapWindow, Pixmap, ReparentWindow, SendEventDest, UnmapWindow,
-        Window, WindowClass,
+        ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, ConfigWindow,
+        ConfigureWindow, CreateWindow, Cw, DestroyWindow, Drawable, EventMask, GetGeometry,
+        MapWindow, Pixmap, ReparentWindow, SendEventDest, UnmapWindow, Window, WindowClass,
     },
     Connection, Xid, XidNew,
 };
@@ -22,11 +22,11 @@ const SYSTEM_TRAY_CANCEL_MESSAGE: u32 = 2;
 /// Displays a system tray
 pub struct Systray {
     padding: f64,
-    icon_size: f64,
+    internal_padding: f64,
     window: Option<Window>,
     connection: Arc<Connection>,
     screen_id: i32,
-    children: Vec<Window>,
+    children: Vec<(Window, u16)>,
     event_receiver: Option<Receiver<xcb::x::Event>>,
 }
 
@@ -34,8 +34,8 @@ impl std::fmt::Debug for Systray {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "padding: {:?}, icon_size: {:?}, window: {:?}, screen_id: {:?}, children: {:?}",
-            self.padding, self.icon_size, self.window, self.screen_id, self.children,
+            "padding: {:?}, window: {:?}, screen_id: {:?}, children: {:?}",
+            self.padding, self.window, self.screen_id, self.children,
         )
     }
 }
@@ -43,23 +43,23 @@ impl std::fmt::Debug for Systray {
 impl Systray {
     ///* `icon_size` width of the icons
     ///* `config` a [WidgetConfig]
-    pub fn new(icon_size: f64, config: &WidgetConfig) -> Result<Box<Self>> {
+    pub fn new(internal_padding: f64, config: &WidgetConfig) -> Result<Box<Self>> {
         warn!("Systray is unstable");
         let (connection, screen_id) = Connection::connect(None).map_err(Error::from)?;
 
         Ok(Box::new(Self {
             padding: config.padding,
-            icon_size,
             window: None,
             connection: Arc::new(connection),
             screen_id,
             children: Vec::new(),
             event_receiver: None,
+            internal_padding,
         }))
     }
 
     fn adopt(&mut self, window: Window) -> Result<()> {
-        if self.children.contains(&window) {
+        if self.children.iter().any(|(c, _)| *c == window) {
             return Ok(());
         }
 
@@ -73,7 +73,7 @@ impl Systray {
             })
             .map_err(Error::from)?;
 
-        if !self.children.is_empty() {
+        if self.children.is_empty() {
             self.connection
                 .send_and_check_request(&MapWindow {
                     window: self.window.unwrap(),
@@ -81,7 +81,15 @@ impl Systray {
                 .map_err(Error::from)?;
         }
 
-        self.children.push(window);
+        let window_width = self
+            .connection
+            .wait_for_reply(self.connection.send_request(&GetGeometry {
+                drawable: Drawable::Window(window),
+            }))
+            .map_err(Error::from)?
+            .width();
+
+        self.children.push((window, window_width));
         self.reposition_children()?;
         self.connection
             .send_and_check_request(&MapWindow { window })
@@ -92,24 +100,25 @@ impl Systray {
 
     fn reposition_children(&mut self) -> Result<()> {
         let mut offset = 0.0;
-        for window in &self.children {
-            offset += self.icon_size;
-            self.connection
-                .send_and_check_request(
-                    &(ReparentWindow {
-                        window: *window,
-                        parent: self.window.unwrap(),
-                        x: offset as i16,
-                        y: 0,
-                    }),
-                )
-                .ok(); // destroyed windows can still be in self.children
+        for (window, width) in &self.children {
+            offset += *width as f64 + self.internal_padding;
+            self.connection.send_request(
+                &(ReparentWindow {
+                    window: *window,
+                    parent: self.window.unwrap(),
+                    x: offset as i16,
+                    y: 0,
+                }),
+            );
         }
+        // Since there are no ways to ping a window
+        // destroyed windows can sometimes still be in self.children
+        self.connection.flush().ok();
         Ok(())
     }
 
     fn forget(&mut self, window: Window) -> Result<()> {
-        self.children.retain(|child| *child != window);
+        self.children.retain(|(child, _)| *child != window);
         self.reposition_children()?;
         if self.children.is_empty() {
             self.connection
@@ -241,6 +250,64 @@ impl Systray {
         self.connection.flush().map_err(Error::from)?;
         Ok(true)
     }
+
+    fn handle_client_message(&mut self, event: ClientMessageEvent) -> Result<()> {
+        let ClientMessageData::Data32(data) = event.data() else {
+            return Ok(());
+        };
+        let opcode = data[1];
+        let window = data[2];
+        match opcode {
+            SYSTEM_TRAY_REQUEST_DOCK => {
+                debug!("systray request dock message");
+
+                let window = unsafe { Window::new(window) };
+
+                if let Err(e) = self.adopt(window) {
+                    if let WidgetError::Systray(Error::Xcb(xcb::Error::Protocol(
+                        xcb::ProtocolError::X(xcb::x::Error::Window(ref e), _),
+                    ))) = e
+                    {
+                        warn!("possible bad window error: {:?}", e);
+                    } else {
+                        return Err(e);
+                    }
+                }
+            }
+            SYSTEM_TRAY_BEGIN_MESSAGE => {
+                debug!("systray begin message");
+            }
+            SYSTEM_TRAY_CANCEL_MESSAGE => {
+                debug!("systray cancel message");
+            }
+            _ => {
+                unreachable!("Invalid opcode")
+            }
+        };
+        Ok(())
+    }
+
+    fn handle_event(&mut self, event: xcb::x::Event) -> Result<()> {
+        match event {
+            xcb::x::Event::ClientMessage(event) => {
+                self.handle_client_message(event)?;
+            }
+            xcb::x::Event::DestroyNotify(event) => self.forget(event.window())?,
+            xcb::x::Event::PropertyNotify(event) => {
+                if !self.take_selection(event.time())? {
+                    return Err(Error::NoSelection.into());
+                }
+            }
+            xcb::x::Event::ReparentNotify(event) => {
+                if event.parent() != self.window.unwrap() {
+                    self.forget(event.window())?;
+                }
+            }
+            xcb::x::Event::SelectionClear(_) => self.last_update()?,
+            _ => (),
+        }
+        Ok(())
+    }
 }
 
 impl Widget for Systray {
@@ -258,7 +325,7 @@ impl Widget for Systray {
         let geometry = self
             .connection
             .wait_for_reply(self.connection.send_request(&xcb::x::GetGeometry {
-                drawable: xcb::x::Drawable::Window(self.window.unwrap()),
+                drawable: Drawable::Window(self.window.unwrap()),
             }))
             .map_err(Error::from)?;
 
@@ -291,54 +358,15 @@ impl Widget for Systray {
     fn update(&mut self) -> Result<()> {
         debug!("updating systray");
         //NOTE xcb::x::Event doesn't implement copy :(
-        if let Some(events) = self.event_receiver.take() {
-            while let Ok(event) = events.try_recv() {
-                match event {
-                    xcb::x::Event::ClientMessage(event) => {
-                        if let ClientMessageData::Data32(data) = event.data() {
-                            let opcode = data[1];
-                            let window = data[2];
-                            match opcode {
-                                SYSTEM_TRAY_REQUEST_DOCK => {
-                                    if let Err(e) = self.adopt(unsafe { Window::new(window) }) {
-                                        if let WidgetError::Systray(Error::Xcb(
-                                            xcb::Error::Protocol(xcb::ProtocolError::X(
-                                                xcb::x::Error::Window(ref e),
-                                                _,
-                                            )),
-                                        )) = e
-                                        {
-                                            warn!("possible bad window error: {:?}", e);
-                                        } else {
-                                            return Err(e);
-                                        }
-                                    }
-                                }
-                                SYSTEM_TRAY_BEGIN_MESSAGE => {}
-                                SYSTEM_TRAY_CANCEL_MESSAGE => {}
-                                _ => {
-                                    unreachable!("Invalid opcode")
-                                }
-                            };
-                        }
-                    }
-                    xcb::x::Event::DestroyNotify(event) => self.forget(event.window())?,
-                    xcb::x::Event::PropertyNotify(event) => {
-                        if !self.take_selection(event.time())? {
-                            return Err(Error::NoSelection.into());
-                        }
-                    }
-                    xcb::x::Event::ReparentNotify(event) => {
-                        if event.parent() != self.window.unwrap() {
-                            self.forget(event.window())?;
-                        }
-                    }
-                    xcb::x::Event::SelectionClear(_) => self.last_update()?,
-                    _ => (),
-                }
-            }
-            self.event_receiver.replace(events);
+        let event_receiver = self.event_receiver.take();
+        let Some(events) = event_receiver else {
+            self.event_receiver = event_receiver;
+            return Ok(());
+        };
+        while let Ok(event) = events.try_recv() {
+            self.handle_event(event)?;
         }
+        self.event_receiver.replace(events);
         Ok(())
     }
 
@@ -347,8 +375,8 @@ impl Widget for Systray {
         let screen = setup.roots().nth(self.screen_id as _).unwrap();
         let root = screen.root();
 
-        for child in &self.children {
-            let window = *child;
+        for (window, _) in &self.children {
+            let window = *window;
             self.connection
                 .send_and_check_request(&ChangeWindowAttributes {
                     window,
@@ -403,7 +431,12 @@ impl Widget for Systray {
         if self.children.is_empty() {
             return Ok(1.0);
         }
-        Ok(self.icon_size * self.children.len() as f64 + 2.0 * self.padding)
+        Ok(self
+            .children
+            .iter()
+            .map(|(_, width)| *width as f64 + self.internal_padding)
+            .sum::<f64>()
+            + 2.0 * self.padding)
     }
 
     fn padding(&self) -> f64 {
