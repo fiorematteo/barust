@@ -185,6 +185,21 @@ impl StatusBar {
             .flat_map(|wd| wd.size(&context))
             .sum();
 
+        let left_size: f64 = self
+            .left_widgets
+            .iter_mut()
+            .flat_map(|wd| wd.size(&context))
+            .sum();
+
+        // NOTE: find a better solution
+        // This works only because the rightmost left widget is ActiveWindow
+        // Maybe widgets should be flexible?
+        if (left_size + right_size) > self.width {
+            if let Some(last_left) = self.left_regions.iter_mut().last() {
+                last_left.width += self.width - right_size - left_size;
+            }
+        }
+
         rectangle.x = self.width as f64 - right_size;
 
         self.right_regions.clear();
