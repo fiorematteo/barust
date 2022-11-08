@@ -100,29 +100,32 @@ impl Widget for ActiveWindow {
         let name_connection = property_connection.clone();
 
         thread::spawn(move || loop {
-            if let Ok(xcb::Event::X(Event::PropertyNotify(_))) =
-                property_connection.wait_for_event()
-            {
-                if property_sender.send().is_err() {
-                    error!("breaking active_window hook");
-                    break;
-                }
+            let Ok(xcb::Event::X(Event::PropertyNotify(_))) = property_connection.wait_for_event() else {
+                continue
+            };
+            if property_sender.send().is_err() {
+                error!("breaking active_window hook");
+                break;
             }
         });
 
         let atoms = self.atoms;
         let mut old_name = "".into();
         thread::spawn(move || loop {
-            if let Ok(new_name) = get_active_window_name(&name_connection, &atoms) {
-                if old_name != new_name {
-                    old_name = new_name;
-                    if name_sender.send().is_err() {
-                        error!("breaking active_window hook");
-                        break;
-                    }
-                }
-            }
             thread::sleep(Duration::from_secs(1));
+            let Ok(new_name) = get_active_window_name(&name_connection, &atoms) else {
+                continue
+            };
+
+            if old_name == new_name {
+                continue;
+            }
+
+            old_name = new_name;
+            if name_sender.send().is_err() {
+                error!("breaking active_window hook");
+                break;
+            }
         });
         Ok(())
     }
