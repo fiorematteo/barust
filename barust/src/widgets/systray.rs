@@ -1,8 +1,9 @@
-use super::{Result, Widget, WidgetConfig, WidgetError};
+use super::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
 use crate::{
     corex::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
     statusbar::{screen_true_height, Position, StatusBarInfo},
 };
+use cairo::Context;
 use crossbeam_channel::{bounded, Receiver};
 use log::{debug, error, warn};
 use std::{fmt::Display, sync::Arc, thread};
@@ -21,8 +22,8 @@ const SYSTEM_TRAY_CANCEL_MESSAGE: u32 = 2;
 
 /// Displays a system tray
 pub struct Systray {
-    padding: f64,
-    internal_padding: f64,
+    padding: u32,
+    internal_padding: u32,
     window: Option<Window>,
     connection: Arc<Connection>,
     screen_id: i32,
@@ -43,7 +44,7 @@ impl std::fmt::Debug for Systray {
 impl Systray {
     ///* `icon_size` width of the icons
     ///* `config` a [WidgetConfig]
-    pub fn new(internal_padding: f64, config: &WidgetConfig) -> Result<Box<Self>> {
+    pub fn new(internal_padding: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         warn!("Systray is unstable");
         let (connection, screen_id) = Connection::connect(None).map_err(Error::from)?;
 
@@ -99,14 +100,14 @@ impl Systray {
     }
 
     fn reposition_children(&mut self) -> Result<()> {
-        let mut offset = 0.0;
+        let mut offset = 0;
         for (window, width) in &self.children {
-            offset += *width as f64 + self.internal_padding;
+            offset += u32::from(*width) + self.internal_padding;
             self.connection.send_request(
                 &(ReparentWindow {
                     window: *window,
                     parent: self.window.unwrap(),
-                    x: offset as i16,
+                    x: offset.try_into().unwrap(),
                     y: 0,
                 }),
             );
@@ -311,7 +312,7 @@ impl Systray {
 }
 
 impl Widget for Systray {
-    fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
+    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         set_source_rgba(
             context,
             Color {
@@ -427,19 +428,20 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn size(&self, _context: &cairo::Context) -> Result<f64> {
+    fn size(&self, _context: &Context) -> Result<Size> {
         if self.children.is_empty() {
-            return Ok(1.0);
+            return Ok(Size::Static(1));
         }
-        Ok(self
-            .children
-            .iter()
-            .map(|(_, width)| *width as f64 + self.internal_padding)
-            .sum::<f64>()
-            + 2.0 * self.padding)
+        Ok(Size::Static(
+            self.children
+                .iter()
+                .map(|(_, width)| u32::from(*width) + self.internal_padding)
+                .sum::<u32>()
+                + 2 * self.padding,
+        ))
     }
 
-    fn padding(&self) -> f64 {
+    fn padding(&self) -> u32 {
         self.padding
     }
 }

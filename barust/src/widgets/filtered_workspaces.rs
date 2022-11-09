@@ -1,5 +1,9 @@
-use super::{Result, Widget, WidgetConfig, Workspaces};
-use crate::corex::{Color, HookSender, TimedHooks};
+use super::{Rectangle, Result, Widget, WidgetConfig, Workspaces};
+use crate::{
+    corex::{Color, HookSender, TimedHooks},
+    forward_to_inner,
+};
+use cairo::Context;
 use std::fmt::Display;
 
 #[derive(Debug)]
@@ -11,7 +15,7 @@ pub struct FilteredWorkspaces {
 impl FilteredWorkspaces {
     pub fn new<T: ToString>(
         active_workspace_color: Color,
-        internal_padding: f64,
+        internal_padding: u32,
         config: &WidgetConfig,
         ignored_workspaces: &[T],
     ) -> Box<Self> {
@@ -24,16 +28,8 @@ impl FilteredWorkspaces {
 }
 
 impl Widget for FilteredWorkspaces {
-    fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
+    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
-    }
-
-    fn size(&self, context: &cairo::Context) -> Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
     }
 
     fn update(&mut self) -> Result<()> {
@@ -52,6 +48,9 @@ impl Widget for FilteredWorkspaces {
     fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
         self.inner.hook(sender, pool)
     }
+
+    forward_to_inner!(size);
+    forward_to_inner!(padding);
 }
 
 impl Display for FilteredWorkspaces {

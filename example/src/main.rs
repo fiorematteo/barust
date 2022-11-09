@@ -28,20 +28,26 @@ fn main() -> Result<()> {
         .position(Position::Top)
         .background(BLANK)
         .left_widgets(vec![
-            Spacer::new(20.0),
+            Spacer::new(20),
             FilteredWorkspaces::new::<&str>(
                 PURPLE,
-                10.0,
+                10,
                 &WidgetConfig {
-                    padding: 0.0,
+                    padding: 0,
                     ..wd_config
                 },
                 &["scratchpad", "pulsemixer"],
             ),
-            ActiveWindow::new(&wd_config, None)?,
+            ActiveWindow::new(
+                &WidgetConfig {
+                    flex: true,
+                    ..wd_config
+                },
+                None,
+            )?,
         ])
         .right_widgets(vec![
-            Systray::new(20.0, &wd_config)?,
+            Systray::new(20, &wd_config)?,
             Disk::new("💾 %f", "/", &wd_config, None),
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
             Cpu::new("💻 %p%", &wd_config, None)?,

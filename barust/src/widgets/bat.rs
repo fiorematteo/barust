@@ -1,6 +1,9 @@
-use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{EmptyCallback, HookSender, TimedHooks};
-use cairo::{Context, Rectangle};
+use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    corex::{EmptyCallback, HookSender, TimedHooks},
+    forward_to_inner,
+};
+use cairo::Context;
 use log::debug;
 use std::{cmp::min, fmt::Display, fs::read_dir, time::Duration};
 
@@ -135,19 +138,9 @@ impl Widget for Battery {
         Ok(())
     }
 
-    fn size(&self, context: &Context) -> Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
-    }
-
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
+    forward_to_inner!(size);
+    forward_to_inner!(padding);
+    forward_to_inner!(on_click);
 }
 
 impl Display for Battery {

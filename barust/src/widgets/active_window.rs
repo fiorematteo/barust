@@ -1,5 +1,7 @@
-use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::corex::{Atoms, EmptyCallback, HookSender, TimedHooks};
+use crate::forward_to_inner;
+use cairo::Context;
 use log::{debug, error};
 use std::sync::Arc;
 use std::time::Duration;
@@ -66,7 +68,7 @@ impl ActiveWindow {
 }
 
 impl Widget for ActiveWindow {
-    fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
+    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
@@ -83,7 +85,11 @@ impl Widget for ActiveWindow {
         let root_window = connection
             .get_setup()
             .roots()
-            .nth(screen_id as usize)
+            .nth(
+                screen_id
+                    .try_into()
+                    .expect("Screen id should always be positive"),
+            )
             .unwrap()
             .root();
         connection
@@ -130,19 +136,9 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    fn size(&self, context: &cairo::Context) -> Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
-    }
-
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
+    forward_to_inner!(size);
+    forward_to_inner!(padding);
+    forward_to_inner!(on_click);
 }
 
 impl Display for ActiveWindow {

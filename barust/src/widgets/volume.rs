@@ -1,5 +1,9 @@
-use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks};
+use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks},
+    forward_to_inner,
+};
+use cairo::Context;
 use log::debug;
 use std::{cmp::min, fmt::Display, time::Duration};
 
@@ -66,7 +70,7 @@ impl Volume {
 }
 
 impl Widget for Volume {
-    fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
+    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
@@ -93,19 +97,9 @@ impl Widget for Volume {
         Ok(())
     }
 
-    fn size(&self, context: &cairo::Context) -> Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
-    }
-
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
+    forward_to_inner!(size);
+    forward_to_inner!(padding);
+    forward_to_inner!(on_click);
 }
 
 impl Volume {

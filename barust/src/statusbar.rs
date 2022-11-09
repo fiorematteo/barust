@@ -1,11 +1,12 @@
 use crate::{
     corex::{
-        notify, set_source_rgba, Atoms, Color, HookSender, StatusBarEvent, TimedHooks, WidgetID,
+        notify, set_source_rgba, Atoms, Color, HookSender, Rectangle, StatusBarEvent, TimedHooks,
+        WidgetID,
     },
     error::{BarustError, Result},
-    widgets::{Text, Widget},
+    widgets::{Size, Text, Widget},
 };
-use cairo::{Context, Operator, Rectangle, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
+use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use crossbeam_channel::{bounded, select, Receiver};
 use log::{debug, error, info};
 use signal_hook::consts::{SIGINT, SIGTERM};
@@ -35,8 +36,8 @@ pub struct StatusBarInfo {
     pub background: Color,
     pub left_regions: Vec<Rectangle>,
     pub right_regions: Vec<Rectangle>,
-    pub height: f64,
-    pub width: f64,
+    pub height: u32,
+    pub width: u32,
     pub position: Position,
 }
 
@@ -62,8 +63,8 @@ pub struct StatusBar {
     right_regions: Vec<Rectangle>,
     right_widgets: Vec<Box<dyn Widget>>,
     surface: XCBSurface,
-    height: f64,
-    width: f64,
+    height: u32,
+    width: u32,
     window: Window,
     position: Position,
 }
@@ -165,46 +166,46 @@ impl StatusBar {
     pub(crate) fn generate_regions(&mut self) -> Result<()> {
         let context = Context::new(&self.surface)?;
         let mut rectangle = Rectangle {
-            x: 0.0,
-            y: 0.0,
-            width: 0.0,
+            x: 0,
+            y: 0,
+            width: 0,
             height: self.height,
         };
 
+        let static_size: u32 = self
+            .left_widgets
+            .iter_mut()
+            .chain(&mut self.right_widgets)
+            .map(|wd| {
+                if let Ok(Size::Static(width)) = wd.size(&context) {
+                    width
+                } else {
+                    0
+                }
+            })
+            .sum();
+
+        let flex_widgets = self
+            .left_widgets
+            .iter_mut()
+            .chain(&mut self.right_widgets)
+            .flat_map(|wd| wd.size(&context))
+            .filter(|wd| wd.is_flex())
+            .count();
+
+        let flex_size = (self.width - static_size) / flex_widgets as u32;
+
         self.left_regions.clear();
         for wd in &mut self.left_widgets {
-            let widget_width = wd.size(&context)?;
+            let widget_width = wd.size(&context)?.unwrap_or(flex_size);
             rectangle.width = widget_width;
             self.left_regions.push(rectangle);
             rectangle.x += widget_width;
         }
 
-        let right_size: f64 = self
-            .right_widgets
-            .iter_mut()
-            .flat_map(|wd| wd.size(&context))
-            .sum();
-
-        let left_size: f64 = self
-            .left_widgets
-            .iter_mut()
-            .flat_map(|wd| wd.size(&context))
-            .sum();
-
-        // NOTE: find a better solution
-        // This works only because the rightmost left widget is ActiveWindow
-        // Maybe widgets should be flexible?
-        if (left_size + right_size) > self.width {
-            if let Some(last_left) = self.left_regions.iter_mut().last() {
-                last_left.width += self.width - right_size - left_size;
-            }
-        }
-
-        rectangle.x = self.width as f64 - right_size;
-
         self.right_regions.clear();
         for wd in &mut self.right_widgets {
-            let widget_width = wd.size(&context)?;
+            let widget_width = wd.size(&context)?.unwrap_or(flex_size);
             rectangle.width = widget_width;
             self.right_regions.push(rectangle);
             rectangle.x += widget_width;
@@ -240,7 +241,8 @@ impl StatusBar {
         let contexts: Vec<_> = regions
             .iter()
             .map(|region| -> Result<Context> {
-                let surface = &tmp_surface.create_for_rectangle(**region)?;
+                let cairo_rectangle: cairo::Rectangle = (**region).into();
+                let surface = &tmp_surface.create_for_rectangle(cairo_rectangle)?;
                 Ok(Context::new(surface)?)
             })
             .collect();
@@ -396,13 +398,13 @@ impl StatusBarBuilder {
         Ok(StatusBar {
             background: self.background,
             connection,
-            height: self.height as _,
+            height: u32::from(self.height),
             left_regions: Vec::new(),
             left_widgets: self.left_widgets.drain(..).collect(),
             right_regions: Vec::new(),
             right_widgets: self.right_widgets.drain(..).collect(),
             surface,
-            width: width as _,
+            width: u32::from(width),
             window,
             position: self.position,
         })
@@ -502,8 +504,8 @@ pub(crate) fn create_xwindow(
             &XCBConnection::from_raw_none(conn_ptr),
             &XCBDrawable(window.resource_id()),
             &XCBVisualType::from_raw_none(&mut visual_type as *mut Visualtype as _),
-            width as _,
-            height as _,
+            i32::from(width),
+            i32::from(height),
         )?
     };
 
@@ -534,7 +536,9 @@ pub(crate) fn find_collision(regions: &[Rectangle], x: i16, y: i16) -> Option<us
         .iter()
         .enumerate()
         .find(|(_, r)| {
-            r.x < x as f64 && r.x + r.width > x as f64 && r.y < y as f64 && r.y + r.width > y as f64
+            let x = x as u32;
+            let y = y as u32;
+            r.x < x && r.x + r.width > x && r.y < y && r.y + r.width > y
         })
         .map(|(index, _)| index)
 }

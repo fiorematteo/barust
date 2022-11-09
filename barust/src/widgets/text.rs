@@ -1,6 +1,6 @@
-use super::{OnClickCallback, Result, Widget, WidgetConfig};
+use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
 use crate::corex::{set_source_rgba, Color, EmptyCallback};
-use cairo::{Context, Rectangle};
+use cairo::Context;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::fmt::Display;
@@ -9,10 +9,11 @@ use std::fmt::Display;
 #[derive(Debug)]
 pub struct Text {
     text: String,
-    padding: f64,
+    padding: u32,
     fg_color: Color,
     font: String,
     font_size: f64,
+    flex: bool,
     on_click: OnClickCallback,
 }
 
@@ -31,6 +32,7 @@ impl Text {
             fg_color: config.fg_color,
             font: config.font.into(),
             font_size: config.font_size,
+            flex: config.flex,
             on_click: on_click.map(|c| c.into()),
         })
     }
@@ -44,7 +46,7 @@ impl Text {
         let pango_context = create_context(context).ok_or(Error::PangoError)?;
         let layout = Layout::new(&pango_context);
         let mut font = FontDescription::from_string(&self.font);
-        font.set_absolute_size(self.font_size * pango::SCALE as f64);
+        font.set_absolute_size(self.font_size * f64::from(pango::SCALE));
         layout.set_font_description(Some(&font));
         Ok(layout)
     }
@@ -55,23 +57,27 @@ impl Widget for Text {
         set_source_rgba(context, self.fg_color);
         let layout = self.get_layout(context)?;
         context.move_to(
-            self.padding,
-            (rectangle.height - layout.pixel_size().1 as f64) / 2.0,
+            f64::from(self.padding),
+            f64::from((rectangle.height - layout.pixel_size().1 as u32) / 2),
         );
         layout.set_text(&self.text);
         show_layout(context, &layout);
         Ok(())
     }
 
-    fn size(&self, context: &Context) -> Result<f64> {
+    fn size(&self, context: &Context) -> Result<Size> {
+        if self.flex {
+            return Ok(Size::Flex);
+        }
         let layout = self.get_layout(context)?;
         layout.set_text(&self.text);
-        Ok(2.0 * self.padding() + layout.pixel_size().0 as f64)
+        let size = 2 * self.padding() + layout.pixel_size().0 as u32;
+        Ok(Size::Static(size))
     }
 
-    fn padding(&self) -> f64 {
+    fn padding(&self) -> u32 {
         if self.text.is_empty() {
-            0.0
+            0
         } else {
             self.padding
         }

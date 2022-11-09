@@ -1,6 +1,9 @@
-use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
-use crate::corex::{bytes_to_closest, EmptyCallback};
-use cairo::{Context, Rectangle};
+use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    corex::{bytes_to_closest, EmptyCallback},
+    forward_to_inner,
+};
+use cairo::Context;
 use log::debug;
 use psutil::memory::virtual_memory;
 use std::fmt::Display;
@@ -54,19 +57,9 @@ impl Widget for Memory {
         Ok(())
     }
 
-    fn size(&self, context: &Context) -> Result<f64> {
-        self.inner.size(context)
-    }
-
-    fn padding(&self) -> f64 {
-        self.inner.padding()
-    }
-
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
+    forward_to_inner!(size);
+    forward_to_inner!(padding);
+    forward_to_inner!(on_click);
 }
 
 impl Display for Memory {

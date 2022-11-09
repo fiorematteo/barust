@@ -1,6 +1,6 @@
-use super::{OnClickCallback, Result, Widget, WidgetConfig};
+use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
 use crate::corex::{set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks};
-use cairo::{Context, Rectangle};
+use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
@@ -44,12 +44,12 @@ pub fn get_current_desktop(connection: &Connection, atoms: &Atoms) -> Result<u32
 /// Displays informations about the active workspaces
 #[derive(Debug)]
 pub struct Workspaces {
-    padding: f64,
+    padding: u32,
     fg_color: Color,
     font: String,
     font_size: f64,
     on_click: OnClickCallback,
-    internal_padding: f64,
+    internal_padding: u32,
     active_workspace_color: Color,
     pub workspaces: Vec<(String, bool)>,
 }
@@ -61,7 +61,7 @@ impl Workspaces {
     ///* `on_click` callback to run on click
     pub fn new(
         active_workspace_color: Color,
-        internal_padding: f64,
+        internal_padding: u32,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
@@ -81,7 +81,7 @@ impl Workspaces {
         let pango_context = create_context(context).ok_or(Error::Pango)?;
         let layout = Layout::new(&pango_context);
         let mut font = FontDescription::from_string(&self.font);
-        font.set_absolute_size(self.font_size * pango::SCALE as f64);
+        font.set_absolute_size(self.font_size * f64::from(pango::SCALE));
         layout.set_font_description(Some(&font));
         Ok(layout)
     }
@@ -89,7 +89,7 @@ impl Workspaces {
 
 impl Widget for Workspaces {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        context.move_to(self.padding, 0.0);
+        context.move_to(f64::from(self.padding), 0.0);
         let layout = self.get_layout(context)?;
         let mut first = true;
         for (workspace, active) in &self.workspaces {
@@ -101,10 +101,16 @@ impl Widget for Workspaces {
             layout.set_text(workspace);
             if first {
                 first = false;
-                context.rel_move_to(0.0, (rectangle.height - layout.pixel_size().1 as f64) / 2.0);
+                context.rel_move_to(
+                    0.0,
+                    f64::from((rectangle.height - layout.pixel_size().1 as u32) / 2),
+                );
             }
             show_layout(context, &layout);
-            context.rel_move_to(self.internal_padding + layout.pixel_size().0 as f64, 0.0);
+            context.rel_move_to(
+                f64::from(self.internal_padding) + f64::from(layout.pixel_size().0),
+                0.0,
+            );
         }
         Ok(())
     }
@@ -154,7 +160,7 @@ impl Widget for Workspaces {
         Ok(())
     }
 
-    fn size(&self, context: &Context) -> Result<f64> {
+    fn size(&self, context: &Context) -> Result<Size> {
         let layout = self.get_layout(context)?;
         let big_string = self
             .workspaces
@@ -163,13 +169,13 @@ impl Widget for Workspaces {
             .collect::<Vec<_>>()
             .join("");
         layout.set_text(&big_string);
-        let text_size = layout.pixel_size().0 as f64;
-        Ok(text_size
-            + (2.0 * self.padding)
-            + (self.workspaces.len() as f64 * self.internal_padding))
+        let text_size: u32 = layout.pixel_size().0 as u32;
+        Ok(Size::Static(
+            text_size + (2 * self.padding) + (self.workspaces.len() as u32 * self.internal_padding),
+        ))
     }
 
-    fn padding(&self) -> f64 {
+    fn padding(&self) -> u32 {
         self.padding
     }
 

@@ -16,6 +16,25 @@ use xcb::{
     Connection,
 };
 
+#[derive(Debug, Clone, Copy)]
+pub struct Rectangle {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl From<Rectangle> for cairo::Rectangle {
+    fn from(r: Rectangle) -> Self {
+        cairo::Rectangle {
+            x: r.x.into(),
+            y: r.y.into(),
+            width: r.width.into(),
+            height: r.height.into(),
+        }
+    }
+}
+
 pub(crate) enum StatusBarEvent {
     Wake,
     Click(i16, i16),
@@ -100,20 +119,24 @@ pub fn bytes_to_closest(value: Bytes) -> String {
     }
     let units = ["B", "KB", "MB", "GB", "TB"];
     let mut selected_unit: usize = 0;
-    let mut value = value as f64;
-    while value > 1024.0 {
+    let mut value = value;
+    while value > 1024 {
         if selected_unit == 4 {
             break;
         }
-        value /= 1024.0;
+        value /= 1024;
         selected_unit += 1;
     }
-    format!("{}{}", value as u64, units[selected_unit])
+    format!("{}{}", value, units[selected_unit])
 }
 
 pub fn debug_times(name: &str, times: Vec<Duration>) {
     let total = times.iter().sum::<std::time::Duration>();
-    println!("{} avg: {:?}", name, total / times.len() as u32);
+    println!(
+        "{} avg: {:?}",
+        name,
+        total / times.len().try_into().expect("usize does not fit into u32")
+    );
     println!("{} max: {:?}", name, times.iter().max());
     println!("{} min: {:?}", name, times.iter().min());
 }

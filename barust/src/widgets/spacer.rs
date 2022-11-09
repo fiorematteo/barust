@@ -1,16 +1,16 @@
-use super::{Result, Widget};
-use cairo::{Context, Rectangle};
+use super::{Rectangle, Result, Size, Widget};
+use cairo::Context;
 use std::fmt::Display;
 
 ///Adds empty space between widgets
 #[derive(Debug)]
 pub struct Spacer {
-    size: f64,
+    size: u32,
 }
 
 impl Spacer {
     ///* `size` width of the space widget in pixel
-    pub fn new(size: f64) -> Box<Self> {
+    pub fn new(size: u32) -> Box<Self> {
         Box::new(Self { size })
     }
 }
@@ -20,12 +20,12 @@ impl Widget for Spacer {
         Ok(())
     }
 
-    fn size(&self, _context: &Context) -> Result<f64> {
-        Ok(self.size)
+    fn size(&self, _context: &Context) -> Result<Size> {
+        Ok(Size::Static(self.size))
     }
 
-    fn padding(&self) -> f64 {
-        0.0
+    fn padding(&self) -> u32 {
+        0
     }
 }
 

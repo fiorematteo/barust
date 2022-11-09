@@ -1,9 +1,9 @@
 use crate::{
-    corex::{Callback, Color, HookSender, TimedHooks},
+    corex::{Callback, Color, HookSender, Rectangle, TimedHooks},
     error::Erc,
     statusbar::StatusBarInfo,
 };
-use cairo::{Context, Rectangle};
+use cairo::Context;
 use std::{fmt::Display, time::Duration};
 use thiserror::Error;
 
@@ -41,6 +41,24 @@ pub use volume::{Volume, VolumeIcons};
 pub use wlan::Wlan;
 pub use workspaces::Workspaces;
 
+pub enum Size {
+    Flex,
+    Static(u32),
+}
+
+impl Size {
+    pub fn is_flex(&self) -> bool {
+        matches!(self, Size::Flex)
+    }
+
+    pub fn unwrap_or(&self, s: u32) -> u32 {
+        match self {
+            Size::Flex => s,
+            Size::Static(s) => *s,
+        }
+    }
+}
+
 pub type Result<T> = std::result::Result<T, WidgetError>;
 
 pub trait Widget: std::fmt::Debug + Display + Send {
@@ -57,26 +75,28 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     fn hook(&mut self, _sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
         Ok(())
     }
-    fn size(&self, context: &Context) -> Result<f64>;
-    fn padding(&self) -> f64;
+    fn size(&self, context: &Context) -> Result<Size>;
+    fn padding(&self) -> u32;
     fn on_click(&self) {}
 }
 
 pub struct WidgetConfig<'a> {
     pub font: &'a str,
     pub font_size: f64,
-    pub padding: f64,
+    pub padding: u32,
     pub fg_color: Color,
     pub hide_timeout: Duration,
+    pub flex: bool,
 }
 
 impl<'a> WidgetConfig<'a> {
     pub fn new(
         font: &'a str,
         font_size: f64,
-        padding: f64,
+        padding: u32,
         fg_color: Color,
         hide_timeout: Duration,
+        flex: bool,
     ) -> Self {
         Self {
             font,
@@ -84,6 +104,7 @@ impl<'a> WidgetConfig<'a> {
             padding,
             fg_color,
             hide_timeout,
+            flex,
         }
     }
 }
@@ -93,9 +114,10 @@ impl Default for WidgetConfig<'_> {
         Self {
             font: "DejaVu Sans",
             font_size: 15.0,
-            padding: 10.0,
+            padding: 10,
             fg_color: Color::new(1.0, 1.0, 1.0, 1.0),
             hide_timeout: Duration::from_secs(1),
+            flex: false,
         }
     }
 }
@@ -128,12 +150,12 @@ type OnClickCallback = Option<Callback<(), ()>>;
 #[macro_export]
 macro_rules! forward_to_inner {
     (size) => {
-        fn size(&self, context: &cairo::Context) -> Result<f64> {
+        fn size(&self, context: &cairo::Context) -> Result<super::Size> {
             self.inner.size(context)
         }
     };
     (padding) => {
-        fn padding(&self) -> f64 {
+        fn padding(&self) -> u32 {
             self.inner.padding()
         }
     };

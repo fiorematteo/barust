@@ -1,8 +1,9 @@
-use super::{OnClickCallback, Result, Text, Widget, WidgetConfig};
+use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
     corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks},
     forward_to_inner,
 };
+use cairo::Context;
 use std::{fmt::Display, time::Duration};
 
 #[derive(Debug)]
@@ -34,7 +35,7 @@ impl Brightness {
 }
 
 impl Widget for Brightness {
-    fn draw(&self, context: &cairo::Context, rectangle: &cairo::Rectangle) -> Result<()> {
+    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
