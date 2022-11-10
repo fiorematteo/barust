@@ -12,15 +12,20 @@ use std::{cmp::min, fmt::Display, fs::read_dir, time::Duration};
 pub struct BatteryIcons {
     pub percentages: Vec<String>,
     ///displayed if the device is charging
-    pub charging: String,
+    pub percentages_charging: Vec<String>,
 }
 
 impl Default for BatteryIcons {
     fn default() -> Self {
-        let percentages = ['', '', '', '', '', '', '', '', '', ''];
+        let percentages = ['', '', '', '', '', '', '', '', '', '']
+            .map(String::from)
+            .to_vec();
+        let percentages_charging = ['', '', '', '', '', '', '']
+            .map(String::from)
+            .to_vec();
         Self {
-            percentages: percentages.map(String::from).to_vec(),
-            charging: String::from('🗲'),
+            percentages,
+            percentages_charging,
         }
     }
 }
@@ -106,26 +111,24 @@ impl Widget for Battery {
             (None, None) => return Ok(()),
         };
 
-        let percentages_len = self.icons.percentages.len();
-        let index = min(
-            (percent / percentages_len as f64).floor() as usize,
-            percentages_len - 1,
-        );
+        let percentages = if self.read_os_file("status") == Some("Charging".into()) {
+            &self.icons.percentages_charging
+        } else {
+            &self.icons.percentages
+        };
+
+        let icon = {
+            let percentages_len = percentages.len();
+            let index = min(
+                (percent / percentages_len as f64).floor() as usize,
+                percentages_len - 1,
+            );
+            &percentages[index]
+        };
+
         let text = self
             .format
-            .replace(
-                "%i",
-                if self
-                    .read_os_file("status")
-                    .as_ref()
-                    .map(|s| s == "Charging")
-                    .unwrap_or(false)
-                {
-                    &self.icons.charging
-                } else {
-                    &self.icons.percentages[index]
-                },
-            )
+            .replace("%i", icon)
             .replace("%c", &percent.round().to_string());
         self.inner.set_text(text);
         Ok(())

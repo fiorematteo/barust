@@ -82,15 +82,16 @@ fn main() -> Result<()> {
                 None,
             ),
             Brightness::new(
-                "%b%",
-                &|()| -> Option<i32> {
+                "%i %b%",
+                &|()| -> Option<u32> {
                     String::from_utf8(Command::new("light").output().ok()?.stdout)
                         .ok()?
-                        .strip_suffix('\n')?
+                        .trim()
                         .parse::<f64>()
                         .ok()
                         .map(|n| n as _)
                 },
+                None,
                 &wd_config,
                 None,
             ),

@@ -4,22 +4,46 @@ use crate::{
     forward_to_inner,
 };
 use cairo::Context;
-use std::{fmt::Display, time::Duration};
+use std::{cmp::min, fmt::Display, time::Duration};
+
+/// Icons used by [Brightness]
+#[derive(Debug)]
+pub struct BrightnessIcons {
+    pub percentages: Vec<String>,
+}
+
+impl Default for BrightnessIcons {
+    fn default() -> Self {
+        let percentages = ['', '', '', ''];
+        Self {
+            percentages: percentages.map(String::from).to_vec(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Brightness {
     format: String,
-    brightness_command: Callback<(), Option<i32>>,
-    previous_brightness: i32,
+    brightness_command: Callback<(), Option<u32>>,
+    previous_brightness: u32,
     show_counter: ResettableTimer,
     inner: Text,
+    icons: BrightnessIcons,
     on_click: OnClickCallback,
 }
 
 impl Brightness {
+    ///* `format`
+    ///  * *%p* will be replaced with the brightness percentage
+    ///  * *%i* will be replaced with the correct icon
+    ///* `brightness_command` a function that returns the brightness in a range from 0 to 100
+    ///* `icons` sets a custom [VolumeIcons]
+    ///* `config` a [WidgetConfig]
+    ///* `on_click` callback to run on click
     pub fn new(
         format: impl ToString,
-        brightness_command: &'static RawCallback<(), Option<i32>>,
+        brightness_command: &'static RawCallback<(), Option<u32>>,
+        icons: Option<BrightnessIcons>,
         config: &WidgetConfig,
         on_click: Option<&'static EmptyCallback>,
     ) -> Box<Self> {
@@ -30,7 +54,23 @@ impl Brightness {
             brightness_command: brightness_command.into(),
             on_click: on_click.map(|c| c.into()),
             show_counter: ResettableTimer::new(config.hide_timeout),
+            icons: icons.unwrap_or_default(),
         })
+    }
+
+    fn build_string(&self, current_brightness: u32) -> String {
+        if self.show_counter.is_done() {
+            String::from("")
+        } else {
+            let percentages_len = self.icons.percentages.len();
+            let index = min(
+                current_brightness as usize / percentages_len,
+                percentages_len - 1,
+            );
+            self.format
+                .replace("%p", &format!("{:.0}", current_brightness))
+                .replace("%i", &self.icons.percentages[index].to_string())
+        }
     }
 }
 
@@ -49,13 +89,7 @@ impl Widget for Brightness {
             self.previous_brightness = current_brightness;
             self.show_counter.reset();
         }
-
-        let text = if self.show_counter.is_done() {
-            String::from("")
-        } else {
-            self.format
-                .replace("%b", &format!("{:.0}", current_brightness))
-        };
+        let text = self.build_string(current_brightness);
         self.inner.set_text(text);
 
         Ok(())
