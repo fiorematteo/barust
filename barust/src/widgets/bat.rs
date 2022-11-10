@@ -71,12 +71,24 @@ impl Battery {
         }))
     }
 
-    #[inline(always)]
     fn read_os_file(&self, filename: &str) -> Option<String> {
         let path = format!("{}/{}", self.root_path, filename);
-        let mut value: String = std::fs::read_to_string(path).ok()?;
-        value.pop(); //removes /n
-        Some(value)
+        let value = std::fs::read_to_string(path).ok()?;
+        Some(value.trim().into())
+    }
+
+    fn get_charge(&self) -> Option<f64> {
+        self.get_from_files("charge_now", "charge_full")
+    }
+
+    fn get_energy(&self) -> Option<f64> {
+        self.get_from_files("energy_now", "energy_full")
+    }
+
+    fn get_from_files(&self, f1: &str, f2: &str) -> Option<f64> {
+        let Some(Ok(v1)) = self.read_os_file(f1).map(|s| s.parse::<f64>()) else {return None;};
+        let Some(Ok(v2)) = self.read_os_file(f2).map(|s| s.parse::<f64>()) else {return None;};
+        Some(v1 / v2 * 100.0)
     }
 }
 
@@ -87,24 +99,7 @@ impl Widget for Battery {
 
     fn update(&mut self) -> Result<()> {
         debug!("updating battery");
-        let status = &self.read_os_file("status");
-        let charge = (|| -> Option<f64> {
-            Some(
-                self.read_os_file("charge_now")?.parse::<f64>().ok()?
-                    / self.read_os_file("charge_full")?.parse::<f64>().ok()?
-                    * 100.0,
-            )
-        })();
-
-        let energy = (|| -> Option<f64> {
-            Some(
-                self.read_os_file("energy_now")?.parse::<f64>().ok()?
-                    / self.read_os_file("energy_full")?.parse::<f64>().ok()?
-                    * 100.0,
-            )
-        })();
-
-        let percent = match (charge, energy) {
+        let percent = match (self.get_charge(), self.get_energy()) {
             (Some(c), Some(_)) => c,
             (Some(c), None) => c,
             (None, Some(e)) => e,
@@ -120,7 +115,12 @@ impl Widget for Battery {
             .format
             .replace(
                 "%i",
-                if status.as_ref().map(|s| s == "Charging").unwrap_or(false) {
+                if self
+                    .read_os_file("status")
+                    .as_ref()
+                    .map(|s| s == "Charging")
+                    .unwrap_or(false)
+                {
                     &self.icons.charging
                 } else {
                     &self.icons.percentages[index]
