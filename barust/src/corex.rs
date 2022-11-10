@@ -2,10 +2,11 @@ use crate::{error::BarustError, statusbar::RightLeft};
 use cairo::Context;
 pub use cairo::{FontSlant, FontWeight};
 use crossbeam_channel::{bounded, Receiver, SendError, Sender};
-use log::error;
+use log::{error, info};
 use psutil::Bytes;
 use signal_hook::iterator::Signals;
 use std::{
+    collections::HashMap,
     ffi::c_int,
     fmt::Debug,
     thread,
@@ -206,26 +207,34 @@ pub struct TimedHooks {
 impl Default for TimedHooks {
     fn default() -> Self {
         let (thread, rx) = bounded::<(Duration, HookSender)>(10);
-        let mut senders = vec![];
+        //let mut senders: Vec<(Instant, Duration, HookSender)> = vec![];
+        let mut senders: HashMap<Duration, (Instant, Vec<HookSender>)> = HashMap::new();
         thread::spawn(move || loop {
             while let Ok(id) = rx.try_recv() {
-                senders.push((Instant::now(), id.0, id.1));
+                if let Some((_, a)) = senders.get_mut(&id.0) {
+                    a.push(id.1);
+                } else {
+                    senders.insert(id.0, (Instant::now(), vec![id.1]));
+                }
             }
-            for (time, duration, sender) in &mut senders {
+            for (duration, (time, senders)) in &mut senders {
                 if time.elapsed() > *duration {
                     *time = Instant::now();
-                    if sender.send().is_err() {
-                        error!("breaking thread loop")
+                    for s in senders {
+                        if s.send().is_err() {
+                            error!("breaking thread loop")
+                        }
                     }
                 }
             }
 
             let smallest_time = senders
                 .iter()
-                .map(|(t, d, _)| (d.saturating_sub(t.elapsed())))
+                .map(|(d, (t, _))| (d.saturating_sub(t.elapsed())))
                 .min()
                 .unwrap_or_else(|| Duration::from_secs(1));
             thread::sleep(smallest_time);
+            info!("waking from sleep");
         });
         Self { thread }
     }
