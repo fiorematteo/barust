@@ -82,7 +82,7 @@ fn main() -> Result<()> {
                 None,
             ),
             Brightness::new(
-                "%i %b%",
+                "%i %p%",
                 &|()| -> Option<u32> {
                     String::from_utf8(Command::new("light").output().ok()?.stdout)
                         .ok()?
