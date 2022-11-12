@@ -101,6 +101,11 @@ atoms!(
     MANAGER
 );
 
+pub fn percentage_to_index(v: f64, out_range: (usize, usize)) -> usize {
+    let scale = (out_range.1 - out_range.0) as f64 / 100.0;
+    (v * scale + out_range.0 as f64) as _
+}
+
 pub fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
     let (s, r): _ = bounded(10);
     let mut signals = Signals::new(signals).unwrap();

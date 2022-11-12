@@ -1,11 +1,14 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks},
+    corex::{
+        percentage_to_index, Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer,
+        TimedHooks,
+    },
     forward_to_inner,
 };
 use cairo::Context;
 use log::debug;
-use std::{cmp::min, fmt::Display, time::Duration};
+use std::{fmt::Display, time::Duration};
 
 /// Icons used by [Volume]
 #[derive(Debug)]
@@ -111,10 +114,7 @@ impl Volume {
             return self.icons.muted.clone();
         }
         let percentages_len = self.icons.percentages.len();
-        let index = min(
-            (volume / percentages_len as f64).floor() as usize,
-            percentages_len - 1,
-        );
+        let index = percentage_to_index(volume, (0, percentages_len - 1));
         self.format
             .replace("%p", &format!("{:.1}", volume))
             .replace("%i", &self.icons.percentages[index].to_string())

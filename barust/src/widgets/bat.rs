@@ -1,11 +1,11 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{EmptyCallback, HookSender, TimedHooks},
+    corex::{percentage_to_index, EmptyCallback, HookSender, TimedHooks},
     forward_to_inner,
 };
 use cairo::Context;
 use log::debug;
-use std::{cmp::min, fmt::Display, fs::read_dir, time::Duration};
+use std::{fmt::Display, fs::read_dir, time::Duration};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
@@ -119,10 +119,7 @@ impl Widget for Battery {
 
         let icon = {
             let percentages_len = percentages.len();
-            let index = min(
-                (percent / percentages_len as f64).floor() as usize,
-                percentages_len - 1,
-            );
+            let index = percentage_to_index(percent, (0, percentages_len - 1));
             &percentages[index]
         };
 

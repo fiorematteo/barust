@@ -1,10 +1,13 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer, TimedHooks},
+    corex::{
+        percentage_to_index, Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer,
+        TimedHooks,
+    },
     forward_to_inner,
 };
 use cairo::Context;
-use std::{cmp::min, fmt::Display, time::Duration};
+use std::{fmt::Display, time::Duration};
 
 /// Icons used by [Brightness]
 #[derive(Debug)]
@@ -60,17 +63,13 @@ impl Brightness {
 
     fn build_string(&self, current_brightness: u32) -> String {
         if self.show_counter.is_done() {
-            String::from("")
-        } else {
-            let percentages_len = self.icons.percentages.len();
-            let index = min(
-                current_brightness as usize / percentages_len,
-                percentages_len - 1,
-            );
-            self.format
-                .replace("%p", &format!("{:.0}", current_brightness))
-                .replace("%i", &self.icons.percentages[index].to_string())
+            return String::from("");
         }
+        let percentages_len = self.icons.percentages.len();
+        let index = percentage_to_index(current_brightness as f64, (0, percentages_len - 1));
+        self.format
+            .replace("%p", &format!("{:.0}", current_brightness))
+            .replace("%i", &self.icons.percentages[index].to_string())
     }
 }
 
@@ -102,14 +101,9 @@ impl Widget for Brightness {
         Ok(())
     }
 
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
-
     forward_to_inner!(size);
     forward_to_inner!(padding);
+    forward_to_inner!(on_click);
 }
 
 impl Display for Brightness {
