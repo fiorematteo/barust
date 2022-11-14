@@ -1,5 +1,5 @@
 use crate::{
-    corex::{Callback, Color, HookSender, Rectangle, TimedHooks},
+    utils::{Callback, Color, HookSender, Rectangle, TimedHooks},
     error::Erc,
     statusbar::StatusBarInfo,
 };

@@ -1,20 +1,22 @@
 use crate::{
-    corex::{
-        notify, set_source_rgba, Atoms, Color, HookSender, Rectangle, StatusBarEvent, TimedHooks,
-        WidgetID,
-    },
     error::{BarustError, Result},
+    utils::{
+        set_source_rgba, Atoms, Color, HookSender, Rectangle, StatusBarEvent, TimedHooks, WidgetID,
+    },
     widgets::{Size, Text, Widget},
 };
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use crossbeam_channel::{bounded, select, Receiver};
 use log::{debug, error, info};
-use signal_hook::consts::{SIGINT, SIGTERM};
-use std::{sync::Arc, thread};
+use signal_hook::{
+    consts::{SIGINT, SIGTERM},
+    iterator::Signals,
+};
+use std::{ffi::c_int, fmt::Debug, sync::Arc, thread};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
-        UnmapWindow, VisualClass, Visualtype, Window, WindowClass,
+        VisualClass, Visualtype, Window, WindowClass,
     },
     Connection, Event, Xid,
 };
@@ -146,7 +148,7 @@ impl StatusBar {
         }
     }
 
-    pub(crate) fn event(&mut self, x: i16, y: i16) {
+    fn event(&mut self, x: i16, y: i16) {
         if let Some(index) = find_collision(&self.right_regions, x, y) {
             self.right_widgets[index].on_click();
         } else if let Some(index) = find_collision(&self.left_regions, x, y) {
@@ -154,7 +156,7 @@ impl StatusBar {
         }
     }
 
-    pub(crate) fn update(&mut self, to_update: WidgetID) -> Result<()> {
+    fn update(&mut self, to_update: WidgetID) -> Result<()> {
         let wd = match to_update {
             (RightLeft::Left, index) => &mut self.left_widgets[index],
             (RightLeft::Right, index) => &mut self.right_widgets[index],
@@ -163,7 +165,7 @@ impl StatusBar {
         Ok(())
     }
 
-    pub(crate) fn generate_regions(&mut self) -> Result<()> {
+    fn generate_regions(&mut self) -> Result<()> {
         let context = Context::new(&self.surface)?;
         let mut rectangle = Rectangle {
             x: 0,
@@ -213,7 +215,7 @@ impl StatusBar {
         Ok(())
     }
 
-    pub(crate) fn draw(&mut self) -> Result<()> {
+    fn draw(&mut self) -> Result<()> {
         if self.left_regions.len() != self.left_widgets.len()
             || self.right_regions.len() != self.right_widgets.len()
         {
@@ -269,15 +271,8 @@ impl StatusBar {
         Ok(())
     }
 
-    pub fn show(&self) -> Result<&Self> {
+    fn show(&self) -> Result<&Self> {
         self.connection.send_and_check_request(&MapWindow {
-            window: self.window,
-        })?;
-        Ok(self)
-    }
-
-    pub fn hide(&self) -> Result<&Self> {
-        self.connection.send_and_check_request(&UnmapWindow {
             window: self.window,
         })?;
         Ok(self)
@@ -411,7 +406,7 @@ impl StatusBarBuilder {
     }
 }
 
-pub(crate) fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<StatusBarEvent>> {
+fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<StatusBarEvent>> {
     let (tx, rx) = bounded(10);
     thread::spawn(move || loop {
         let Ok(Event::X(event)) = connection.wait_for_event() else {
@@ -513,6 +508,19 @@ pub(crate) fn create_xwindow(
     Ok((window, surface))
 }
 
+fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
+    let (s, r): _ = bounded(10);
+    let mut signals = Signals::new(signals).unwrap();
+    thread::spawn(move || {
+        for signal in signals.forever() {
+            if s.send(signal).is_err() {
+                break;
+            }
+        }
+    });
+    Ok(r)
+}
+
 pub(crate) fn screen_true_width(connection: &Connection, screen_id: i32) -> u16 {
     connection
         .get_setup()
@@ -531,7 +539,7 @@ pub(crate) fn screen_true_height(connection: &Connection, screen_id: i32) -> u16
         .height_in_pixels()
 }
 
-pub(crate) fn find_collision(regions: &[Rectangle], x: i16, y: i16) -> Option<usize> {
+fn find_collision(regions: &[Rectangle], x: i16, y: i16) -> Option<usize> {
     regions
         .iter()
         .enumerate()

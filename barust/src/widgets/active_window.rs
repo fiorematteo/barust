@@ -1,6 +1,8 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::corex::{Atoms, EmptyCallback, HookSender, TimedHooks};
-use crate::widget_default;
+use crate::{
+    utils::{Atoms, EmptyCallback, HookSender, TimedHooks},
+    widget_default,
+};
 use cairo::Context;
 use log::{debug, error};
 use std::sync::Arc;

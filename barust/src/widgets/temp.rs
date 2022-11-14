@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{EmptyCallback, HookSender},
+    utils::{EmptyCallback, HookSender},
     widget_default,
 };
 use cairo::Context;
@@ -52,7 +52,7 @@ impl Widget for Temperatures {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, pool: &mut crate::corex::TimedHooks) -> Result<()> {
+    fn hook(&mut self, sender: HookSender, pool: &mut crate::utils::TimedHooks) -> Result<()> {
         pool.subscribe(Duration::from_secs(5), sender)
             .map_err(Error::from)?;
         Ok(())

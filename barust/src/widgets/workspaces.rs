@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
-use crate::corex::{set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks};
+use crate::utils::{set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks};
 use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};

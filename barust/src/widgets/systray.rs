@@ -1,6 +1,6 @@
 use super::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
 use crate::{
-    corex::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
+    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
     statusbar::{screen_true_height, Position, StatusBarInfo},
 };
 use cairo::Context;

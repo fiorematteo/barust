@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{corex::EmptyCallback, widget_default};
+use crate::{utils::EmptyCallback, widget_default};
 use cairo::Context;
 use log::debug;
 use std::{

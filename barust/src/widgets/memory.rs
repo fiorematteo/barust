@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{bytes_to_closest, EmptyCallback},
+    utils::{bytes_to_closest, EmptyCallback},
     widget_default,
 };
 use cairo::Context;

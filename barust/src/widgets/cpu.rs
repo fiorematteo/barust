@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{EmptyCallback, HookSender, TimedHooks},
+    utils::{EmptyCallback, HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;

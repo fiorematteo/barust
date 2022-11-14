@@ -1,6 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::corex::HookSender;
-use crate::corex::{bytes_to_closest, TimedHooks};
+use crate::utils::{bytes_to_closest, HookSender, TimedHooks};
 use crate::widget_default;
 use cairo::Context;
 use std::{fmt::Display, time::Duration};

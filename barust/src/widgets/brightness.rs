@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    corex::{
+    utils::{
         percentage_to_index, Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer,
         TimedHooks,
     },

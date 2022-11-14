@@ -1,7 +1,7 @@
 use barust::{
-    corex::Color,
     error::Result,
     statusbar::{Position, StatusBar},
+    utils::Color,
     widgets::{
         ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, FilteredWorkspaces, Spacer, Systray,
         Volume, WidgetConfig, Wlan,

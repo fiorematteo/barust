@@ -1,6 +1,6 @@
 use super::{Rectangle, Result, Widget, WidgetConfig, Workspaces};
 use crate::{
-    corex::{Color, HookSender, TimedHooks},
+    utils::{Color, HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;
