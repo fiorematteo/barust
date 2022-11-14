@@ -4,7 +4,7 @@ use crate::{
         percentage_to_index, Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer,
         TimedHooks,
     },
-    forward_to_inner,
+    widget_default,
 };
 use cairo::Context;
 use log::debug;
@@ -100,9 +100,9 @@ impl Widget for Volume {
         Ok(())
     }
 
-    forward_to_inner!(size);
-    forward_to_inner!(padding);
-    forward_to_inner!(on_click);
+    widget_default!(size);
+    widget_default!(padding);
+    widget_default!(on_click);
 }
 
 impl Volume {

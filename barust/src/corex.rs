@@ -2,7 +2,7 @@ use crate::{error::BarustError, statusbar::RightLeft};
 use cairo::Context;
 pub use cairo::{FontSlant, FontWeight};
 use crossbeam_channel::{bounded, Receiver, SendError, Sender};
-use log::{error, info};
+use log::{error, debug};
 use psutil::Bytes;
 use signal_hook::iterator::Signals;
 use std::{
@@ -239,7 +239,7 @@ impl Default for TimedHooks {
                 .min()
                 .unwrap_or_else(|| Duration::from_secs(1));
             thread::sleep(smallest_time);
-            info!("waking from sleep");
+            debug!("waking from sleep");
         });
         Self { thread }
     }

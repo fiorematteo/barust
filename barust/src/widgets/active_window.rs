@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::corex::{Atoms, EmptyCallback, HookSender, TimedHooks};
-use crate::forward_to_inner;
+use crate::widget_default;
 use cairo::Context;
 use log::{debug, error};
 use std::sync::Arc;
@@ -136,9 +136,9 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    forward_to_inner!(size);
-    forward_to_inner!(padding);
-    forward_to_inner!(on_click);
+    widget_default!(size);
+    widget_default!(padding);
+    widget_default!(on_click);
 }
 
 impl Display for ActiveWindow {

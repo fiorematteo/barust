@@ -148,7 +148,7 @@ pub enum WidgetError {
 type OnClickCallback = Option<Callback<(), ()>>;
 
 #[macro_export]
-macro_rules! forward_to_inner {
+macro_rules! widget_default {
     (size) => {
         fn size(&self, context: &cairo::Context) -> Result<super::Size> {
             self.inner.size(context)

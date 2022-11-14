@@ -1,7 +1,7 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
     corex::{percentage_to_index, EmptyCallback, HookSender, TimedHooks},
-    forward_to_inner,
+    widget_default,
 };
 use cairo::Context;
 use log::debug;
@@ -138,9 +138,9 @@ impl Widget for Battery {
         Ok(())
     }
 
-    forward_to_inner!(size);
-    forward_to_inner!(padding);
-    forward_to_inner!(on_click);
+    widget_default!(size);
+    widget_default!(padding);
+    widget_default!(on_click);
 }
 
 impl Display for Battery {

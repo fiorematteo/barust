@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{corex::EmptyCallback, forward_to_inner};
+use crate::{corex::EmptyCallback, widget_default};
 use cairo::Context;
 use log::debug;
 use std::{
@@ -106,9 +106,9 @@ impl Widget for Network {
         Ok(())
     }
 
-    forward_to_inner!(size);
-    forward_to_inner!(padding);
-    forward_to_inner!(on_click);
+    widget_default!(size);
+    widget_default!(padding);
+    widget_default!(on_click);
 }
 
 impl Display for Network {

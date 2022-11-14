@@ -1,7 +1,7 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
     corex::{EmptyCallback, HookSender, TimedHooks},
-    forward_to_inner,
+    widget_default,
 };
 use cairo::Context;
 use log::debug;
@@ -37,6 +37,16 @@ impl Wlan {
             on_click: on_click.map(|c| c.into()),
         })
     }
+
+    fn build_string(&self) -> String {
+        let Some(data) = iwlib::get_wireless_info(self.interface.clone()) else {
+            return String::from("No interface")
+        };
+        self.format
+            .replace("%i", &self.interface)
+            .replace("%e", &data.wi_essid)
+            .replace("%q", &data.wi_quality.to_string())
+    }
 }
 
 impl Widget for Wlan {
@@ -45,14 +55,7 @@ impl Widget for Wlan {
     }
     fn update(&mut self) -> Result<()> {
         debug!("updating wlan");
-        let text = iwlib::get_wireless_info(self.interface.clone())
-            .map(|data| {
-                self.format
-                    .replace("%i", &self.interface)
-                    .replace("%e", &data.wi_essid)
-                    .replace("%q", &data.wi_quality.to_string())
-            })
-            .unwrap_or_else(|| "No interface".into());
+        let text = self.build_string();
         self.inner.set_text(text);
         Ok(())
     }
@@ -64,9 +67,9 @@ impl Widget for Wlan {
         Ok(())
     }
 
-    forward_to_inner!(size);
-    forward_to_inner!(padding);
-    forward_to_inner!(on_click);
+    widget_default!(size);
+    widget_default!(padding);
+    widget_default!(on_click);
 }
 
 impl Display for Wlan {

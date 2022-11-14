@@ -1,7 +1,7 @@
 use super::{Rectangle, Result, Widget, WidgetConfig, Workspaces};
 use crate::{
     corex::{Color, HookSender, TimedHooks},
-    forward_to_inner,
+    widget_default,
 };
 use cairo::Context;
 use std::fmt::Display;
@@ -49,8 +49,8 @@ impl Widget for FilteredWorkspaces {
         self.inner.hook(sender, pool)
     }
 
-    forward_to_inner!(size);
-    forward_to_inner!(padding);
+    widget_default!(size);
+    widget_default!(padding);
 }
 
 impl Display for FilteredWorkspaces {
