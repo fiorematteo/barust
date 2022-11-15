@@ -1,7 +1,7 @@
 use super::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
 use crate::{
-    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
     statusbar::{screen_true_height, Position, StatusBarInfo},
+    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
 };
 use cairo::Context;
 use crossbeam_channel::{bounded, Receiver};

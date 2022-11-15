@@ -1,5 +1,5 @@
 use super::hook_sender::HookSender;
-use crossbeam_channel::{bounded, Sender, SendError};
+use crossbeam_channel::{bounded, SendError, Sender};
 use log::{debug, error};
 use std::{
     collections::HashMap,

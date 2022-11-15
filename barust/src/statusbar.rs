@@ -149,11 +149,16 @@ impl StatusBar {
     }
 
     fn event(&mut self, x: i16, y: i16) {
-        if let Some(index) = find_collision(&self.right_regions, x, y) {
-            self.right_widgets[index].on_click();
+        let (region, widget) = if let Some(index) = find_collision(&self.right_regions, x, y) {
+            (&self.right_regions[index], &self.right_widgets[index])
         } else if let Some(index) = find_collision(&self.left_regions, x, y) {
-            self.left_widgets[index].on_click();
-        }
+            (&self.left_regions[index], &self.left_widgets[index])
+        } else {
+            return;
+        };
+        let widget_x = x as u32 - region.x;
+        let widget_y = y as u32 - region.y;
+        widget.on_click(widget_x, widget_y);
     }
 
     fn update(&mut self, to_update: WidgetID) -> Result<()> {
@@ -546,7 +551,7 @@ fn find_collision(regions: &[Rectangle], x: i16, y: i16) -> Option<usize> {
         .find(|(_, r)| {
             let x = x as u32;
             let y = y as u32;
-            r.x < x && r.x + r.width > x && r.y < y && r.y + r.width > y
+            r.x <= x && r.x + r.width >= x && r.y <= y && r.y + r.width >= y
         })
         .map(|(index, _)| index)
 }

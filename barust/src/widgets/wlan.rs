@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{EmptyCallback, HookSender, TimedHooks},
+    utils::{HookSender, OnClickRaw, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -28,13 +28,13 @@ impl Wlan {
         format: impl ToString,
         interface: String,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             interface,
             inner: *Text::new("", config, None),
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
         })
     }
 

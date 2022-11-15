@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{bytes_to_closest, EmptyCallback},
+    utils::{bytes_to_closest, OnClickRaw},
     widget_default,
 };
 use cairo::Context;
@@ -28,12 +28,12 @@ impl Memory {
     pub fn new(
         format: impl ToString,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new("", config, None),
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
         })
     }
 }

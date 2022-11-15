@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{utils::EmptyCallback, widget_default};
+use crate::{utils::callback::OnClickRaw, widget_default};
 use cairo::Context;
 use log::debug;
 use std::{
@@ -63,13 +63,13 @@ impl Network {
         interface: String,
         icons: Option<NetworkIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             interface,
             inner: *Text::new("", config, None),
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
             icons: icons.unwrap_or_default(),
         })
     }

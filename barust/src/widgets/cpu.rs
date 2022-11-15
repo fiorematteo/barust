@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{EmptyCallback, HookSender, TimedHooks},
+    utils::{HookSender, OnClickRaw, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -30,14 +30,14 @@ impl Cpu {
     pub fn new(
         format: impl ToString,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             format: format.to_string(),
             per: CpuPercentCollector::new().map_err(Error::from)?,
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
             inner: *Text::new("", config, None),
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
         }))
     }
 }

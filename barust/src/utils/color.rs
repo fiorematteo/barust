@@ -17,4 +17,3 @@ impl Color {
 pub fn set_source_rgba(context: &Context, color: Color) {
     context.set_source_rgba(color.r, color.g, color.b, color.a);
 }
-

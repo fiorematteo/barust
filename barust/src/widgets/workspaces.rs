@@ -1,5 +1,8 @@
 use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
-use crate::utils::{set_source_rgba, Atoms, Color, EmptyCallback, HookSender, TimedHooks};
+use crate::{
+    utils::{set_source_rgba, Atoms, Color, HookSender, OnClickRaw, TimedHooks},
+    widget_default,
+};
 use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
@@ -63,12 +66,12 @@ impl Workspaces {
         active_workspace_color: Color,
         internal_padding: u32,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
             fg_color: config.fg_color,
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
             internal_padding,
             active_workspace_color,
             workspaces: Vec::new(),
@@ -179,11 +182,7 @@ impl Widget for Workspaces {
         self.padding
     }
 
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
+    widget_default!(on_click);
 }
 
 impl Display for Workspaces {

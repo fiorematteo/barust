@@ -1,4 +1,4 @@
 pub mod error;
 pub mod statusbar;
-pub mod widgets;
 pub mod utils;
+pub mod widgets;

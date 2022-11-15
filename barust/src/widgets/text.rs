@@ -1,5 +1,8 @@
 use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
-use crate::utils::{set_source_rgba, Color, EmptyCallback};
+use crate::{
+    utils::{set_source_rgba, Color, OnClickRaw},
+    widget_default,
+};
 use cairo::Context;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
@@ -24,7 +27,7 @@ impl Text {
     pub fn new(
         text: impl ToString,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             text: text.to_string(),
@@ -33,7 +36,7 @@ impl Text {
             font: config.font.into(),
             font_size: config.font_size,
             flex: config.flex,
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
         })
     }
 
@@ -83,11 +86,7 @@ impl Widget for Text {
         }
     }
 
-    fn on_click(&self) {
-        if let Some(cb) = &self.on_click {
-            cb.call(());
-        }
-    }
+    widget_default!(on_click);
 }
 
 impl Display for Text {

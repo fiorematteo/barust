@@ -1,7 +1,8 @@
+pub use crate::utils::OnClickCallback;
 use crate::{
-    utils::{Callback, Color, HookSender, Rectangle, TimedHooks},
     error::Erc,
     statusbar::StatusBarInfo,
+    utils::{Color, HookSender, Rectangle, TimedHooks},
 };
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
@@ -77,7 +78,7 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     }
     fn size(&self, context: &Context) -> Result<Size>;
     fn padding(&self) -> u32;
-    fn on_click(&self) {}
+    fn on_click(&self, _x: u32, _y: u32) {}
 }
 
 pub struct WidgetConfig<'a> {
@@ -145,8 +146,6 @@ pub enum WidgetError {
     CustomWidget(#[from] Erc),
 }
 
-type OnClickCallback = Option<Callback<(), ()>>;
-
 #[macro_export]
 macro_rules! widget_default {
     (size) => {
@@ -160,10 +159,8 @@ macro_rules! widget_default {
         }
     };
     (on_click) => {
-        fn on_click(&self) {
-            if let Some(cb) = &self.on_click {
-                cb.call(());
-            }
+        fn on_click(&self, x: u32, y: u32) {
+            self.on_click.call(x, y)
         }
     };
 }

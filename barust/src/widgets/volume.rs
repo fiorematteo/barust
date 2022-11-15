@@ -1,7 +1,7 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
     utils::{
-        percentage_to_index, Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer,
+        percentage_to_index, Callback, HookSender, OnClickRaw, RawCallback, ResettableTimer,
         TimedHooks,
     },
     widget_default,
@@ -56,7 +56,7 @@ impl Volume {
         muted_command: &'static RawCallback<(), Option<bool>>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
@@ -64,7 +64,7 @@ impl Volume {
             muted_command: muted_command.into(),
             icons: icons.unwrap_or_default(),
             inner: *Text::new("", config, None),
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
             previous_volume: 0.0,
             previous_muted: false,
             show_counter: ResettableTimer::new(config.hide_timeout),

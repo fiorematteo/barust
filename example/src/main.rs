@@ -49,7 +49,7 @@ fn main() -> Result<()> {
         .right_widgets(vec![
             Systray::new(20, &wd_config)?,
             Disk::new("💾 %f", "/", &wd_config, None),
-            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|| {})),
+            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|_, _| {})),
             Cpu::new("💻 %p%", &wd_config, None)?,
             Battery::new("%i %c%", None, &wd_config, None)?,
             Volume::new(

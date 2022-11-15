@@ -1,7 +1,7 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
     utils::{
-        percentage_to_index, Callback, EmptyCallback, HookSender, RawCallback, ResettableTimer,
+        percentage_to_index, Callback, HookSender, OnClickRaw, RawCallback, ResettableTimer,
         TimedHooks,
     },
     widget_default,
@@ -48,14 +48,14 @@ impl Brightness {
         brightness_command: &'static RawCallback<(), Option<u32>>,
         icons: Option<BrightnessIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static EmptyCallback>,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new("", config, None),
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
-            on_click: on_click.map(|c| c.into()),
+            on_click: OnClickCallback::new(on_click),
             show_counter: ResettableTimer::new(config.hide_timeout),
             icons: icons.unwrap_or_default(),
         })
