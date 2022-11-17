@@ -77,7 +77,7 @@ pub enum Error {
     Cairo(#[from] cairo::Error),
     CairoIO(#[from] cairo::IoError),
     Io(#[from] std::io::Error),
-    #[error("Unrechable")]
+    #[error("Unreachable")]
     MissedSetup,
     #[error("Mutex Error")]
     Mutex,
