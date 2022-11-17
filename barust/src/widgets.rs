@@ -17,6 +17,7 @@ mod disk;
 mod filtered_workspaces;
 mod memory;
 mod network;
+mod png;
 mod spacer;
 mod systray;
 mod temp;
@@ -34,6 +35,7 @@ pub use disk::Disk;
 pub use filtered_workspaces::FilteredWorkspaces;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
+pub use png::Png;
 pub use spacer::Spacer;
 pub use systray::Systray;
 pub use temp::Temperatures;
@@ -135,6 +137,7 @@ pub enum WidgetError {
     FilteredWorkspaces(#[from] filtered_workspaces::Error),
     Memory(#[from] memory::Error),
     Network(#[from] network::Error),
+    Png(#[from] png::Error),
     #[error("Spacer")]
     Spacer,
     Systray(#[from] systray::Error),
