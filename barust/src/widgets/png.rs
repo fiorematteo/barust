@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Result, Size, Widget, WidgetConfig};
-use crate::{utils::OnClickRaw, widget_default};
+use crate::{statusbar::StatusBarInfo, utils::Rectangle, widget_default};
 use std::{
     fs::File,
     sync::{Arc, Mutex},
@@ -18,7 +18,6 @@ impl Png {
         path: impl ToString,
         width: Option<u32>,
         config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
     ) -> Result<Box<Self>> {
         let mut file = File::open(path.to_string()).map_err(Error::from)?;
         let image = cairo::ImageSurface::create_from_png(&mut file).map_err(Error::from)?;
@@ -26,22 +25,20 @@ impl Png {
             image: Arc::new(Mutex::new(image)),
             width,
             padding: config.padding,
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 }
 
-unsafe impl Send for Png {}
-
 impl Widget for Png {
-    fn setup(&mut self, info: &crate::statusbar::StatusBarInfo) -> Result<()> {
+    fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
         if self.width.is_none() {
             self.width = Some(info.height as _);
         }
         Ok(())
     }
 
-    fn draw(&self, context: &cairo::Context, rectangle: &crate::utils::Rectangle) -> Result<()> {
+    fn draw(&self, context: &cairo::Context, rectangle: &Rectangle) -> Result<()> {
         let image = self.image.lock().map_err(|_| Error::Mutex)?;
         let y_scale = rectangle.height as f64 / image.height() as f64;
         let x_scale = self.width.ok_or(Error::MissedSetup)? as f64 / image.width() as f64;

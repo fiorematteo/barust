@@ -1,5 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::utils::{bytes_to_closest, HookSender, OnClickRaw, TimedHooks};
+use crate::utils::{bytes_to_closest, HookSender, TimedHooks};
 use crate::widget_default;
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
@@ -20,17 +20,12 @@ impl Disk {
     ///  * *%t* will be replaced with the total disk
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
-        format: impl ToString,
-        path: impl ToString,
-        config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
-    ) -> Box<Self> {
+    pub fn new(format: impl ToString, path: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             path: path.to_string(),
-            inner: *Text::new("", config, None),
-            on_click: OnClickCallback::new(on_click),
+            inner: *Text::new("", config),
+            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 }

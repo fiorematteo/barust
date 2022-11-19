@@ -9,7 +9,7 @@ pub mod resettable_timer;
 pub mod timed_hooks;
 
 pub use atoms::Atoms;
-pub use callback::{Callback, EmptyCallback, OnClickCallback, OnClickRaw, RawCallback};
+pub use callback::{ArgCallback, ArgReturnCallback, EmptyCallback, ReturnCallback};
 pub use color::{set_source_rgba, Color};
 pub use hook_sender::{HookSender, WidgetID};
 pub use resettable_timer::ResettableTimer;

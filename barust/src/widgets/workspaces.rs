@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
 use crate::{
-    utils::{set_source_rgba, Atoms, Color, HookSender, OnClickRaw, TimedHooks},
+    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -66,12 +66,11 @@ impl Workspaces {
         active_workspace_color: Color,
         internal_padding: u32,
         config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
             fg_color: config.fg_color,
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
             internal_padding,
             active_workspace_color,
             workspaces: Vec::new(),

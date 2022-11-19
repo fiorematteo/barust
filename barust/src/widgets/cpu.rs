@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{HookSender, OnClickRaw, TimedHooks},
+    utils::{HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -27,17 +27,13 @@ impl Cpu {
     ///  * *%b* will be replaced with the time spent busy
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
-        format: impl ToString,
-        config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
-    ) -> Result<Box<Self>> {
+    pub fn new(format: impl ToString, config: &WidgetConfig) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             format: format.to_string(),
             per: CpuPercentCollector::new().map_err(Error::from)?,
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
-            inner: *Text::new("", config, None),
-            on_click: OnClickCallback::new(on_click),
+            inner: *Text::new("", config),
+            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 }

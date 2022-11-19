@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
 use crate::{
-    utils::{set_source_rgba, Color, OnClickRaw},
+    utils::{set_source_rgba, Color},
     widget_default,
 };
 use cairo::Context;
@@ -24,11 +24,7 @@ impl Text {
     ///* `text` text to display
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
-        text: impl ToString,
-        config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
-    ) -> Box<Self> {
+    pub fn new(text: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             text: text.to_string(),
             padding: config.padding,
@@ -36,13 +32,12 @@ impl Text {
             font: config.font.into(),
             font_size: config.font_size,
             flex: config.flex,
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 
-    pub fn set_text(&mut self, text: impl ToString) -> &Self {
+    pub fn set_text(&mut self, text: impl ToString) {
         self.text = text.to_string();
-        self
     }
 
     fn get_layout(&self, context: &Context) -> Result<Layout> {

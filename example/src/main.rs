@@ -8,8 +8,7 @@ use barust::{
     },
 };
 use log::LevelFilter;
-use std::env;
-use std::{fs::OpenOptions, process::Command, time::Duration};
+use std::{env, fs::OpenOptions, process::Command, time::Duration};
 
 const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
@@ -38,23 +37,20 @@ fn main() -> Result<()> {
                 },
                 &["scratchpad", "pulsemixer"],
             ),
-            ActiveWindow::new(
-                &WidgetConfig {
-                    flex: true,
-                    ..wd_config
-                },
-                None,
-            )?,
+            ActiveWindow::new(&WidgetConfig {
+                flex: true,
+                ..wd_config
+            })?,
         ])
         .right_widgets(vec![
             Systray::new(20, &wd_config)?,
-            Disk::new("💾 %f", "/", &wd_config, None),
-            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config, Some(&|_, _| {})),
-            Cpu::new("💻 %p%", &wd_config, None)?,
-            Battery::new("%i %c%", None, &wd_config, None)?,
+            Disk::new("💾 %f", "/", &wd_config),
+            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config),
+            Cpu::new("💻 %p%", &wd_config)?,
+            Battery::new("%i %c%", None, &wd_config)?,
             Volume::new(
                 "%i %p",
-                &|()| -> Option<f64> {
+                &|| -> Option<f64> {
                     let out = String::from_utf8(
                         Command::new("pulsemixer")
                             .arg("--get-volume")
@@ -66,7 +62,7 @@ fn main() -> Result<()> {
                     let out = out.split(' ').collect::<Vec<_>>();
                     out.first()?.parse::<f64>().ok()
                 },
-                &|()| -> Option<bool> {
+                &|| -> Option<bool> {
                     String::from_utf8(
                         Command::new("pulsemixer")
                             .arg("--get-mute")
@@ -79,11 +75,10 @@ fn main() -> Result<()> {
                 },
                 None,
                 &wd_config,
-                None,
             ),
             Brightness::new(
                 "%i %p%",
-                &|()| -> Option<u32> {
+                &|| -> Option<u32> {
                     String::from_utf8(Command::new("light").output().ok()?.stdout)
                         .ok()?
                         .trim()
@@ -93,9 +88,8 @@ fn main() -> Result<()> {
                 },
                 None,
                 &wd_config,
-                None,
             ),
-            Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config, None),
+            Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config),
         ])
         .build()?;
     bar.start()

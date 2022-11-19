@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{Atoms, HookSender, OnClickRaw, TimedHooks},
+    utils::{Atoms, HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -54,14 +54,14 @@ impl std::fmt::Debug for ActiveWindow {
 }
 
 impl ActiveWindow {
-    pub fn new(config: &WidgetConfig, on_click: Option<&'static OnClickRaw>) -> Result<Box<Self>> {
+    pub fn new(config: &WidgetConfig) -> Result<Box<Self>> {
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
         let atoms = Atoms::new(&connection).map_err(Error::from)?;
         Ok(Box::new(Self {
-            inner: *Text::new("", config, None),
+            inner: *Text::new("", config),
             connection,
             atoms,
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 }

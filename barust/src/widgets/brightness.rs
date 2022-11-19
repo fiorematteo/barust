@@ -1,9 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{
-        percentage_to_index, Callback, HookSender, OnClickRaw, RawCallback, ResettableTimer,
-        TimedHooks,
-    },
+    utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -27,7 +24,7 @@ impl Default for BrightnessIcons {
 #[derive(Debug)]
 pub struct Brightness {
     format: String,
-    brightness_command: Callback<(), Option<u32>>,
+    brightness_command: ReturnCallback<Option<u32>>,
     previous_brightness: u32,
     show_counter: ResettableTimer,
     inner: Text,
@@ -45,17 +42,16 @@ impl Brightness {
     ///* `on_click` callback to run on click
     pub fn new(
         format: impl ToString,
-        brightness_command: &'static RawCallback<(), Option<u32>>,
+        brightness_command: &'static dyn Fn() -> Option<u32>,
         icons: Option<BrightnessIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config, None),
+            inner: *Text::new("", config),
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
             show_counter: ResettableTimer::new(config.hide_timeout),
             icons: icons.unwrap_or_default(),
         })
@@ -79,10 +75,7 @@ impl Widget for Brightness {
     }
 
     fn update(&mut self) -> Result<()> {
-        let current_brightness = self
-            .brightness_command
-            .call(())
-            .ok_or(Error::CommandError)?;
+        let current_brightness = self.brightness_command.call().ok_or(Error::CommandError)?;
 
         if current_brightness != self.previous_brightness {
             self.previous_brightness = current_brightness;

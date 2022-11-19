@@ -124,13 +124,13 @@ impl StatusBar {
             let mut to_update: Option<WidgetID> = None;
             select!(
                 recv(widgets_events) -> id => {
-                    if let Ok(id) = id{
-                        to_update=Some(id)
+                    if let Ok(id) = id {
+                        to_update = Some(id)
                     }
                 },
                 recv(bar_events) -> event => {
                     if let Ok(StatusBarEvent::Click(x, y)) = event {
-                         self.event(x, y);
+                        self.event(x, y);
                     }
                 },
                 recv(signal) -> _ => {
@@ -276,11 +276,11 @@ impl StatusBar {
         Ok(())
     }
 
-    fn show(&self) -> Result<&Self> {
+    fn show(&self) -> Result<()> {
         self.connection.send_and_check_request(&MapWindow {
             window: self.window,
         })?;
-        Ok(self)
+        Ok(())
     }
 }
 
@@ -564,7 +564,6 @@ macro_rules! log_error_and_replace {
             *$wd = Text::new(
                 "Widget Crashed :(",
                 &$crate::widgets::WidgetConfig::default(),
-                None,
             )
         }
     };

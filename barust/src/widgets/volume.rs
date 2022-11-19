@@ -1,9 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{
-        percentage_to_index, Callback, HookSender, OnClickRaw, RawCallback, ResettableTimer,
-        TimedHooks,
-    },
+    utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -32,8 +29,8 @@ impl Default for VolumeIcons {
 pub struct Volume {
     format: String,
     inner: Text,
-    volume_command: Callback<(), Option<f64>>,
-    muted_command: Callback<(), Option<bool>>,
+    volume_command: ReturnCallback<Option<f64>>,
+    muted_command: ReturnCallback<Option<bool>>,
     icons: VolumeIcons,
     previous_volume: f64,
     previous_muted: bool,
@@ -52,19 +49,18 @@ impl Volume {
     ///* `on_click` callback to run on click
     pub fn new(
         format: impl ToString,
-        volume_command: &'static RawCallback<(), Option<f64>>,
-        muted_command: &'static RawCallback<(), Option<bool>>,
+        volume_command: &'static dyn Fn() -> Option<f64>,
+        muted_command: &'static dyn Fn() -> Option<bool>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             volume_command: volume_command.into(),
             muted_command: muted_command.into(),
             icons: icons.unwrap_or_default(),
-            inner: *Text::new("", config, None),
-            on_click: OnClickCallback::new(on_click),
+            inner: *Text::new("", config),
+            on_click: config.on_click.map(|cb| cb.into()),
             previous_volume: 0.0,
             previous_muted: false,
             show_counter: ResettableTimer::new(config.hide_timeout),
@@ -79,8 +75,8 @@ impl Widget for Volume {
 
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let muted = self.muted_command.call(()).unwrap_or(false);
-        let volume = self.volume_command.call(()).unwrap_or(0.0);
+        let muted = self.muted_command.call().unwrap_or(false);
+        let volume = self.volume_command.call().unwrap_or(0.0);
 
         if self.previous_muted != muted || self.previous_volume != volume {
             self.previous_muted = muted;

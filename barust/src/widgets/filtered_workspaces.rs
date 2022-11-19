@@ -19,7 +19,7 @@ impl FilteredWorkspaces {
         config: &WidgetConfig,
         ignored_workspaces: &[T],
     ) -> Box<Self> {
-        let inner = *Workspaces::new(active_workspace_color, internal_padding, config, None);
+        let inner = *Workspaces::new(active_workspace_color, internal_padding, config);
         Box::new(Self {
             inner,
             ignored_workspaces: ignored_workspaces.iter().map(|w| w.to_string()).collect(),

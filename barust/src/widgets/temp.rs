@@ -1,8 +1,5 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{HookSender, OnClickRaw},
-    widget_default,
-};
+use crate::{utils::HookSender, widget_default};
 use cairo::Context;
 use log::debug;
 use psutil::sensors::temperatures;
@@ -21,15 +18,11 @@ impl Temperatures {
     ///  * `%t` will be replaced with the temperature in celsius
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
-        format: impl ToString,
-        config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
-    ) -> Box<Self> {
+    pub fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config, None),
-            on_click: OnClickCallback::new(on_click),
+            inner: *Text::new("", config),
+            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 }

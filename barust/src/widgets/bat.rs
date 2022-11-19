@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{percentage_to_index, HookSender, OnClickRaw, TimedHooks},
+    utils::{percentage_to_index, HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -50,7 +50,6 @@ impl Battery {
         format: impl ToString,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
     ) -> Result<Box<Self>> {
         let mut root_path = String::default();
         for path in read_dir("/sys/class/power_supply")
@@ -69,10 +68,10 @@ impl Battery {
 
         Ok(Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config, None),
+            inner: *Text::new("", config),
             root_path,
             icons: icons.unwrap_or_default(),
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 

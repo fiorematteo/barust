@@ -1,6 +1,6 @@
 use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
 use crate::{
-    utils::{HookSender, OnClickRaw, TimedHooks},
+    utils::{HookSender, TimedHooks},
     widget_default,
 };
 use cairo::Context;
@@ -33,16 +33,12 @@ impl Clock {
     ///* `format` describes how to display the time following [chrono format rules](chrono::format::strftime)
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
-        format: impl ToString,
-        config: &WidgetConfig,
-        on_click: Option<&'static OnClickRaw>,
-    ) -> Box<Self> {
+    pub fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         let format = format.to_string();
         Box::new(Self {
-            inner: *Text::new("", config, None),
+            inner: *Text::new("", config),
             format,
-            on_click: OnClickCallback::new(on_click),
+            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 

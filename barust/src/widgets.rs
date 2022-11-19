@@ -1,8 +1,7 @@
-pub use crate::utils::OnClickCallback;
 use crate::{
     error::Erc,
     statusbar::StatusBarInfo,
-    utils::{Color, HookSender, Rectangle, TimedHooks},
+    utils::{ArgCallback, Color, HookSender, Rectangle, TimedHooks},
 };
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
@@ -44,6 +43,9 @@ pub use volume::{Volume, VolumeIcons};
 pub use wlan::Wlan;
 pub use workspaces::Workspaces;
 
+pub type OnClickCallback = Option<ArgCallback<(u32, u32)>>;
+pub type OnClickRaw = dyn Fn((u32, u32));
+
 pub enum Size {
     Flex,
     Static(u32),
@@ -64,7 +66,7 @@ impl Size {
 
 pub type Result<T> = std::result::Result<T, WidgetError>;
 
-pub trait Widget: std::fmt::Debug + Display + Send {
+pub trait Widget: std::fmt::Debug + Display {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()>;
     fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
         Ok(())
@@ -90,6 +92,7 @@ pub struct WidgetConfig<'a> {
     pub fg_color: Color,
     pub hide_timeout: Duration,
     pub flex: bool,
+    pub on_click: Option<&'static OnClickRaw>,
 }
 
 impl<'a> WidgetConfig<'a> {
@@ -100,6 +103,7 @@ impl<'a> WidgetConfig<'a> {
         fg_color: Color,
         hide_timeout: Duration,
         flex: bool,
+        on_click: Option<&'static OnClickRaw>,
     ) -> Self {
         Self {
             font,
@@ -108,6 +112,7 @@ impl<'a> WidgetConfig<'a> {
             fg_color,
             hide_timeout,
             flex,
+            on_click,
         }
     }
 }
@@ -121,6 +126,7 @@ impl Default for WidgetConfig<'_> {
             fg_color: Color::new(1.0, 1.0, 1.0, 1.0),
             hide_timeout: Duration::from_secs(1),
             flex: false,
+            on_click: None,
         }
     }
 }
@@ -163,7 +169,9 @@ macro_rules! widget_default {
     };
     (on_click) => {
         fn on_click(&self, x: u32, y: u32) {
-            self.on_click.call(x, y)
+            if let Some(on_click) = &self.on_click {
+                on_click.call((x, y));
+            }
         }
     };
 }

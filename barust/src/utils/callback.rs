@@ -1,62 +1,103 @@
-pub type RawCallback<T, R> = dyn Fn(T) -> R + Send + Sync;
-pub type EmptyCallback = dyn Fn() + Send + Sync;
-
-pub type OnClickRaw = dyn Fn(u32, u32) + Send + Sync + 'static;
-pub struct OnClickCallback {
-    pub callback: Option<Box<OnClickRaw>>,
+pub struct ArgReturnCallback<A, R> {
+    cb: Box<dyn Fn(A) -> R>,
 }
 
-impl OnClickCallback {
-    pub fn new(callback: Option<&'static OnClickRaw>) -> Self {
-        Self {
-            callback: callback.map(|c| Box::new(c) as Box<OnClickRaw>),
-        }
+impl<A, R> ArgReturnCallback<A, R> {
+    pub fn new(cb: Box<dyn Fn(A) -> R>) -> Self {
+        Self { cb }
     }
 
-    pub fn call(&self, x: u32, y: u32) {
-        let Some(cb) = self.callback.as_ref() else {return};
-        (cb)(x, y)
+    pub fn call(&self, arg: A) -> R {
+        (self.cb)(arg)
     }
 }
 
-impl std::fmt::Debug for OnClickCallback {
+impl<A, R> From<&'static (dyn Fn(A) -> R)> for ArgReturnCallback<A, R> {
+    fn from(cb: &'static (dyn Fn(A) -> R)) -> Self {
+        Self::new(Box::new(cb))
+    }
+}
+
+impl<A, R> std::fmt::Debug for ArgReturnCallback<A, R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "OnClickCallback")
+        write!(f, "ArgReturnCallback")
     }
 }
 
-pub struct Callback<T, R> {
-    callback: Box<RawCallback<T, R>>,
+pub struct ArgCallback<A> {
+    cb: Box<dyn Fn(A)>,
 }
 
-impl<T, R> Callback<T, R> {
-    pub fn new(callback: Box<RawCallback<T, R>>) -> Self {
-        Self { callback }
+impl<A> ArgCallback<A> {
+    pub fn new(cb: Box<dyn Fn(A)>) -> Self {
+        Self { cb }
     }
 
-    pub fn call(&self, arg: T) -> R {
-        (self.callback)(arg)
-    }
-}
-
-impl<T, R> From<&'static RawCallback<T, R>> for Callback<T, R> {
-    fn from(c: &'static RawCallback<T, R>) -> Self {
-        Self {
-            callback: Box::new(c),
-        }
+    pub fn call(&self, arg: A) {
+        (self.cb)(arg)
     }
 }
 
-impl From<&'static EmptyCallback> for Callback<(), ()> {
-    fn from(c: &'static EmptyCallback) -> Self {
-        Self {
-            callback: Box::new(|()| c()),
-        }
+impl<A> From<&'static dyn Fn(A)> for ArgCallback<A> {
+    fn from(cb: &'static dyn Fn(A)) -> Self {
+        Self::new(Box::new(cb))
     }
 }
 
-impl<T, R> std::fmt::Debug for Callback<T, R> {
+impl<A> std::fmt::Debug for ArgCallback<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Callback")
+        write!(f, "ArgCallback")
+    }
+}
+
+pub struct ReturnCallback<R> {
+    cb: Box<dyn Fn() -> R>,
+}
+
+impl<R> ReturnCallback<R> {
+    pub fn new(cb: Box<dyn Fn() -> R>) -> Self {
+        Self { cb }
+    }
+
+    pub fn call(&self) -> R {
+        (self.cb)()
+    }
+}
+
+impl<R> std::fmt::Debug for ReturnCallback<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ReturnCallback")
+    }
+}
+
+impl<R> From<&'static dyn Fn() -> R> for ReturnCallback<R> {
+    fn from(cb: &'static dyn Fn() -> R) -> Self {
+        Self::new(Box::new(cb))
+    }
+}
+
+pub struct EmptyCallback {
+    cb: Box<dyn Fn()>,
+}
+
+impl EmptyCallback {
+    pub fn new(cb: Box<dyn Fn()>) -> Self {
+        Self { cb }
+    }
+
+    pub fn call(&self) {
+        (self.cb)()
+    }
+}
+
+impl From<&'static (dyn Fn())> for EmptyCallback {
+    fn from(cb: &'static (dyn Fn())) -> Self {
+        Self::new(Box::new(cb))
+    }
+}
+
+impl std::fmt::Debug for EmptyCallback {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "EmptyCallback")
     }
 }
