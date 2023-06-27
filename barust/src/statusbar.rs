@@ -7,7 +7,7 @@ use crate::{
 };
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use crossbeam_channel::{bounded, select, Receiver};
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
@@ -80,7 +80,7 @@ impl StatusBar {
 
     /// Starts the [StatusBar] drawing and event loop
     pub fn start(mut self) -> Result<()> {
-        info!("Starting loop");
+        trace!("Starting loop");
         let (tx, widgets_events) = bounded::<WidgetID>(10);
 
         debug!("Widget setup");

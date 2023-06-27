@@ -45,7 +45,6 @@ impl Systray {
     ///* `icon_size` width of the icons
     ///* `config` a [WidgetConfig]
     pub fn new(internal_padding: u32, config: &WidgetConfig) -> Result<Box<Self>> {
-        warn!("Systray is unstable");
         let (connection, screen_id) = Connection::connect(None).map_err(Error::from)?;
 
         Ok(Box::new(Self {
