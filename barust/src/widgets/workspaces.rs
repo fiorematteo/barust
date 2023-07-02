@@ -44,6 +44,13 @@ pub fn get_current_desktop(connection: &Connection, atoms: &Atoms) -> Result<u32
         .map(|v| *v)
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum WorkspaceStatus {
+    Active,
+    Used,
+    Empty,
+}
+
 /// Displays informations about the active workspaces
 #[derive(Debug)]
 pub struct Workspaces {
@@ -54,7 +61,8 @@ pub struct Workspaces {
     on_click: OnClickCallback,
     internal_padding: u32,
     active_workspace_color: Color,
-    pub workspaces: Vec<(String, bool)>,
+    ignored_workspaces: Vec<String>,
+    pub workspaces: Vec<(String, WorkspaceStatus)>,
 }
 
 impl Workspaces {
@@ -66,6 +74,7 @@ impl Workspaces {
         active_workspace_color: Color,
         internal_padding: u32,
         config: &WidgetConfig,
+        ignored_workspaces: &[impl ToString],
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
@@ -76,6 +85,7 @@ impl Workspaces {
             workspaces: Vec::new(),
             font: config.font.into(),
             font_size: config.font_size,
+            ignored_workspaces: ignored_workspaces.iter().map(ToString::to_string).collect(),
         })
     }
 
@@ -95,11 +105,12 @@ impl Widget for Workspaces {
         let layout = self.get_layout(context)?;
         let mut first = true;
         for (workspace, active) in &self.workspaces {
-            if *active {
-                set_source_rgba(context, self.active_workspace_color);
-            } else {
-                set_source_rgba(context, self.fg_color);
-            }
+            let color = match active {
+                WorkspaceStatus::Active => self.active_workspace_color,
+                WorkspaceStatus::Used => self.fg_color,
+                WorkspaceStatus::Empty => Color::new(0.4, 0.4, 0.4, 1.0),
+            };
+            set_source_rgba(context, color);
             layout.set_text(workspace);
             if first {
                 first = false;
@@ -128,10 +139,16 @@ impl Widget for Workspaces {
         let Ok(index) = get_current_desktop(&connection, &atoms) else {
             return Ok(())
         };
-        self.workspaces = workspace.iter().map(|w| (w.to_owned(), false)).collect();
+        self.workspaces = workspace
+            .iter()
+            .map(|w| (w.to_owned(), WorkspaceStatus::Empty))
+            .collect();
         if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
-            active_workspace.1 = true;
+            active_workspace.1 = WorkspaceStatus::Active;
         }
+
+        self.workspaces
+            .retain(|name| !self.ignored_workspaces.contains(&name.0));
 
         Ok(())
     }

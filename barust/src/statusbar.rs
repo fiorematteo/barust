@@ -7,7 +7,7 @@ use crate::{
 };
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use crossbeam_channel::{bounded, select, Receiver};
-use log::{debug, error, info, trace};
+use log::{debug, error, trace};
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
@@ -514,7 +514,7 @@ pub(crate) fn create_xwindow(
 }
 
 fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
-    let (s, r): _ = bounded(10);
+    let (s, r) = bounded(10);
     let mut signals = Signals::new(signals).unwrap();
     thread::spawn(move || {
         for signal in signals.forever() {

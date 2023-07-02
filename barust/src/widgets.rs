@@ -13,10 +13,10 @@ mod brightness;
 mod clock;
 mod cpu;
 mod disk;
-mod filtered_workspaces;
 mod memory;
 mod network;
 mod png;
+mod qtile_workspaces;
 mod spacer;
 mod systray;
 mod temp;
@@ -31,10 +31,10 @@ pub use brightness::Brightness;
 pub use clock::Clock;
 pub use cpu::Cpu;
 pub use disk::Disk;
-pub use filtered_workspaces::FilteredWorkspaces;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
 pub use png::Png;
+pub use qtile_workspaces::QtileWorkspaces;
 pub use spacer::Spacer;
 pub use systray::Systray;
 pub use temp::Temperatures;
@@ -140,7 +140,6 @@ pub enum WidgetError {
     Clock(#[from] clock::Error),
     Cpu(#[from] cpu::Error),
     Disk(#[from] disk::Error),
-    FilteredWorkspaces(#[from] filtered_workspaces::Error),
     Memory(#[from] memory::Error),
     Network(#[from] network::Error),
     Png(#[from] png::Error),
@@ -174,4 +173,9 @@ macro_rules! widget_default {
             }
         }
     };
+
+    ($a:ident, $($b:tt)*) => {
+        widget_default!($a);
+        widget_default!($($b)*);
+    }
 }

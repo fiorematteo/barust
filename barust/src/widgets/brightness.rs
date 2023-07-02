@@ -94,9 +94,7 @@ impl Widget for Brightness {
         Ok(())
     }
 
-    widget_default!(size);
-    widget_default!(padding);
-    widget_default!(on_click);
+    widget_default!(size, padding, on_click);
 }
 
 impl Display for Brightness {

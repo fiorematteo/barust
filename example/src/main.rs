@@ -3,7 +3,7 @@ use barust::{
     statusbar::{Position, StatusBar},
     utils::Color,
     widgets::{
-        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, FilteredWorkspaces, Spacer, Systray,
+        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, QtileWorkspaces, Spacer, Systray,
         Volume, WidgetConfig, Wlan,
     },
 };
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         .background(BLANK)
         .left_widgets(vec![
             Spacer::new(20),
-            FilteredWorkspaces::new::<&str>(
+            QtileWorkspaces::new(
                 PURPLE,
                 10,
                 &WidgetConfig {
