@@ -1,4 +1,4 @@
-use super::{Rectangle, Result, Size, Widget};
+use crate::{Rectangle, Result, Size, Widget};
 use cairo::Context;
 use std::fmt::Display;
 

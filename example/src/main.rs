@@ -1,11 +1,11 @@
 use barust::{
-    error::Result,
-    statusbar::{Position, StatusBar},
-    utils::Color,
+    statusbar::StatusBar,
+    utils::{Color, Position},
     widgets::{
         ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, QtileWorkspaces, Spacer, Systray,
         Volume, WidgetConfig, Wlan,
     },
+    Result,
 };
 use log::LevelFilter;
 use std::{env, fs::OpenOptions, process::Command, time::Duration};

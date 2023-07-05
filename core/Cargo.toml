@@ -1,0 +1,28 @@
+[package]
+name = "barust"
+version = "0.2.0"
+edition = "2021"
+description = "A X11 status bar"
+repository = "https://github.com/fiorematteo/barust"
+readme = "../README.md"
+keywords = ["x11", "status", "bar"]
+categories = ["gui"]
+license = "MIT"
+
+[lib]
+name = "barust"
+
+[dependencies]
+widgets = { path = "../widgets" }
+utils = { path = "../utils" }
+cairo-rs = { workspace = true }
+chrono = { workspace = true }
+crossbeam-channel = { workspace = true }
+iwlib = { workspace = true }
+log = { workspace = true }
+pango = { workspace = true }
+pangocairo = { workspace = true }
+psutil = { workspace = true }
+signal-hook = { workspace = true }
+thiserror = { workspace = true }
+xcb = { workspace = true }

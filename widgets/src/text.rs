@@ -1,12 +1,9 @@
-use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
-use crate::{
-    utils::{set_source_rgba, Color},
-    widget_default,
-};
+use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
 use cairo::Context;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::fmt::Display;
+use utils::{set_source_rgba, Color};
 
 /// Displays custom text
 #[derive(Debug)]
@@ -17,7 +14,6 @@ pub struct Text {
     font: String,
     font_size: f64,
     flex: bool,
-    on_click: OnClickCallback,
 }
 
 impl Text {
@@ -32,7 +28,6 @@ impl Text {
             font: config.font.into(),
             font_size: config.font_size,
             flex: config.flex,
-            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 
@@ -80,8 +75,6 @@ impl Widget for Text {
             self.padding
         }
     }
-
-    widget_default!(on_click);
 }
 
 impl Display for Text {

@@ -1,18 +1,17 @@
-use crate::{
-    error::{BarustError, Result},
-    utils::{
-        set_source_rgba, Atoms, Color, HookSender, Rectangle, StatusBarEvent, TimedHooks, WidgetID,
-    },
-    widgets::{Size, Text, Widget},
-};
+use crate::{BarustError, Result};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use crossbeam_channel::{bounded, select, Receiver};
-use log::{debug, error, trace};
+use log::{debug, error};
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
 };
-use std::{ffi::c_int, fmt::Debug, sync::Arc, thread};
+use std::{ffi::c_int, sync::Arc, thread};
+use utils::{
+    hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
+    HookSender, Position, Rectangle, StatusBarInfo, TimedHooks, WidgetID,
+};
+use widgets::{Size, Text, Widget, WidgetConfig};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -20,41 +19,6 @@ use xcb::{
     },
     Connection, Event, Xid,
 };
-
-#[derive(Clone, Copy, Debug)]
-pub enum Position {
-    Top,
-    Bottom,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum RightLeft {
-    Right,
-    Left,
-}
-
-#[derive(Debug)]
-pub struct StatusBarInfo {
-    pub background: Color,
-    pub left_regions: Vec<Rectangle>,
-    pub right_regions: Vec<Rectangle>,
-    pub height: u32,
-    pub width: u32,
-    pub position: Position,
-}
-
-impl StatusBarInfo {
-    pub fn new(bar: &StatusBar) -> Self {
-        Self {
-            background: bar.background,
-            left_regions: bar.left_regions.clone(),
-            right_regions: bar.right_regions.clone(),
-            height: bar.height,
-            width: bar.width,
-            position: bar.position,
-        }
-    }
-}
 
 /// Represents the Bar displayed on the screen
 pub struct StatusBar {
@@ -80,11 +44,18 @@ impl StatusBar {
 
     /// Starts the [StatusBar] drawing and event loop
     pub fn start(mut self) -> Result<()> {
-        trace!("Starting loop");
+        debug!("Starting loop");
         let (tx, widgets_events) = bounded::<WidgetID>(10);
 
         debug!("Widget setup");
-        let info = StatusBarInfo::new(&self);
+        let info = StatusBarInfo {
+            background: self.background,
+            left_regions: self.left_regions.clone(),
+            right_regions: self.right_regions.clone(),
+            height: self.height,
+            width: self.width,
+            position: self.position,
+        };
         let mut pool = TimedHooks::default();
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
             log_error_and_replace!(wd, wd.setup(&info));
@@ -124,15 +95,9 @@ impl StatusBar {
             let mut to_update: Option<WidgetID> = None;
             select!(
                 recv(widgets_events) -> id => {
-                    if let Ok(id) = id {
-                        to_update = Some(id)
-                    }
+                    to_update = id.ok();
                 },
-                recv(bar_events) -> event => {
-                    if let Ok(StatusBarEvent::Click(x, y)) = event {
-                        self.event(x, y);
-                    }
-                },
+                recv(bar_events) -> _ => {/* just redraw? */ },
                 recv(signal) -> _ => {
                     for wd in self.left_widgets.iter_mut().chain(&mut self.right_widgets){
                         log_error_and_replace!(wd, wd.last_update());
@@ -146,19 +111,6 @@ impl StatusBar {
             self.generate_regions()?;
             self.draw()?;
         }
-    }
-
-    fn event(&mut self, x: i16, y: i16) {
-        let (region, widget) = if let Some(index) = find_collision(&self.right_regions, x, y) {
-            (&self.right_regions[index], &self.right_widgets[index])
-        } else if let Some(index) = find_collision(&self.left_regions, x, y) {
-            (&self.left_regions[index], &self.left_widgets[index])
-        } else {
-            return;
-        };
-        let widget_x = x as u32 - region.x;
-        let widget_y = y as u32 - region.y;
-        widget.on_click(widget_x, widget_y);
     }
 
     fn update(&mut self, to_update: WidgetID) -> Result<()> {
@@ -411,19 +363,14 @@ impl StatusBarBuilder {
     }
 }
 
-fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<StatusBarEvent>> {
+fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     let (tx, rx) = bounded(10);
     thread::spawn(move || loop {
         let Ok(Event::X(event)) = connection.wait_for_event() else {
             continue
         };
-        let event = match event {
-            xcb::x::Event::ButtonPress(data) => {
-                StatusBarEvent::Click(data.event_x(), data.event_y())
-            }
-            _ => StatusBarEvent::Wake,
-        };
-        if tx.send(event).is_err() {
+        debug!("X event: {:?}", event);
+        if tx.send(()).is_err() {
             break;
         }
     });
@@ -526,45 +473,12 @@ fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError
     Ok(r)
 }
 
-pub(crate) fn screen_true_width(connection: &Connection, screen_id: i32) -> u16 {
-    connection
-        .get_setup()
-        .roots()
-        .nth(screen_id as _)
-        .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id))
-        .width_in_pixels()
-}
-
-pub(crate) fn screen_true_height(connection: &Connection, screen_id: i32) -> u16 {
-    connection
-        .get_setup()
-        .roots()
-        .nth(screen_id as _)
-        .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id))
-        .height_in_pixels()
-}
-
-fn find_collision(regions: &[Rectangle], x: i16, y: i16) -> Option<usize> {
-    regions
-        .iter()
-        .enumerate()
-        .find(|(_, r)| {
-            let x = x as u32;
-            let y = y as u32;
-            r.x <= x && r.x + r.width >= x && r.y <= y && r.y + r.width >= y
-        })
-        .map(|(index, _)| index)
-}
-
 macro_rules! log_error_and_replace {
     ( $wd:expr, $r:expr ) => {
         if let Err(e) = $r {
             error!("{:?}", e);
             error!("Replacing widget with default");
-            *$wd = Text::new(
-                "Widget Crashed :(",
-                &$crate::widgets::WidgetConfig::default(),
-            )
+            *$wd = Text::new("Widget Crashed :(", &WidgetConfig::default())
         }
     };
 }

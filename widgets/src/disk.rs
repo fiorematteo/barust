@@ -1,15 +1,13 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::utils::{bytes_to_closest, HookSender, TimedHooks};
-use crate::widget_default;
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
+use utils::{bytes_to_closest, HookSender, TimedHooks};
 
 #[derive(Debug)]
 pub struct Disk {
     format: String,
     path: String,
     inner: Text,
-    on_click: OnClickCallback,
 }
 
 impl Disk {
@@ -25,7 +23,6 @@ impl Disk {
             format: format.to_string(),
             path: path.to_string(),
             inner: *Text::new("", config),
-            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 }
@@ -48,13 +45,11 @@ impl Widget for Disk {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks
-            .subscribe(Duration::from_secs(5), sender)
-            .map_err(Error::from)?;
+        timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Disk {
@@ -66,6 +61,6 @@ impl Display for Disk {
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
     Psutil(#[from] psutil::Error),
 }

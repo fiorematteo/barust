@@ -1,13 +1,10 @@
-use super::{OnClickCallback, Rectangle, Result, Size, Widget, WidgetConfig};
-use crate::{
-    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
-    widget_default,
-};
+use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::{fmt::Display, thread};
+use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
 pub fn get_desktops_names(connection: &Connection, atoms: &Atoms) -> Result<Vec<String>> {
@@ -58,7 +55,6 @@ pub struct Workspaces {
     fg_color: Color,
     font: String,
     font_size: f64,
-    on_click: OnClickCallback,
     internal_padding: u32,
     active_workspace_color: Color,
     ignored_workspaces: Vec<String>,
@@ -79,7 +75,6 @@ impl Workspaces {
         Box::new(Self {
             padding: config.padding,
             fg_color: config.fg_color,
-            on_click: config.on_click.map(|cb| cb.into()),
             internal_padding,
             active_workspace_color,
             workspaces: Vec::new(),
@@ -197,8 +192,6 @@ impl Widget for Workspaces {
     fn padding(&self) -> u32 {
         self.padding
     }
-
-    widget_default!(on_click);
 }
 
 impl Display for Workspaces {

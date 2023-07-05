@@ -1,11 +1,8 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{percentage_to_index, HookSender, TimedHooks},
-    widget_default,
-};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
-use std::{fmt::Display, fs::read_dir, time::Duration};
+use std::{fmt::Display, fs::read_dir};
+use utils::{percentage_to_index, HookSender, TimedHooks};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
@@ -36,7 +33,6 @@ pub struct Battery {
     inner: Text,
     root_path: String,
     icons: BatteryIcons,
-    on_click: OnClickCallback,
 }
 
 impl Battery {
@@ -71,7 +67,6 @@ impl Battery {
             inner: *Text::new("", config),
             root_path,
             icons: icons.unwrap_or_default(),
-            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 
@@ -131,13 +126,11 @@ impl Widget for Battery {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks
-            .subscribe(Duration::from_secs(5), sender)
-            .map_err(Error::from)?;
+        timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Battery {
@@ -150,7 +143,7 @@ impl Display for Battery {
 #[error(transparent)]
 pub enum Error {
     IO(#[from] std::io::Error),
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
     #[error("No battery found")]
     NoBattery,
 }

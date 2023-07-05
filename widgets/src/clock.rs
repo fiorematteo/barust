@@ -1,21 +1,14 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{HookSender, TimedHooks},
-    widget_default,
-};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use chrono::Local;
 use log::debug;
-use std::{
-    fmt::{Debug, Display},
-    time::Duration,
-};
+use std::fmt::{Debug, Display};
+use utils::{HookSender, TimedHooks};
 
 /// Displays a datetime
 pub struct Clock {
     format: String,
     inner: Text,
-    on_click: OnClickCallback,
 }
 
 impl Debug for Clock {
@@ -38,7 +31,6 @@ impl Clock {
         Box::new(Self {
             inner: *Text::new("", config),
             format,
-            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 
@@ -60,13 +52,11 @@ impl Widget for Clock {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks
-            .subscribe(Duration::from_secs(1), sender)
-            .map_err(Error::from)?;
+        timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Clock {
@@ -78,5 +68,5 @@ impl Display for Clock {
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
 }

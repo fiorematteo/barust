@@ -1,5 +1,4 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::widget_default;
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use std::{
@@ -46,7 +45,6 @@ pub struct Network {
     interface: String,
     icons: NetworkIcons,
     inner: Text,
-    on_click: OnClickCallback,
 }
 
 impl Network {
@@ -68,7 +66,6 @@ impl Network {
             format: format.to_string(),
             interface,
             inner: *Text::new("", config),
-            on_click: config.on_click.map(|cb| cb.into()),
             icons: icons.unwrap_or_default(),
         })
     }
@@ -105,7 +102,7 @@ impl Widget for Network {
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Network {

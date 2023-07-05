@@ -1,6 +1,9 @@
-use std::rc::Rc;
-use thiserror::Error;
+pub use utils;
+pub use widgets;
 
+pub mod statusbar;
+
+use thiserror::Error;
 #[derive(Debug, Error)]
 #[error(transparent)]
 pub enum BarustError {
@@ -8,7 +11,7 @@ pub enum BarustError {
     #[error("Draw was called without any regions defined")]
     DrawBeforeUpdate,
     Io(#[from] std::io::Error),
-    Widget(#[from] crate::widgets::WidgetError),
+    Widget(#[from] widgets::WidgetError),
     Xcb(#[from] xcb::Error),
 }
 
@@ -25,22 +28,3 @@ impl From<xcb::ProtocolError> for BarustError {
 }
 
 pub type Result<T> = std::result::Result<T, BarustError>;
-
-/// Rc that implements [std::error::Error]
-#[derive(Debug, Error)]
-pub struct Erc {
-    inner: Rc<dyn std::error::Error>,
-}
-
-impl Erc {
-    pub fn new<E: std::error::Error + 'static>(error: E) -> Self {
-        let inner = Rc::new(error);
-        Self { inner }
-    }
-}
-
-impl std::fmt::Display for Erc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.inner.fmt(f)
-    }
-}

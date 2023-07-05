@@ -6,10 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-barust = { path = "../barust" }
+barust = { path = "../core" }
 cairo-rs = { version = "0.15.12", features = ["xcb", "png"] }
-crossbeam-channel = "0.5.6"
-derive_more = "0.99.17"
 log = "0.4.17"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 simple-logging = "2.0.2"

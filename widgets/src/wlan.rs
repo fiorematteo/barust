@@ -1,11 +1,8 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{HookSender, TimedHooks},
-    widget_default,
-};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
+use utils::{HookSender, TimedHooks};
 
 /// Displays informations about a network interface
 #[derive(Debug)]
@@ -13,7 +10,6 @@ pub struct Wlan {
     format: String,
     interface: String,
     inner: Text,
-    on_click: OnClickCallback,
 }
 
 impl Wlan {
@@ -29,7 +25,6 @@ impl Wlan {
             format: format.to_string(),
             interface,
             inner: *Text::new("", config),
-            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 
@@ -56,13 +51,11 @@ impl Widget for Wlan {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks
-            .subscribe(Duration::from_secs(5), sender)
-            .map_err(Error::from)?;
+        timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Wlan {
@@ -74,5 +67,5 @@ impl Display for Wlan {
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
 }

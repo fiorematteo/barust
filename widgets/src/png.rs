@@ -1,16 +1,15 @@
-use super::{OnClickCallback, Result, Size, Widget, WidgetConfig};
-use crate::{statusbar::StatusBarInfo, utils::Rectangle, widget_default};
+use crate::{Result, Size, Widget, WidgetConfig};
 use std::{
     fs::File,
     sync::{Arc, Mutex},
 };
+use utils::{Rectangle, StatusBarInfo};
 
 #[derive(Debug)]
 pub struct Png {
     image: Arc<Mutex<cairo::ImageSurface>>,
     width: Option<u32>,
     padding: u32,
-    on_click: OnClickCallback,
 }
 
 impl Png {
@@ -25,7 +24,6 @@ impl Png {
             image: Arc::new(Mutex::new(image)),
             width,
             padding: config.padding,
-            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 }
@@ -58,8 +56,6 @@ impl Widget for Png {
     fn padding(&self) -> u32 {
         self.padding
     }
-
-    widget_default!(on_click);
 }
 
 impl std::fmt::Display for Png {

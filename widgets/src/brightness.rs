@@ -1,10 +1,7 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks},
-    widget_default,
-};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
+use utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks};
 
 /// Icons used by [Brightness]
 #[derive(Debug)]
@@ -29,7 +26,6 @@ pub struct Brightness {
     show_counter: ResettableTimer,
     inner: Text,
     icons: BrightnessIcons,
-    on_click: OnClickCallback,
 }
 
 impl Brightness {
@@ -51,7 +47,6 @@ impl Brightness {
             inner: *Text::new("", config),
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
-            on_click: config.on_click.map(|cb| cb.into()),
             show_counter: ResettableTimer::new(config.hide_timeout),
             icons: icons.unwrap_or_default(),
         })
@@ -88,13 +83,11 @@ impl Widget for Brightness {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks
-            .subscribe(self.show_counter.duration / 10, sender)
-            .map_err(Error::from)?;
+        timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Brightness {
@@ -108,5 +101,5 @@ impl Display for Brightness {
 pub enum Error {
     #[error("Failed to execute brightness command")]
     CommandError,
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
 }

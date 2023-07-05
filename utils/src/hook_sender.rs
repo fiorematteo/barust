@@ -1,5 +1,10 @@
-use crate::statusbar::RightLeft;
 use crossbeam_channel::{SendError, Sender};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RightLeft {
+    Right,
+    Left,
+}
 
 pub type WidgetID = (RightLeft, usize);
 

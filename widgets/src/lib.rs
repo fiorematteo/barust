@@ -1,11 +1,7 @@
-use crate::{
-    error::Erc,
-    statusbar::StatusBarInfo,
-    utils::{ArgCallback, Color, HookSender, Rectangle, TimedHooks},
-};
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
 use thiserror::Error;
+use utils::{error::Erc, ArgCallback, Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
 
 mod active_window;
 mod bat;
@@ -164,13 +160,6 @@ macro_rules! widget_default {
     (padding) => {
         fn padding(&self) -> u32 {
             self.inner.padding()
-        }
-    };
-    (on_click) => {
-        fn on_click(&self, x: u32, y: u32) {
-            if let Some(on_click) = &self.on_click {
-                on_click.call((x, y));
-            }
         }
     };
 

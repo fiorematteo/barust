@@ -1,16 +1,15 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{utils::bytes_to_closest, widget_default};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::memory::virtual_memory;
 use std::fmt::Display;
+use utils::bytes_to_closest;
 
 /// Displays memory informations
 #[derive(Debug)]
 pub struct Memory {
     format: String,
     inner: Text,
-    on_click: OnClickCallback,
 }
 
 impl Memory {
@@ -26,7 +25,6 @@ impl Memory {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new("", config),
-            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 }
@@ -50,7 +48,7 @@ impl Widget for Memory {
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Memory {

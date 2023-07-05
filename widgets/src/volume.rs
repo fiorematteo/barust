@@ -1,11 +1,8 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks},
-    widget_default,
-};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
+use utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks};
 
 /// Icons used by [Volume]
 #[derive(Debug)]
@@ -35,7 +32,6 @@ pub struct Volume {
     previous_volume: f64,
     previous_muted: bool,
     show_counter: ResettableTimer,
-    on_click: OnClickCallback,
 }
 
 impl Volume {
@@ -60,7 +56,6 @@ impl Volume {
             muted_command: muted_command.into(),
             icons: icons.unwrap_or_default(),
             inner: *Text::new("", config),
-            on_click: config.on_click.map(|cb| cb.into()),
             previous_volume: 0.0,
             previous_muted: false,
             show_counter: ResettableTimer::new(config.hide_timeout),
@@ -90,13 +85,11 @@ impl Widget for Volume {
     }
 
     fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks
-            .subscribe(self.show_counter.duration / 10, sender)
-            .map_err(Error::from)?;
+        timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Volume {
@@ -124,6 +117,6 @@ impl Display for Volume {
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
     Psutil(#[from] psutil::Error),
 }

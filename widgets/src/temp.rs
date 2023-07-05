@@ -1,16 +1,15 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{utils::HookSender, widget_default};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::sensors::temperatures;
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
+use utils::{HookSender, TimedHooks};
 
 /// Displays the average temperature read by the device sensors
 #[derive(Debug)]
 pub struct Temperatures {
     format: String,
     inner: Text,
-    on_click: OnClickCallback,
 }
 
 impl Temperatures {
@@ -22,7 +21,6 @@ impl Temperatures {
         Box::new(Self {
             format: format.to_string(),
             inner: *Text::new("", config),
-            on_click: config.on_click.map(|cb| cb.into()),
         })
     }
 }
@@ -45,13 +43,12 @@ impl Widget for Temperatures {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, pool: &mut crate::utils::TimedHooks) -> Result<()> {
-        pool.subscribe(Duration::from_secs(5), sender)
-            .map_err(Error::from)?;
+    fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
+        pool.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for Temperatures {
@@ -63,5 +60,5 @@ impl Display for Temperatures {
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<(Duration, HookSender)>),
+    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
 }

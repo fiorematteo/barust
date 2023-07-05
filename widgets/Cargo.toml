@@ -1,0 +1,20 @@
+[package]
+name = "widgets"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+utils = { path = "../utils" }
+cairo-rs = { workspace = true }
+chrono = { workspace = true }
+crossbeam-channel = { workspace = true }
+iwlib = { workspace = true }
+log = { workspace = true }
+pango = { workspace = true }
+pangocairo = { workspace = true }
+psutil = { workspace = true }
+pyo3 = { version = "0.19.0", features = ["auto-initialize"] }
+thiserror = { workspace = true }
+xcb = { workspace = true }

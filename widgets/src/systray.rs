@@ -1,12 +1,12 @@
-use super::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
-use crate::{
-    statusbar::{screen_true_height, Position, StatusBarInfo},
-    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
-};
+use crate::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
 use cairo::Context;
 use crossbeam_channel::{bounded, Receiver};
 use log::{debug, error, warn};
 use std::{fmt::Display, sync::Arc, thread};
+use utils::{
+    screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
+    TimedHooks,
+};
 use xcb::{
     x::{
         ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, ConfigWindow,

@@ -1,18 +1,15 @@
-use super::{OnClickCallback, Rectangle, Result, Widget, WidgetConfig, Workspaces};
 use crate::{
-    utils::{Color, HookSender, TimedHooks},
-    widget_default,
-    widgets::workspaces::WorkspaceStatus,
+    widget_default, workspaces::WorkspaceStatus, Rectangle, Result, Widget, WidgetConfig,
+    Workspaces,
 };
 use cairo::Context;
 use log::{debug, error};
-use pyo3::prelude::*;
-use pyo3::{types::PyModule, Python};
+use pyo3::{types::PyModule, Py, PyResult, Python};
 use std::{collections::HashMap, fmt::Display};
+use utils::{Color, HookSender, TimedHooks};
 
 #[derive(Debug)]
 pub struct QtileWorkspaces {
-    on_click: OnClickCallback,
     inner: Workspaces,
     python_module: Py<PyModule>,
 }
@@ -34,7 +31,6 @@ impl QtileWorkspaces {
             config,
             ignored_workspaces,
         );
-        let on_click = config.on_click.map(|cb| cb.into());
         let python_module = Python::with_gil(|py| -> PyResult<Py<PyModule>> {
             Ok(PyModule::from_code(
                 py,
@@ -52,7 +48,6 @@ def windows():
         })
         .unwrap();
         Box::new(Self {
-            on_click,
             python_module,
             inner: *inner,
         })
@@ -92,7 +87,7 @@ impl Widget for QtileWorkspaces {
         self.inner.hook(sender, _timed_hooks)
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for QtileWorkspaces {

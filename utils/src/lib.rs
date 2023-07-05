@@ -1,5 +1,6 @@
 use psutil::Bytes;
 use std::fmt::Debug;
+use xcb::Connection;
 
 pub mod atoms;
 pub mod callback;
@@ -7,6 +8,7 @@ pub mod color;
 pub mod hook_sender;
 pub mod resettable_timer;
 pub mod timed_hooks;
+pub mod error;
 
 pub use atoms::Atoms;
 pub use callback::{ArgCallback, ArgReturnCallback, EmptyCallback, ReturnCallback};
@@ -15,9 +17,38 @@ pub use hook_sender::{HookSender, WidgetID};
 pub use resettable_timer::ResettableTimer;
 pub use timed_hooks::TimedHooks;
 
-pub enum StatusBarEvent {
-    Wake,
-    Click(i16, i16),
+#[derive(Debug)]
+pub struct StatusBarInfo {
+    pub background: Color,
+    pub left_regions: Vec<Rectangle>,
+    pub right_regions: Vec<Rectangle>,
+    pub height: u32,
+    pub width: u32,
+    pub position: Position,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Position {
+    Top,
+    Bottom,
+}
+
+pub fn screen_true_width(connection: &Connection, screen_id: i32) -> u16 {
+    connection
+        .get_setup()
+        .roots()
+        .nth(screen_id as _)
+        .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id))
+        .width_in_pixels()
+}
+
+pub fn screen_true_height(connection: &Connection, screen_id: i32) -> u16 {
+    connection
+        .get_setup()
+        .roots()
+        .nth(screen_id as _)
+        .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id))
+        .height_in_pixels()
 }
 
 pub fn percentage_to_index(v: f64, out_range: (usize, usize)) -> usize {

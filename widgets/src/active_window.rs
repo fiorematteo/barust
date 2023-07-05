@@ -1,13 +1,10 @@
-use super::{OnClickCallback, Rectangle, Result, Text, Widget, WidgetConfig};
-use crate::{
-    utils::{Atoms, HookSender, TimedHooks},
-    widget_default,
-};
+use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::{debug, error};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fmt::Display, thread};
+use utils::{Atoms, HookSender, TimedHooks};
 use xcb::x::{ChangeWindowAttributes, Cw, Event, EventMask};
 use xcb::XidNew;
 use xcb::{x::Window, Connection};
@@ -44,7 +41,6 @@ pub struct ActiveWindow {
     inner: Text,
     connection: Connection,
     atoms: Atoms,
-    on_click: OnClickCallback,
 }
 
 impl std::fmt::Debug for ActiveWindow {
@@ -61,7 +57,6 @@ impl ActiveWindow {
             inner: *Text::new("", config),
             connection,
             atoms,
-            on_click: config.on_click.map(|cb| cb.into()),
         }))
     }
 }
@@ -135,7 +130,7 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    widget_default!(size, padding, on_click);
+    widget_default!(size, padding);
 }
 
 impl Display for ActiveWindow {
