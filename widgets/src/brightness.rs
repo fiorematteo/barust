@@ -34,20 +34,20 @@ impl Brightness {
     ///  * *%i* will be replaced with the correct icon
     ///* `brightness_command` a function that returns the brightness in a range from 0 to 100
     ///* `icons` sets a custom [VolumeIcons]
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
+    pub async fn new(
         format: impl ToString,
-        brightness_command: &'static dyn Fn() -> Option<u32>,
+        brightness_command: &'static (dyn Fn() -> Option<u32> + Send + Sync),
         icons: Option<BrightnessIcons>,
         config: &WidgetConfig,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config),
             previous_brightness: 0,
             brightness_command: brightness_command.into(),
             show_counter: ResettableTimer::new(config.hide_timeout),
+            inner: *Text::new("", config).await,
             icons: icons.unwrap_or_default(),
         })
     }
@@ -64,6 +64,8 @@ impl Brightness {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Brightness {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -82,7 +84,7 @@ impl Widget for Brightness {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

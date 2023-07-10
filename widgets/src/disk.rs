@@ -1,6 +1,6 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
-use std::fmt::Display;
+use std::{fmt::Display};
 use utils::{bytes_to_closest, HookSender, TimedHooks};
 
 #[derive(Debug)]
@@ -16,17 +16,19 @@ impl Disk {
     ///  * *%u* will be replaced with the used disk
     ///  * *%f* will be replaced with the free disk
     ///  * *%t* will be replaced with the total disk
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: impl ToString, path: impl ToString, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(format: impl ToString, path: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             path: path.to_string(),
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
         })
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Disk {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -44,7 +46,7 @@ impl Widget for Disk {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

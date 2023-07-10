@@ -5,13 +5,13 @@ use xcb::Connection;
 pub mod atoms;
 pub mod callback;
 pub mod color;
+pub mod error;
 pub mod hook_sender;
 pub mod resettable_timer;
 pub mod timed_hooks;
-pub mod error;
 
 pub use atoms::Atoms;
-pub use callback::{ArgCallback, ArgReturnCallback, EmptyCallback, ReturnCallback};
+pub use callback::ReturnCallback;
 pub use color::{set_source_rgba, Color};
 pub use hook_sender::{HookSender, WidgetID};
 pub use resettable_timer::ResettableTimer;

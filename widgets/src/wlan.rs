@@ -1,7 +1,7 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
-use std::fmt::Display;
+use std::{fmt::Display};
 use utils::{HookSender, TimedHooks};
 
 /// Displays informations about a network interface
@@ -20,11 +20,15 @@ impl Wlan {
     ///* `interface` name of the network interface
     ///* `fg_color` foreground color
     ///* `on_click` callback to run on click
-    pub fn new(format: impl ToString, interface: String, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(
+        format: impl ToString,
+        interface: String,
+        config: &WidgetConfig,
+    ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             interface,
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
         })
     }
 
@@ -39,6 +43,8 @@ impl Wlan {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Wlan {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -50,7 +56,7 @@ impl Widget for Wlan {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

@@ -2,7 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::sensors::temperatures;
-use std::fmt::Display;
+use std::{fmt::Display};
 use utils::{HookSender, TimedHooks};
 
 /// Displays the average temperature read by the device sensors
@@ -15,16 +15,18 @@ pub struct Temperatures {
 impl Temperatures {
     ///* `format`
     ///  * `%t` will be replaced with the temperature in celsius
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
         })
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Temperatures {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -43,7 +45,7 @@ impl Widget for Temperatures {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
         pool.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

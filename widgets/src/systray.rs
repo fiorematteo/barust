@@ -43,8 +43,8 @@ impl std::fmt::Debug for Systray {
 
 impl Systray {
     ///* `icon_size` width of the icons
-    ///* `config` a [WidgetConfig]
-    pub fn new(internal_padding: u32, config: &WidgetConfig) -> Result<Box<Self>> {
+    ///* `config` a [&WidgetConfig]
+    pub async fn new(internal_padding: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let (connection, screen_id) = Connection::connect(None).map_err(Error::from)?;
 
         Ok(Box::new(Self {
@@ -310,6 +310,8 @@ impl Systray {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Systray {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         set_source_rgba(
@@ -412,7 +414,7 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);

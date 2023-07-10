@@ -1,8 +1,9 @@
+use std::fmt::Display;
+
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
-use std::fmt::Display;
 use utils::{HookSender, TimedHooks};
 
 /// Displays cpu informations
@@ -21,18 +22,20 @@ impl Cpu {
     ///  * *%s* will be replaced with the time spent in system mode
     ///  * *%i* will be replaced with the time spent idle
     ///  * *%b* will be replaced with the time spent busy
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: impl ToString, config: &WidgetConfig) -> Result<Box<Self>> {
+    pub async fn new(format: impl ToString, config: &WidgetConfig) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             format: format.to_string(),
             per: CpuPercentCollector::new().map_err(Error::from)?,
             times: CpuTimesPercentCollector::new().map_err(Error::from)?,
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
         }))
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Cpu {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -53,7 +56,7 @@ impl Widget for Cpu {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

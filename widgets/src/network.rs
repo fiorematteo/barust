@@ -56,7 +56,7 @@ impl Network {
     ///* `interface` name of the network interface
     ///* `fg_color` foreground color
     ///* `on_click` callback to run on click
-    pub fn new(
+    pub async fn new(
         format: impl ToString,
         interface: String,
         icons: Option<NetworkIcons>,
@@ -65,12 +65,14 @@ impl Network {
         Box::new(Self {
             format: format.to_string(),
             interface,
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
             icons: icons.unwrap_or_default(),
         })
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Network {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)

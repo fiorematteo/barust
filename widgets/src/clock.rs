@@ -2,7 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use chrono::Local;
 use log::debug;
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}};
 use utils::{HookSender, TimedHooks};
 
 /// Displays a datetime
@@ -24,12 +24,12 @@ impl Debug for Clock {
 
 impl Clock {
     ///* `format` describes how to display the time following [chrono format rules](chrono::format::strftime)
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         let format = format.to_string();
         Box::new(Self {
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
             format,
         })
     }
@@ -40,6 +40,8 @@ impl Clock {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Clock {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -51,7 +53,7 @@ impl Widget for Clock {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

@@ -1,7 +1,8 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
-use std::fmt::Display;
+use std::{fmt::Display};
 use utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks};
 
 /// Icons used by [Volume]
@@ -41,12 +42,12 @@ impl Volume {
     ///* `volume_command` a function that returns the volume in a range from 0 to 100
     ///* `muted_command` a function that returns true if the volume is muted
     ///* `icons` sets a custom [VolumeIcons]
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
+    pub async fn new(
         format: impl ToString,
-        volume_command: &'static dyn Fn() -> Option<f64>,
-        muted_command: &'static dyn Fn() -> Option<bool>,
+        volume_command: &'static (dyn Fn() -> Option<f64> + Send + Sync),
+        muted_command: &'static (dyn Fn() -> Option<bool> + Send + Sync),
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
     ) -> Box<Self> {
@@ -55,14 +56,15 @@ impl Volume {
             volume_command: volume_command.into(),
             muted_command: muted_command.into(),
             icons: icons.unwrap_or_default(),
-            inner: *Text::new("", config),
             previous_volume: 0.0,
             previous_muted: false,
             show_counter: ResettableTimer::new(config.hide_timeout),
+            inner: *Text::new("", config).await,
         })
     }
 }
 
+#[async_trait]
 impl Widget for Volume {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -84,7 +86,7 @@ impl Widget for Volume {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

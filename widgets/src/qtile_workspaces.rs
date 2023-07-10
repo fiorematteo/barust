@@ -17,9 +17,9 @@ pub struct QtileWorkspaces {
 impl QtileWorkspaces {
     ///* `active_workspace_color` color of the active workspace
     ///* `internal_padding` space to leave between workspaces name
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
+    pub async fn new(
         active_workspace_color: Color,
         internal_padding: u32,
         config: &WidgetConfig,
@@ -49,11 +49,13 @@ def windows():
         .unwrap();
         Box::new(Self {
             python_module,
-            inner: *inner,
+            inner: *inner.await,
         })
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for QtileWorkspaces {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -83,8 +85,8 @@ impl Widget for QtileWorkspaces {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
-        self.inner.hook(sender, _timed_hooks)
+    async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
+        self.inner.hook(sender, _timed_hooks).await
     }
 
     widget_default!(size, padding);

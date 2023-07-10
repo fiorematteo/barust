@@ -40,9 +40,9 @@ impl Battery {
     ///  * `%c` will be replaced with the charge percentage
     ///  * `%i` will be replaced with the correct icon from `icons`
     ///* `icons` sets a custom [BatteryIcons]
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(
+    pub async fn new(
         format: impl ToString,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
@@ -64,7 +64,7 @@ impl Battery {
 
         Ok(Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
             root_path,
             icons: icons.unwrap_or_default(),
         }))
@@ -91,6 +91,8 @@ impl Battery {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Battery {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -125,7 +127,7 @@ impl Widget for Battery {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         timed_hooks.subscribe(sender).map_err(Error::from)?;
         Ok(())
     }

@@ -50,17 +50,19 @@ impl std::fmt::Debug for ActiveWindow {
 }
 
 impl ActiveWindow {
-    pub fn new(config: &WidgetConfig) -> Result<Box<Self>> {
+    pub async fn new(config: &WidgetConfig) -> Result<Box<Self>> {
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
         let atoms = Atoms::new(&connection).map_err(Error::from)?;
         Ok(Box::new(Self {
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
             connection,
             atoms,
         }))
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for ActiveWindow {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
@@ -74,7 +76,7 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()

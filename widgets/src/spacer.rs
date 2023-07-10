@@ -10,11 +10,13 @@ pub struct Spacer {
 
 impl Spacer {
     ///* `size` width of the space widget in pixel
-    pub fn new(size: u32) -> Box<Self> {
+    pub async fn new(size: u32) -> Box<Self> {
         Box::new(Self { size })
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Spacer {
     fn draw(&self, _context: &Context, _rectangle: &Rectangle) -> Result<()> {
         Ok(())

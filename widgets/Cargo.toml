@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-utils = { path = "../utils" }
+async-trait = { workspace = true }
 cairo-rs = { workspace = true }
 chrono = { workspace = true }
 crossbeam-channel = { workspace = true }
@@ -17,4 +17,6 @@ pangocairo = { workspace = true }
 psutil = { workspace = true }
 pyo3 = { version = "0.19.0", features = ["auto-initialize"] }
 thiserror = { workspace = true }
+tokio = { workspace = true }
+utils = { path = "../utils" }
 xcb = { workspace = true }

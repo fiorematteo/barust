@@ -13,11 +13,12 @@ use std::{env, fs::OpenOptions, process::Command, time::Duration};
 const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     setup_logger();
 
     let wd_config = WidgetConfig {
-        font: "DejaVu Sans Mono",
+        font: "DejaVu Sans Mono".into(),
         font_size: 16.0,
         hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()
@@ -27,27 +28,29 @@ fn main() -> Result<()> {
         .position(Position::Top)
         .background(BLANK)
         .left_widgets(vec![
-            Spacer::new(20),
+            Spacer::new(20).await,
             QtileWorkspaces::new(
                 PURPLE,
                 10,
                 &WidgetConfig {
                     padding: 0,
-                    ..wd_config
+                    ..wd_config.clone()
                 },
                 &["scratchpad", "pulsemixer"],
-            ),
+            )
+            .await,
             ActiveWindow::new(&WidgetConfig {
                 flex: true,
-                ..wd_config
-            })?,
+                ..wd_config.clone()
+            })
+            .await?,
         ])
         .right_widgets(vec![
-            Systray::new(20, &wd_config)?,
-            Disk::new("💾 %f", "/", &wd_config),
-            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config),
-            Cpu::new("💻 %p%", &wd_config)?,
-            Battery::new("%i %c%", None, &wd_config)?,
+            Systray::new(20, &wd_config).await?,
+            Disk::new("💾 %f", "/", &wd_config).await,
+            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
+            Cpu::new("💻 %p%", &wd_config).await?,
+            Battery::new("%i %c%", None, &wd_config).await?,
             Volume::new(
                 "%i %p",
                 &|| -> Option<f64> {
@@ -75,7 +78,8 @@ fn main() -> Result<()> {
                 },
                 None,
                 &wd_config,
-            ),
+            )
+            .await,
             Brightness::new(
                 "%i %p%",
                 &|| -> Option<u32> {
@@ -88,11 +92,13 @@ fn main() -> Result<()> {
                 },
                 None,
                 &wd_config,
-            ),
-            Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config),
+            )
+            .await,
+            Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config).await,
         ])
-        .build()?;
-    bar.start()
+        .build()
+        .await?;
+    bar.start().await
 }
 
 fn setup_logger() {

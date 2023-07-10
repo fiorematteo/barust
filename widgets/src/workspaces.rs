@@ -64,9 +64,8 @@ pub struct Workspaces {
 impl Workspaces {
     ///* `active_workspace_color` color of the active workspace
     ///* `internal_padding` space to leave between workspaces name
-    ///* `config` a [WidgetConfig]
-    ///* `on_click` callback to run on click
-    pub fn new(
+    ///* `config` a [&WidgetConfig]
+    pub async fn new(
         active_workspace_color: Color,
         internal_padding: u32,
         config: &WidgetConfig,
@@ -78,7 +77,7 @@ impl Workspaces {
             internal_padding,
             active_workspace_color,
             workspaces: Vec::new(),
-            font: config.font.into(),
+            font: config.font.to_owned(),
             font_size: config.font_size,
             ignored_workspaces: ignored_workspaces.iter().map(ToString::to_string).collect(),
         })
@@ -94,6 +93,8 @@ impl Workspaces {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Workspaces {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         context.move_to(f64::from(self.padding), 0.0);
@@ -148,7 +149,7 @@ impl Widget for Workspaces {
         Ok(())
     }
 
-    fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()

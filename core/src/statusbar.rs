@@ -43,7 +43,7 @@ impl StatusBar {
     }
 
     /// Starts the [StatusBar] drawing and event loop
-    pub fn start(mut self) -> Result<()> {
+    pub async fn start(mut self) -> Result<()> {
         debug!("Starting loop");
         let (tx, widgets_events) = bounded::<WidgetID>(10);
 
@@ -65,6 +65,7 @@ impl StatusBar {
                     HookSender::new(tx.clone(), (RightLeft::Left, index)),
                     &mut pool
                 )
+                .await
             );
         }
         for (index, wd) in self.right_widgets.iter_mut().enumerate() {
@@ -75,6 +76,7 @@ impl StatusBar {
                     HookSender::new(tx.clone(), (RightLeft::Right, index)),
                     &mut pool
                 )
+                .await
             );
         }
         for wd in self.left_widgets.iter_mut() {
@@ -88,7 +90,7 @@ impl StatusBar {
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.generate_regions()?;
-        self.draw()?;
+        self.draw().await?;
         self.show()?;
 
         loop {
@@ -106,14 +108,14 @@ impl StatusBar {
                 },
             );
             if let Some(to_update) = to_update {
-                self.update(to_update)?;
+                self.update(to_update).await?;
             }
             self.generate_regions()?;
-            self.draw()?;
+            self.draw().await?;
         }
     }
 
-    fn update(&mut self, to_update: WidgetID) -> Result<()> {
+    async fn update(&mut self, to_update: WidgetID) -> Result<()> {
         let wd = match to_update {
             (RightLeft::Left, index) => &mut self.left_widgets[index],
             (RightLeft::Right, index) => &mut self.right_widgets[index],
@@ -172,7 +174,7 @@ impl StatusBar {
         Ok(())
     }
 
-    fn draw(&mut self) -> Result<()> {
+    async fn draw(&mut self) -> Result<()> {
         if self.left_regions.len() != self.left_widgets.len()
             || self.right_regions.len() != self.right_widgets.len()
         {
@@ -265,49 +267,49 @@ impl Default for StatusBarBuilder {
 
 impl StatusBarBuilder {
     ///Set the `StatusBar` offset on the x axis
-    pub fn xoff(&mut self, offset: u16) -> &mut Self {
+    pub fn xoff(mut self, offset: u16) -> Self {
         self.xoff = offset;
         self
     }
 
     ///Set the `StatusBar` offset on the y axis
-    pub fn yoff(&mut self, offset: u16) -> &mut Self {
+    pub fn yoff(mut self, offset: u16) -> Self {
         self.yoff = offset;
         self
     }
 
     ///Set the `StatusBar` width
-    pub fn width(&mut self, width: u16) -> &mut Self {
+    pub fn width(mut self, width: u16) -> Self {
         self.width = Some(width);
         self
     }
 
     ///Set the `StatusBar` height
-    pub fn height(&mut self, height: u16) -> &mut Self {
+    pub fn height(mut self, height: u16) -> Self {
         self.height = height;
         self
     }
 
     ///Set the `StatusBar` position (top or bottom)
-    pub fn position(&mut self, position: Position) -> &mut Self {
+    pub fn position(mut self, position: Position) -> Self {
         self.position = position;
         self
     }
 
     ///Set the `StatusBar` background color
-    pub fn background(&mut self, background: Color) -> &mut Self {
+    pub fn background(mut self, background: Color) -> Self {
         self.background = background;
         self
     }
 
     ///Add a widget to the `StatusBar` on the left
-    pub fn left_widget(&mut self, widget: Box<dyn Widget>) -> &mut Self {
+    pub fn left_widget(mut self, widget: Box<dyn Widget>) -> Self {
         self.left_widgets.push(widget);
         self
     }
 
     ///Add multiple widgets to the `StatusBar` on the left
-    pub fn left_widgets(&mut self, widgets: Vec<Box<dyn Widget>>) -> &mut Self {
+    pub fn left_widgets(mut self, widgets: Vec<Box<dyn Widget>>) -> Self {
         for wd in widgets {
             self.left_widgets.push(wd);
         }
@@ -315,13 +317,13 @@ impl StatusBarBuilder {
     }
 
     ///Add a widget to the `StatusBar` on the right
-    pub fn right_widget(&mut self, widget: Box<dyn Widget>) -> &mut Self {
+    pub fn right_widget(mut self, widget: Box<dyn Widget>) -> Self {
         self.right_widgets.push(widget);
         self
     }
 
     ///Add multiple widgets to the `StatusBar` on the right
-    pub fn right_widgets(&mut self, widgets: Vec<Box<dyn Widget>>) -> &mut Self {
+    pub fn right_widgets(mut self, widgets: Vec<Box<dyn Widget>>) -> Self {
         for wd in widgets {
             self.right_widgets.push(wd);
         }
@@ -329,7 +331,7 @@ impl StatusBarBuilder {
     }
 
     ///Build the `StatusBar` with the previously selected options
-    pub fn build(&mut self) -> Result<StatusBar> {
+    pub async fn build(self) -> Result<StatusBar> {
         let (connection, screen_id) = Connection::connect(None)?;
         let connection = Arc::new(connection);
 
@@ -352,9 +354,9 @@ impl StatusBarBuilder {
             connection,
             height: u32::from(self.height),
             left_regions: Vec::new(),
-            left_widgets: self.left_widgets.drain(..).collect(),
+            left_widgets: self.left_widgets,
             right_regions: Vec::new(),
-            right_widgets: self.right_widgets.drain(..).collect(),
+            right_widgets: self.right_widgets,
             surface,
             width: u32::from(width),
             window,
@@ -478,7 +480,7 @@ macro_rules! log_error_and_replace {
         if let Err(e) = $r {
             error!("{:?}", e);
             error!("Replacing widget with default");
-            *$wd = Text::new("Widget Crashed :(", &WidgetConfig::default())
+            *$wd = Text::new("Widget Crashed :(", &WidgetConfig::default()).await
         }
     };
 }

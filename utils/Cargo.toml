@@ -11,5 +11,6 @@ crossbeam-channel = { workspace = true }
 log = { workspace = true }
 psutil = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
 xcb = { workspace = true }
 

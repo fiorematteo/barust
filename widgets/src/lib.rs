@@ -1,7 +1,8 @@
+use async_trait::async_trait;
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
 use thiserror::Error;
-use utils::{error::Erc, ArgCallback, Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
+use utils::{error::Erc, Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
 
 mod active_window;
 mod bat;
@@ -39,9 +40,6 @@ pub use volume::{Volume, VolumeIcons};
 pub use wlan::Wlan;
 pub use workspaces::Workspaces;
 
-pub type OnClickCallback = Option<ArgCallback<(u32, u32)>>;
-pub type OnClickRaw = dyn Fn((u32, u32));
-
 pub enum Size {
     Flex,
     Static(u32),
@@ -62,7 +60,8 @@ impl Size {
 
 pub type Result<T> = std::result::Result<T, WidgetError>;
 
-pub trait Widget: std::fmt::Debug + Display {
+#[async_trait]
+pub trait Widget: std::fmt::Debug + Display + Send {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()>;
     fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
         Ok(())
@@ -73,7 +72,7 @@ pub trait Widget: std::fmt::Debug + Display {
     fn last_update(&mut self) -> Result<()> {
         Ok(())
     }
-    fn hook(&mut self, _sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, _sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
         Ok(())
     }
     fn size(&self, context: &Context) -> Result<Size>;
@@ -81,48 +80,45 @@ pub trait Widget: std::fmt::Debug + Display {
     fn on_click(&self, _x: u32, _y: u32) {}
 }
 
-pub struct WidgetConfig<'a> {
-    pub font: &'a str,
+#[derive(Debug, Clone)]
+pub struct WidgetConfig {
+    pub font: String,
     pub font_size: f64,
     pub padding: u32,
     pub fg_color: Color,
     pub hide_timeout: Duration,
     pub flex: bool,
-    pub on_click: Option<&'static OnClickRaw>,
 }
 
-impl<'a> WidgetConfig<'a> {
-    pub fn new(
-        font: &'a str,
+impl WidgetConfig {
+    pub async fn new(
+        font: impl ToString,
         font_size: f64,
         padding: u32,
         fg_color: Color,
         hide_timeout: Duration,
         flex: bool,
-        on_click: Option<&'static OnClickRaw>,
-    ) -> Self {
+    ) -> WidgetConfig {
         Self {
-            font,
+            font: font.to_string(),
             font_size,
             padding,
             fg_color,
             hide_timeout,
             flex,
-            on_click,
         }
     }
 }
 
-impl Default for WidgetConfig<'_> {
+impl Default for WidgetConfig {
     fn default() -> Self {
         Self {
-            font: "DejaVu Sans",
+            font: "DejaVu Sans".to_string(),
             font_size: 15.0,
             padding: 10,
             fg_color: Color::new(1.0, 1.0, 1.0, 1.0),
             hide_timeout: Duration::from_secs(1),
             flex: false,
-            on_click: None,
         }
     }
 }

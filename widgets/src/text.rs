@@ -20,12 +20,12 @@ impl Text {
     ///* `text` text to display
     ///* `config` a [WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(text: impl ToString, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(text: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             text: text.to_string(),
             padding: config.padding,
             fg_color: config.fg_color,
-            font: config.font.into(),
+            font: config.font.clone(),
             font_size: config.font_size,
             flex: config.flex,
         })
@@ -45,6 +45,8 @@ impl Text {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Text {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         set_source_rgba(context, self.fg_color);

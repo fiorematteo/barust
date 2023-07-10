@@ -2,7 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::memory::virtual_memory;
-use std::fmt::Display;
+use std::{fmt::Display};
 use utils::bytes_to_closest;
 
 /// Displays memory informations
@@ -19,16 +19,18 @@ impl Memory {
     ///  * *%a* will be replaced with the available ram
     ///  * *%u* will be replaced with the used ram
     ///  * *%f* will be replaced with the free ram
-    ///* `config` a [WidgetConfig]
+    ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            inner: *Text::new("", config),
+            inner: *Text::new("", config).await,
         })
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Memory {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)

@@ -13,7 +13,7 @@ pub struct Png {
 }
 
 impl Png {
-    pub fn new(
+    pub async fn new(
         path: impl ToString,
         width: Option<u32>,
         config: &WidgetConfig,
@@ -28,6 +28,10 @@ impl Png {
     }
 }
 
+unsafe impl Send for Png {}
+
+use async_trait::async_trait;
+#[async_trait]
 impl Widget for Png {
     fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
         if self.width.is_none() {
