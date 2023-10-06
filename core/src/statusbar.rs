@@ -1,12 +1,13 @@
 use crate::{BarustError, Result};
+use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
-use crossbeam_channel::{bounded, select, Receiver};
 use log::{debug, error};
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
 };
-use std::{ffi::c_int, sync::Arc, thread};
+use std::{ffi::c_int, sync::Arc};
+use tokio::{select, spawn, task::spawn_blocking};
 use utils::{
     hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
     HookSender, Position, Rectangle, StatusBarInfo, TimedHooks, WidgetID,
@@ -86,27 +87,29 @@ impl StatusBar {
             log_error_and_replace!(wd, wd.update());
         }
 
-        let signal = notify(&[SIGINT, SIGTERM])?;
+        let signal = notify(&[SIGINT, SIGTERM]).await?;
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.generate_regions()?;
         self.draw().await?;
         self.show()?;
+        pool.start().await;
 
         loop {
             let mut to_update: Option<WidgetID> = None;
             select!(
-                recv(widgets_events) -> id => {
+                id = widgets_events.recv() => {
                     to_update = id.ok();
-                },
-                recv(bar_events) -> _ => {/* just redraw? */ },
-                recv(signal) -> _ => {
+                }
+                _ = bar_events.recv() => {/* just redraw? */ }
+                _ = signal.recv() => {
                     for wd in self.left_widgets.iter_mut().chain(&mut self.right_widgets){
                         log_error_and_replace!(wd, wd.last_update());
                     }
                     return Ok(());
                 },
             );
+
             if let Some(to_update) = to_update {
                 self.update(to_update).await?;
             }
@@ -367,12 +370,12 @@ impl StatusBarBuilder {
 
 fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     let (tx, rx) = bounded(10);
-    thread::spawn(move || loop {
+    spawn_blocking(move || loop {
         let Ok(Event::X(event)) = connection.wait_for_event() else {
             continue
         };
         debug!("X event: {:?}", event);
-        if tx.send(()).is_err() {
+        if tx.send_blocking(()).is_err() {
             break;
         }
     });
@@ -462,12 +465,12 @@ pub(crate) fn create_xwindow(
     Ok((window, surface))
 }
 
-fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
+async fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
     let (s, r) = bounded(10);
     let mut signals = Signals::new(signals).unwrap();
-    thread::spawn(move || {
+    spawn(async move {
         for signal in signals.forever() {
-            if s.send(signal).is_err() {
+            if s.send(signal).await.is_err() {
                 break;
             }
         }

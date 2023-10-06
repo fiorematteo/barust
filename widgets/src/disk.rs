@@ -1,6 +1,6 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
-use std::{fmt::Display};
+use std::fmt::Display;
 use utils::{bytes_to_closest, HookSender, TimedHooks};
 
 #[derive(Debug)]
@@ -18,7 +18,11 @@ impl Disk {
     ///  * *%t* will be replaced with the total disk
     ///* `config` a [&WidgetConfig]
     ///* `on_click` callback to run on click
-    pub async fn new(format: impl ToString, path: impl ToString, config: &WidgetConfig) -> Box<Self> {
+    pub async fn new(
+        format: impl ToString,
+        path: impl ToString,
+        config: &WidgetConfig,
+    ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
             path: path.to_string(),
@@ -47,7 +51,7 @@ impl Widget for Disk {
     }
 
     async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(sender).map_err(Error::from)?;
+        timed_hooks.subscribe(sender);
         Ok(())
     }
 
@@ -63,6 +67,5 @@ impl Display for Disk {
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
     Psutil(#[from] psutil::Error),
 }

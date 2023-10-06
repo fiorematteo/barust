@@ -128,7 +128,7 @@ impl Widget for Battery {
     }
 
     async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(sender).map_err(Error::from)?;
+        timed_hooks.subscribe(sender);
         Ok(())
     }
 
@@ -145,7 +145,6 @@ impl Display for Battery {
 #[error(transparent)]
 pub enum Error {
     IO(#[from] std::io::Error),
-    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
     #[error("No battery found")]
     NoBattery,
 }

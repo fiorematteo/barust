@@ -85,7 +85,7 @@ impl Widget for Brightness {
     }
 
     async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(sender).map_err(Error::from)?;
+        timed_hooks.subscribe(sender);
         Ok(())
     }
 
@@ -103,5 +103,4 @@ impl Display for Brightness {
 pub enum Error {
     #[error("Failed to execute brightness command")]
     CommandError,
-    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
 }

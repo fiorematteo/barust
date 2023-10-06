@@ -2,7 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use chrono::Local;
 use log::debug;
-use std::{fmt::{Debug, Display}};
+use std::fmt::{Debug, Display};
 use utils::{HookSender, TimedHooks};
 
 /// Displays a datetime
@@ -54,7 +54,7 @@ impl Widget for Clock {
     }
 
     async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(sender).map_err(Error::from)?;
+        timed_hooks.subscribe(sender);
         Ok(())
     }
 
@@ -70,5 +70,4 @@ impl Display for Clock {
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
 }

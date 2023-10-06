@@ -2,7 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::memory::virtual_memory;
-use std::{fmt::Display};
+use std::fmt::Display;
 use utils::bytes_to_closest;
 
 /// Displays memory informations

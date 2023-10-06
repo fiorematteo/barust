@@ -2,7 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::sensors::temperatures;
-use std::{fmt::Display};
+use std::fmt::Display;
 use utils::{HookSender, TimedHooks};
 
 /// Displays the average temperature read by the device sensors
@@ -46,7 +46,7 @@ impl Widget for Temperatures {
     }
 
     async fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
-        pool.subscribe(sender).map_err(Error::from)?;
+        pool.subscribe(sender);
         Ok(())
     }
 
@@ -61,6 +61,4 @@ impl Display for Temperatures {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
-}
+pub enum Error {}

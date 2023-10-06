@@ -1,8 +1,9 @@
 use crate::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
+use async_channel::{Receiver, bounded};
 use cairo::Context;
-use crossbeam_channel::{bounded, Receiver};
 use log::{debug, error, warn};
-use std::{fmt::Display, sync::Arc, thread};
+use std::{fmt::Display, sync::Arc};
+use tokio::task::spawn_blocking;
 use utils::{
     screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
     TimedHooks,
@@ -418,9 +419,9 @@ impl Widget for Systray {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);
-        thread::spawn(move || loop {
+        spawn_blocking(move || loop {
             if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
-                if tx.send(event).is_err() || sender.send().is_err() {
+                if tx.send_blocking(event).is_err() || sender.send_blocking().is_err() {
                     error!("breaking systray hook loop");
                     break;
                 }

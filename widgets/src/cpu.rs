@@ -1,9 +1,8 @@
-use std::fmt::Display;
-
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
+use std::fmt::Display;
 use utils::{HookSender, TimedHooks};
 
 /// Displays cpu informations
@@ -57,7 +56,7 @@ impl Widget for Cpu {
     }
 
     async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(sender).map_err(Error::from)?;
+        timed_hooks.subscribe(sender);
         Ok(())
     }
 
@@ -73,6 +72,5 @@ impl Display for Cpu {
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum Error {
-    HookChannel(#[from] crossbeam_channel::SendError<HookSender>),
     Psutil(#[from] psutil::Error),
 }

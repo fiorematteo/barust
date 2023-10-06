@@ -10,7 +10,6 @@ members = [
 async-trait = "0.1.71"
 cairo-rs = { version = "0.15.12", features = ["xcb", "png"] }
 chrono = "0.4.22"
-crossbeam-channel = "0.5.6"
 iwlib = "0.1.0"
 log = "0.4.17"
 pango = "0.15.10"
@@ -20,3 +19,4 @@ signal-hook = "0.3.14"
 thiserror = "1.0.37"
 tokio = { version = "1.29.1", features = ["full"] }
 xcb = { git = "https://github.com/rust-x-bindings/rust-xcb", rev = "dbdaa01" }
+async-channel = "1.9.0"

@@ -1,13 +1,13 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use cairo::Context;
 use log::{debug, error};
-use std::sync::Arc;
-use std::time::Duration;
-use std::{fmt::Display, thread};
+use std::{fmt::Display, sync::Arc, time::Duration};
+use tokio::{spawn, task::spawn_blocking, time::sleep};
 use utils::{Atoms, HookSender, TimedHooks};
-use xcb::x::{ChangeWindowAttributes, Cw, Event, EventMask};
-use xcb::XidNew;
-use xcb::{x::Window, Connection};
+use xcb::{
+    x::{ChangeWindowAttributes, Cw, Event, EventMask, Window},
+    Connection, XidNew,
+};
 
 pub fn get_active_window_name(connection: &Connection, atoms: &Atoms) -> Result<String> {
     let cookie = connection.send_request(&xcb::x::GetProperty {
@@ -101,11 +101,11 @@ impl Widget for ActiveWindow {
         let name_sender = property_sender.clone();
         let name_connection = property_connection.clone();
 
-        thread::spawn(move || loop {
+        spawn_blocking(move || loop {
             let Ok(xcb::Event::X(Event::PropertyNotify(_))) = property_connection.wait_for_event() else {
                 continue
             };
-            if property_sender.send().is_err() {
+            if property_sender.send_blocking().is_err() {
                 error!("breaking active_window hook");
                 break;
             }
@@ -113,20 +113,22 @@ impl Widget for ActiveWindow {
 
         let atoms = self.atoms;
         let mut old_name = "".into();
-        thread::spawn(move || loop {
-            thread::sleep(Duration::from_secs(1));
-            let Ok(new_name) = get_active_window_name(&name_connection, &atoms) else {
-                continue
-            };
+        spawn(async move {
+            loop {
+                sleep(Duration::from_secs(1)).await;
+                let Ok(new_name) = get_active_window_name(&name_connection, &atoms) else {
+                    continue
+                };
 
-            if old_name == new_name {
-                continue;
-            }
+                if old_name == new_name {
+                    continue;
+                }
 
-            old_name = new_name;
-            if name_sender.send().is_err() {
-                error!("breaking active_window hook");
-                break;
+                old_name = new_name;
+                if name_sender.send().await.is_err() {
+                    error!("breaking active_window hook");
+                    break;
+                }
             }
         });
         Ok(())
