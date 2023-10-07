@@ -6,11 +6,11 @@ use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
 };
-use std::{ffi::c_int, sync::Arc};
-use tokio::{select, spawn, task::spawn_blocking};
+use std::{ffi::c_int, sync::Arc, time::Duration};
+use tokio::{select, spawn, task::yield_now};
 use utils::{
     hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
-    HookSender, Position, Rectangle, StatusBarInfo, TimedHooks, WidgetID,
+    HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
 };
 use widgets::{Size, Text, Widget, WidgetConfig};
 use xcb::{
@@ -81,10 +81,10 @@ impl StatusBar {
             );
         }
         for wd in self.left_widgets.iter_mut() {
-            log_error_and_replace!(wd, wd.update());
+            log_error_and_replace!(wd, wd.update().await);
         }
         for wd in self.right_widgets.iter_mut() {
-            log_error_and_replace!(wd, wd.update());
+            log_error_and_replace!(wd, wd.update().await);
         }
 
         let signal = notify(&[SIGINT, SIGTERM]).await?;
@@ -95,6 +95,7 @@ impl StatusBar {
         self.show()?;
         pool.start().await;
 
+        let mut draw_timer = ResettableTimer::new(Duration::from_millis(1000 / 60));
         loop {
             let mut to_update: Option<WidgetID> = None;
             select!(
@@ -114,7 +115,11 @@ impl StatusBar {
                 self.update(to_update).await?;
             }
             self.generate_regions()?;
-            self.draw().await?;
+
+            if draw_timer.is_done() {
+                draw_timer.reset();
+                self.draw().await?;
+            }
         }
     }
 
@@ -123,7 +128,7 @@ impl StatusBar {
             (RightLeft::Left, index) => &mut self.left_widgets[index],
             (RightLeft::Right, index) => &mut self.right_widgets[index],
         };
-        log_error_and_replace!(wd, wd.update());
+        log_error_and_replace!(wd, wd.update().await);
         Ok(())
     }
 
@@ -370,13 +375,15 @@ impl StatusBarBuilder {
 
 fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     let (tx, rx) = bounded(10);
-    spawn_blocking(move || loop {
-        let Ok(Event::X(event)) = connection.wait_for_event() else {
-            continue
-        };
-        debug!("X event: {:?}", event);
-        if tx.send_blocking(()).is_err() {
-            break;
+    spawn(async move {
+        loop {
+            if matches!(connection.poll_for_event(), Ok(Some(Event::X(_))))
+                && tx.send(()).await.is_err()
+            {
+                error!("bar_event_listener channel closed");
+                break;
+            }
+            yield_now().await;
         }
     });
     Ok(rx)

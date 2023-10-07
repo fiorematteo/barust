@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use std::fmt::Display;
 use utils::{bytes_to_closest, HookSender, TimedHooks};
@@ -31,14 +32,13 @@ impl Disk {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Disk {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         let disk_usage = psutil::disk::disk_usage(self.path.clone()).map_err(Error::from)?;
         let text = self
             .format

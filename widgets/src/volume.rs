@@ -78,7 +78,7 @@ impl Widget for Volume {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating volume");
         let muted = self.provider.muted();
         let muted = muted.await.unwrap_or(false);

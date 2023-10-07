@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use std::{fmt::Display, fs::read_dir};
@@ -52,7 +53,7 @@ impl Battery {
             .map_err(Error::from)?
             .flatten()
         {
-            let name = String::from(path.path().to_str().unwrap());
+            let name = path.path().to_string_lossy().to_string();
             if name.contains("BAT") {
                 root_path.clone_from(&name);
                 break;
@@ -77,28 +78,27 @@ impl Battery {
     }
 
     fn get_charge(&self) -> Option<f64> {
-        self.get_from_files("charge_now", "charge_full")
+        self.percentage_from_files("charge_now", "charge_full")
     }
 
     fn get_energy(&self) -> Option<f64> {
-        self.get_from_files("energy_now", "energy_full")
+        self.percentage_from_files("energy_now", "energy_full")
     }
 
-    fn get_from_files(&self, f1: &str, f2: &str) -> Option<f64> {
-        let Some(Ok(v1)) = self.read_os_file(f1).map(|s| s.parse::<f64>()) else {return None;};
-        let Some(Ok(v2)) = self.read_os_file(f2).map(|s| s.parse::<f64>()) else {return None;};
+    fn percentage_from_files(&self, f1: &str, f2: &str) -> Option<f64> {
+        let v1 = self.read_os_file(f1)?.parse::<f64>().ok()?;
+        let v2 = self.read_os_file(f2)?.parse::<f64>().ok()?;
         Some(v1 / v2 * 100.0)
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Battery {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating battery");
         let percent = match (self.get_charge(), self.get_energy()) {
             (Some(c), Some(_)) => c,

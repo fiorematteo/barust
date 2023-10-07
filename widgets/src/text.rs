@@ -1,4 +1,5 @@
 use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
@@ -45,7 +46,6 @@ impl Text {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Text {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {

@@ -68,7 +68,7 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
         Ok(())
     }
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         Ok(())
     }
     fn last_update(&mut self) -> Result<()> {

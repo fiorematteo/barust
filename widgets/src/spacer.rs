@@ -1,4 +1,5 @@
 use crate::{Rectangle, Result, Size, Widget};
+use async_trait::async_trait;
 use cairo::Context;
 use std::fmt::Display;
 
@@ -15,7 +16,6 @@ impl Spacer {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Spacer {
     fn draw(&self, _context: &Context, _rectangle: &Rectangle) -> Result<()> {

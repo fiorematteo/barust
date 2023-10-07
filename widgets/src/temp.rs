@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use psutil::sensors::temperatures;
@@ -25,14 +26,13 @@ impl Temperatures {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Temperatures {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating temp");
         let mut temp: f64 = 0.0;
         let mut count: f64 = 0.0;

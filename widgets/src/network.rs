@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use std::{
@@ -71,14 +72,13 @@ impl Network {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Network {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating network");
         let text = if let Ok((wireless, online)) = get_interface_stats(&self.interface) {
             self.format

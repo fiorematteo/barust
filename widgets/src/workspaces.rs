@@ -1,10 +1,11 @@
 use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::fmt::Display;
-use tokio::task::spawn_blocking;
+use tokio::{spawn, task::yield_now};
 use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
@@ -94,7 +95,6 @@ impl Workspaces {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Workspaces {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
@@ -125,7 +125,7 @@ impl Widget for Workspaces {
         Ok(())
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
         let atoms = Atoms::new(&connection).map_err(Error::from)?;
@@ -165,12 +165,16 @@ impl Widget for Workspaces {
             })
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
-        spawn_blocking(move || loop {
-            if let Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_))) = connection.wait_for_event()
-            {
-                if sender.send_blocking().is_err() {
+        spawn(async move {
+            loop {
+                if matches!(
+                    connection.poll_for_event(),
+                    Ok(Some(xcb::Event::X(xcb::x::Event::PropertyNotify(_))))
+                ) && sender.send().await.is_err()
+                {
                     break;
                 }
+                yield_now().await;
             }
         });
         Ok(())

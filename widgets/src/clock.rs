@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use chrono::Local;
 use log::debug;
@@ -33,23 +34,18 @@ impl Clock {
             format,
         })
     }
-
-    #[inline(always)]
-    fn current_time_str(format: &str) -> String {
-        Local::now().format(format).to_string()
-    }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Clock {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating clock");
-        self.inner.set_text(Self::current_time_str(&self.format));
+        let text = Local::now().format(&self.format);
+        self.inner.set_text(text);
         Ok(())
     }
 
@@ -69,5 +65,4 @@ impl Display for Clock {
 
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
-pub enum Error {
-}
+pub enum Error {}

@@ -3,17 +3,9 @@ use log::{debug, error};
 use std::time::Duration;
 use tokio::{task::spawn, time::sleep};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TimedHooks {
     senders: Vec<HookSender>,
-}
-
-impl Default for TimedHooks {
-    fn default() -> Self {
-        Self {
-            senders: Vec::new(),
-        }
-    }
 }
 
 impl TimedHooks {

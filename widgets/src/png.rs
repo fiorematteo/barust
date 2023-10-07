@@ -1,13 +1,11 @@
 use crate::{Result, Size, Widget, WidgetConfig};
-use std::{
-    fs::File,
-    sync::{Arc, Mutex},
-};
+use async_trait::async_trait;
+use std::{cell::RefCell, fs::File};
 use utils::{Rectangle, StatusBarInfo};
 
 #[derive(Debug)]
 pub struct Png {
-    image: Arc<Mutex<cairo::ImageSurface>>,
+    image: RefCell<cairo::ImageSurface>,
     width: Option<u32>,
     padding: u32,
 }
@@ -21,7 +19,7 @@ impl Png {
         let mut file = File::open(path.to_string()).map_err(Error::from)?;
         let image = cairo::ImageSurface::create_from_png(&mut file).map_err(Error::from)?;
         Ok(Box::new(Self {
-            image: Arc::new(Mutex::new(image)),
+            image: RefCell::new(image),
             width,
             padding: config.padding,
         }))
@@ -30,7 +28,6 @@ impl Png {
 
 unsafe impl Send for Png {}
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Png {
     fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
@@ -41,7 +38,7 @@ impl Widget for Png {
     }
 
     fn draw(&self, context: &cairo::Context, rectangle: &Rectangle) -> Result<()> {
-        let image = self.image.lock().map_err(|_| Error::Mutex)?;
+        let image = self.image.borrow_mut();
         let y_scale = rectangle.height as f64 / image.height() as f64;
         let x_scale = self.width.ok_or(Error::MissedSetup)? as f64 / image.width() as f64;
         let scale = y_scale.min(x_scale);
@@ -76,6 +73,4 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Unreachable")]
     MissedSetup,
-    #[error("Mutex Error")]
-    Mutex,
 }

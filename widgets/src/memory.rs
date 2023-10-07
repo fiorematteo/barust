@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use psutil::memory::virtual_memory;
@@ -29,14 +30,13 @@ impl Memory {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Memory {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating memory");
         let ram = virtual_memory().map_err(Error::from)?;
         let text = self

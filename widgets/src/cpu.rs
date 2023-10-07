@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
@@ -33,14 +34,13 @@ impl Cpu {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Cpu {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating cpu");
         let times = self.times.cpu_times_percent().map_err(Error::from)?;
         let cpu_percent = self.per.cpu_percent().map_err(Error::from)?;

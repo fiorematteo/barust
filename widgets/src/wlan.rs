@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use std::fmt::Display;
@@ -39,13 +40,12 @@ impl Wlan {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Wlan {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating wlan");
         let text = self.build_string();
         self.inner.set_text(text);
@@ -68,5 +68,4 @@ impl Display for Wlan {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
-}
+pub enum Error {}

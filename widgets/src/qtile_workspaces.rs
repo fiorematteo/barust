@@ -2,6 +2,7 @@ use crate::{
     widget_default, workspaces::WorkspaceStatus, Rectangle, Result, Widget, WidgetConfig,
     Workspaces,
 };
+use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
 use pyo3::{types::PyModule, Py, PyResult, Python};
@@ -54,16 +55,15 @@ def windows():
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for QtileWorkspaces {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating qtile workspaces");
-        self.inner.update()?;
+        self.inner.update().await?;
         let group_count = Python::with_gil(|py| -> PyResult<HashMap<String, usize>> {
             self.python_module
                 .getattr(py, "windows")?

@@ -1,4 +1,5 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_trait::async_trait;
 use cairo::Context;
 use std::fmt::Display;
 use utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks};
@@ -64,14 +65,13 @@ impl Brightness {
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Brightness {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         let current_brightness = self.brightness_command.call().ok_or(Error::CommandError)?;
 
         if current_brightness != self.previous_brightness {

@@ -1,9 +1,10 @@
 use crate::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
-use async_channel::{Receiver, bounded};
+use async_channel::{bounded, Receiver};
+use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error, warn};
 use std::{fmt::Display, sync::Arc};
-use tokio::task::spawn_blocking;
+use tokio::{spawn, task::yield_now};
 use utils::{
     screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
     TimedHooks,
@@ -29,7 +30,7 @@ pub struct Systray {
     connection: Arc<Connection>,
     screen_id: i32,
     children: Vec<(Window, u16)>,
-    event_receiver: Option<Receiver<xcb::x::Event>>,
+    event_receiver: Option<Receiver<SystrayEvent>>,
 }
 
 impl std::fmt::Debug for Systray {
@@ -288,30 +289,29 @@ impl Systray {
         Ok(())
     }
 
-    fn handle_event(&mut self, event: xcb::x::Event) -> Result<()> {
+    fn handle_event(&mut self, event: SystrayEvent) -> Result<()> {
         match event {
-            xcb::x::Event::ClientMessage(event) => {
+            SystrayEvent::ClientMessage(event) => {
                 self.handle_client_message(event)?;
             }
-            xcb::x::Event::DestroyNotify(event) => self.forget(event.window())?,
-            xcb::x::Event::PropertyNotify(event) => {
-                if !self.take_selection(event.time())? {
+            SystrayEvent::DestroyNotify(window) => self.forget(window)?,
+            SystrayEvent::PropertyNotify(time) => {
+                if !self.take_selection(time)? {
                     return Err(Error::NoSelection.into());
                 }
             }
-            xcb::x::Event::ReparentNotify(event) => {
-                if event.parent() != self.window.unwrap() {
-                    self.forget(event.window())?;
+            SystrayEvent::ReparentNotify((parent, window)) => {
+                if parent != self.window.unwrap() {
+                    self.forget(window)?;
                 }
             }
-            xcb::x::Event::SelectionClear(_) => self.last_update()?,
+            SystrayEvent::SelectionClear => self.last_update()?,
             _ => (),
         }
         Ok(())
     }
 }
 
-use async_trait::async_trait;
 #[async_trait]
 impl Widget for Systray {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
@@ -358,12 +358,9 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn update(&mut self) -> Result<()> {
+    async fn update(&mut self) -> Result<()> {
         debug!("updating systray");
-        //NOTE xcb::x::Event doesn't implement copy :(
-        let event_receiver = self.event_receiver.take();
-        let Some(events) = event_receiver else {
-            self.event_receiver = event_receiver;
+        let Some(events) = self.event_receiver.take() else {
             return Ok(());
         };
         while let Ok(event) = events.try_recv() {
@@ -419,12 +416,22 @@ impl Widget for Systray {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);
-        spawn_blocking(move || loop {
-            if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
-                if tx.send_blocking(event).is_err() || sender.send_blocking().is_err() {
-                    error!("breaking systray hook loop");
-                    break;
+        spawn(async move {
+            loop {
+                let event = if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
+                    let event: xcb::x::Event = event;
+                    Some(SystrayEvent::from(event))
+                } else {
+                    None
+                };
+                if let Some(event) = event {
+                    if tx.send(event).await.is_err() || sender.send().await.is_err() {
+                        error!("breaking systray hook loop");
+                        break;
+                    }
                 }
+
+                yield_now().await;
             }
         });
         Ok(())
@@ -454,6 +461,30 @@ impl Display for Systray {
     }
 }
 
+enum SystrayEvent {
+    ClientMessage(xcb::x::ClientMessageEvent),
+    DestroyNotify(Window),
+    PropertyNotify(u32),
+    ReparentNotify((Window, Window)),
+    SelectionClear,
+    Unknown,
+}
+
+impl From<xcb::x::Event> for SystrayEvent {
+    fn from(value: xcb::x::Event) -> Self {
+        match value {
+            xcb::x::Event::ClientMessage(event) => Self::ClientMessage(event),
+            xcb::x::Event::DestroyNotify(event) => Self::DestroyNotify(event.window()),
+            xcb::x::Event::PropertyNotify(event) => Self::PropertyNotify(event.time()),
+            xcb::x::Event::ReparentNotify(event) => {
+                Self::ReparentNotify((event.parent(), event.window()))
+            }
+            xcb::x::Event::SelectionClear(_) => Self::SelectionClear,
+            _ => Self::Unknown,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
@@ -463,8 +494,6 @@ pub enum Error {
     MissingWindow,
     #[error("No selection")]
     NoSelection,
-    #[error("Mutex error")]
-    Mutex,
 }
 
 impl From<xcb::ConnError> for Error {
