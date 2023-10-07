@@ -2,8 +2,8 @@ use barust::{
     statusbar::StatusBar,
     utils::{Color, Position},
     widgets::{
-        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, QtileWorkspaces, Spacer, Systray,
-        Volume, WidgetConfig, Wlan,
+        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, PulseaudioProvider, QtileWorkspaces,
+        Spacer, Systray, Volume, WidgetConfig, Wlan,
     },
     Result,
 };
@@ -53,29 +53,7 @@ async fn main() -> Result<()> {
             Battery::new("%i %c%", None, &wd_config).await?,
             Volume::new(
                 "%i %p",
-                &|| -> Option<f64> {
-                    let out = String::from_utf8(
-                        Command::new("pulsemixer")
-                            .arg("--get-volume")
-                            .output()
-                            .ok()?
-                            .stdout,
-                    )
-                    .ok()?;
-                    let out = out.split(' ').collect::<Vec<_>>();
-                    out.first()?.parse::<f64>().ok()
-                },
-                &|| -> Option<bool> {
-                    String::from_utf8(
-                        Command::new("pulsemixer")
-                            .arg("--get-mute")
-                            .output()
-                            .ok()?
-                            .stdout,
-                    )
-                    .ok()
-                    .map(|out| out == *"1\n")
-                },
+                Box::new(PulseaudioProvider::new().await.unwrap()),
                 None,
                 &wd_config,
             )

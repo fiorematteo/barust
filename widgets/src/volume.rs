@@ -1,9 +1,20 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_trait::async_trait;
-use cairo::Context;
+use libpulse_binding::{
+    callbacks::ListResult,
+    context::{self, introspect::Introspector, Context, FlagSet},
+    mainloop::threaded::Mainloop,
+    operation::{Operation, State},
+    volume::{ChannelVolumes, Volume as PaVolume},
+};
 use log::debug;
-use std::fmt::Display;
-use utils::{percentage_to_index, HookSender, ResettableTimer, ReturnCallback, TimedHooks};
+use std::{
+    fmt::Display,
+    mem::forget,
+    sync::{Arc, Mutex},
+};
+use tokio::task::yield_now;
+use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
 /// Icons used by [Volume]
 #[derive(Debug)]
@@ -27,8 +38,7 @@ impl Default for VolumeIcons {
 pub struct Volume {
     format: String,
     inner: Text,
-    volume_command: ReturnCallback<Option<f64>>,
-    muted_command: ReturnCallback<Option<bool>>,
+    provider: Box<dyn VolumeProvider + Send>,
     icons: VolumeIcons,
     previous_volume: f64,
     previous_muted: bool,
@@ -46,15 +56,13 @@ impl Volume {
     ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
-        volume_command: &'static (dyn Fn() -> Option<f64> + Send + Sync),
-        muted_command: &'static (dyn Fn() -> Option<bool> + Send + Sync),
+        provider: Box<impl VolumeProvider + 'static + std::marker::Send>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
     ) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),
-            volume_command: volume_command.into(),
-            muted_command: muted_command.into(),
+            provider,
             icons: icons.unwrap_or_default(),
             previous_volume: 0.0,
             previous_muted: false,
@@ -66,14 +74,16 @@ impl Volume {
 
 #[async_trait]
 impl Widget for Volume {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
+    fn draw(&self, context: &cairo::Context, rectangle: &Rectangle) -> Result<()> {
         self.inner.draw(context, rectangle)
     }
 
     fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let muted = self.muted_command.call().unwrap_or(false);
-        let volume = self.volume_command.call().unwrap_or(0.0);
+        let muted = self.provider.muted();
+        let muted = muted.await.unwrap_or(false);
+        let volume = self.provider.volume();
+        let volume = volume.await.unwrap_or(0.0);
 
         if self.previous_muted != muted || self.previous_volume != volume {
             self.previous_muted = muted;
@@ -116,8 +126,145 @@ impl Display for Volume {
     }
 }
 
+#[async_trait]
+pub trait VolumeProvider: std::fmt::Debug {
+    async fn volume(&self) -> Option<f64>;
+    async fn muted(&self) -> Option<bool>;
+}
+
+#[async_trait]
+trait WaitOp<T: ?Sized> {
+    async fn wait(&self);
+}
+
+#[async_trait]
+impl<T: ?Sized> WaitOp<T> for Operation<T> {
+    async fn wait(&self) {
+        while self.get_state() == State::Running {
+            yield_now().await;
+        }
+    }
+}
+
+async fn get_default_sink(introspector: &Introspector) -> Option<String> {
+    let cell = Arc::new(Mutex::new(None));
+    let cell2 = cell.clone();
+    introspector
+        .get_server_info(move |s| {
+            *cell2.lock().unwrap() = Some(s.default_sink_name.as_ref().unwrap().to_string());
+        })
+        .wait()
+        .await;
+    let mut lock = cell.lock().ok()?;
+    lock.take()
+}
+
+async fn get_default_volume(introspector: &Introspector) -> Option<ChannelVolumes> {
+    let name = get_default_sink(introspector).await.unwrap();
+
+    let cell = Arc::new(Mutex::new(None));
+    let cell2 = cell.clone();
+    introspector
+        .get_sink_info_by_name(&name, move |r| {
+            let ListResult::Item(info) = r else {return};
+            *cell2.lock().unwrap() = Some(info.volume);
+        })
+        .wait()
+        .await;
+    let mut lock = cell.lock().ok()?;
+    lock.take()
+}
+
+async fn get_default_mute(introspector: &Introspector) -> Option<bool> {
+    let name = get_default_sink(introspector).await.unwrap();
+
+    let cell = Arc::new(Mutex::new(None));
+    let cell2 = cell.clone();
+    introspector
+        .get_sink_info_by_name(&name, move |r| {
+            let ListResult::Item(info) = r else {return};
+            *cell2.lock().unwrap() = Some(info.mute);
+        })
+        .wait()
+        .await;
+    let mut lock = cell.lock().ok()?;
+    lock.take()
+}
+
+async fn setup_pulseaudio() -> Result<Introspector> {
+    let mut pulseloop = Mainloop::new().unwrap();
+    let mut context = Context::new(&pulseloop, "barust").unwrap();
+
+    context.connect(None, FlagSet::NOFLAGS, None).unwrap();
+    pulseloop.start().unwrap();
+    loop {
+        match context.get_state() {
+            context::State::Ready => {
+                break;
+            }
+            context::State::Failed | context::State::Terminated => {
+                pulseloop.unlock();
+                pulseloop.stop();
+                return Err(Error::PulseAudio("Failed to connect".into()).into());
+            }
+            _ => {
+                pulseloop.wait();
+            }
+        }
+    }
+
+    let intro = context.introspect();
+    forget(pulseloop);
+    forget(context);
+
+    Ok(intro)
+}
+
+fn volume_to_percent(volume: ChannelVolumes) -> f64 {
+    let avg = volume.avg().0;
+
+    let base_delta = (PaVolume::NORMAL.0 as f64 - PaVolume::MUTED.0 as f64) / 100.0;
+
+    (avg - PaVolume::MUTED.0) as f64 / base_delta
+}
+
+pub struct PulseaudioProvider(Introspector);
+
+impl PulseaudioProvider {
+    pub async fn new() -> Result<Self> {
+        Ok(Self(setup_pulseaudio().await?))
+    }
+}
+
+impl From<Introspector> for PulseaudioProvider {
+    fn from(value: Introspector) -> Self {
+        Self(value)
+    }
+}
+
+impl std::fmt::Debug for PulseaudioProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&"PulseAudio Provider", f)
+    }
+}
+
+#[async_trait]
+impl VolumeProvider for PulseaudioProvider {
+    async fn volume(&self) -> Option<f64> {
+        get_default_volume(&self.0)
+            .await
+            .map(volume_to_percent)
+            .map(Into::into)
+    }
+    async fn muted(&self) -> Option<bool> {
+        get_default_mute(&self.0).await
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
     Psutil(#[from] psutil::Error),
+    #[error("PulseAudio error: {0}")]
+    PulseAudio(String),
 }

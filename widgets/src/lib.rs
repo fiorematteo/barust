@@ -40,6 +40,8 @@ pub use volume::{Volume, VolumeIcons};
 pub use wlan::Wlan;
 pub use workspaces::Workspaces;
 
+pub use volume::{PulseaudioProvider, VolumeProvider};
+
 pub enum Size {
     Flex,
     Static(u32),

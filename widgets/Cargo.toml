@@ -11,6 +11,7 @@ async-trait = { workspace = true }
 cairo-rs = { workspace = true }
 chrono = { workspace = true }
 iwlib = { workspace = true }
+libpulse-binding = "2.28.1"
 log = { workspace = true }
 pango = { workspace = true }
 pangocairo = { workspace = true }
