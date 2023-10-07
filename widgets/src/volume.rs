@@ -2,7 +2,12 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_trait::async_trait;
 use libpulse_binding::{
     callbacks::ListResult,
-    context::{self, introspect::Introspector, Context, FlagSet},
+    context::{
+        self,
+        introspect::{Introspector, SinkInfo},
+        Context, FlagSet,
+    },
+    error::PAErr,
     mainloop::threaded::Mainloop,
     operation::{Operation, State},
     volume::{ChannelVolumes, Volume as PaVolume},
@@ -151,7 +156,7 @@ async fn get_default_sink(introspector: &Introspector) -> Option<String> {
     let cell2 = cell.clone();
     introspector
         .get_server_info(move |s| {
-            *cell2.lock().unwrap() = Some(s.default_sink_name.as_ref().unwrap().to_string());
+            *cell2.lock().unwrap() = s.default_sink_name.as_ref().map(|s| s.to_string());
         })
         .wait()
         .await;
@@ -160,7 +165,7 @@ async fn get_default_sink(introspector: &Introspector) -> Option<String> {
 }
 
 async fn get_default_volume(introspector: &Introspector) -> Option<ChannelVolumes> {
-    let name = get_default_sink(introspector).await.unwrap();
+    let name = get_default_sink(introspector).await?;
 
     let cell = Arc::new(Mutex::new(None));
     let cell2 = cell.clone();
@@ -176,7 +181,7 @@ async fn get_default_volume(introspector: &Introspector) -> Option<ChannelVolume
 }
 
 async fn get_default_mute(introspector: &Introspector) -> Option<bool> {
-    let name = get_default_sink(introspector).await.unwrap();
+    let name = get_default_sink(introspector).await?;
 
     let cell = Arc::new(Mutex::new(None));
     let cell2 = cell.clone();
@@ -192,11 +197,15 @@ async fn get_default_mute(introspector: &Introspector) -> Option<bool> {
 }
 
 async fn setup_pulseaudio() -> Result<Introspector> {
-    let mut pulseloop = Mainloop::new().unwrap();
-    let mut context = Context::new(&pulseloop, "barust").unwrap();
+    let mut pulseloop =
+        Mainloop::new().ok_or(Error::PulseAudio("Mainloop failed to start".into()))?;
+    let mut context = Context::new(&pulseloop, "barust")
+        .ok_or(Error::PulseAudio("Context failed to start".into()))?;
 
-    context.connect(None, FlagSet::NOFLAGS, None).unwrap();
-    pulseloop.start().unwrap();
+    context
+        .connect(None, FlagSet::NOFLAGS, None)
+        .map_err(Error::from)?;
+    pulseloop.start().map_err(Error::from)?;
     loop {
         match context.get_state() {
             context::State::Ready => {
@@ -267,4 +276,10 @@ pub enum Error {
     Psutil(#[from] psutil::Error),
     #[error("PulseAudio error: {0}")]
     PulseAudio(String),
+}
+
+impl From<PAErr> for Error {
+    fn from(value: PAErr) -> Self {
+        Self::PulseAudio(value.to_string().unwrap_or_else(|| "Unknown error".into()))
+    }
 }
