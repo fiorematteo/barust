@@ -2,8 +2,8 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
-use std::{fmt::Display, sync::Arc, time::Duration};
-use tokio::{spawn, time::sleep, task::spawn_blocking};
+use std::{fmt::Display, sync::Arc};
+use tokio::task::spawn_blocking;
 use utils::{Atoms, HookSender, TimedHooks};
 use xcb::{
     x::{ChangeWindowAttributes, Cw, Event, EventMask, Window},

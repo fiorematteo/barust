@@ -1,19 +1,11 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use async_channel::{bounded, Receiver, Sender};
 use async_trait::async_trait;
-use libpulse_binding::{
-    callbacks::ListResult,
-    context::{self, introspect::Introspector, Context, FlagSet},
-    error::PAErr,
-    mainloop::threaded::Mainloop,
-    operation::{Operation, State},
-    volume::{ChannelVolumes, Volume as PaVolume},
-};
+use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
 use log::debug;
-use std::{
-    fmt::Display,
-    mem::forget,
-    sync::{Arc, Mutex},
-};
+use pulsectl::controllers::DeviceControl;
+use std::fmt::Display;
+use tokio::task::spawn_blocking;
 use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
 /// Icons used by [Volume]
@@ -80,10 +72,10 @@ impl Widget for Volume {
 
     async fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let muted = self.provider.muted();
-        let muted = muted.await.unwrap_or(false);
         let volume = self.provider.volume();
         let volume = volume.await.unwrap_or(0.0);
+        let muted = self.provider.muted();
+        let muted = muted.await.unwrap_or(false);
 
         if self.previous_muted != muted || self.previous_volume != volume {
             self.previous_muted = muted;
@@ -132,96 +124,6 @@ pub trait VolumeProvider: std::fmt::Debug {
     async fn muted(&self) -> Option<bool>;
 }
 
-#[async_trait]
-trait WaitOp<T: ?Sized> {
-    async fn wait(&self);
-}
-
-#[async_trait]
-impl<T: ?Sized> WaitOp<T> for Operation<T> {
-    async fn wait(&self) {
-        while self.get_state() == State::Running {}
-    }
-}
-
-async fn get_default_sink(introspector: &Introspector) -> Option<String> {
-    let cell = Arc::new(Mutex::new(None));
-    let cell2 = cell.clone();
-    introspector
-        .get_server_info(move |s| {
-            *cell2.lock().unwrap() = s.default_sink_name.as_ref().map(|s| s.to_string());
-        })
-        .wait()
-        .await;
-    let mut lock = cell.lock().ok()?;
-    lock.take()
-}
-
-async fn get_default_volume(introspector: &Introspector) -> Option<ChannelVolumes> {
-    let name = get_default_sink(introspector).await?;
-
-    let cell = Arc::new(Mutex::new(None));
-    let cell2 = cell.clone();
-    introspector
-        .get_sink_info_by_name(&name, move |r| {
-            let ListResult::Item(info) = r else {return};
-            *cell2.lock().unwrap() = Some(info.volume);
-        })
-        .wait()
-        .await;
-    let mut lock = cell.lock().ok()?;
-    lock.take()
-}
-
-async fn get_default_mute(introspector: &Introspector) -> Option<bool> {
-    let name = get_default_sink(introspector).await?;
-
-    let cell = Arc::new(Mutex::new(None));
-    let cell2 = cell.clone();
-    introspector
-        .get_sink_info_by_name(&name, move |r| {
-            let ListResult::Item(info) = r else {return};
-            *cell2.lock().unwrap() = Some(info.mute);
-        })
-        .wait()
-        .await;
-    let mut lock = cell.lock().ok()?;
-    lock.take()
-}
-
-async fn setup_pulseaudio() -> Result<Introspector> {
-    let mut pulseloop =
-        Mainloop::new().ok_or(Error::PulseAudio("Mainloop failed to start".into()))?;
-    let mut context = Context::new(&pulseloop, "barust")
-        .ok_or(Error::PulseAudio("Context failed to start".into()))?;
-
-    context
-        .connect(None, FlagSet::NOFLAGS, None)
-        .map_err(Error::from)?;
-    pulseloop.start().map_err(Error::from)?;
-    loop {
-        match context.get_state() {
-            context::State::Ready => {
-                break;
-            }
-            context::State::Failed | context::State::Terminated => {
-                pulseloop.unlock();
-                pulseloop.stop();
-                return Err(Error::PulseAudio("Failed to connect".into()).into());
-            }
-            _ => {
-                pulseloop.wait();
-            }
-        }
-    }
-
-    let intro = context.introspect();
-    forget(pulseloop);
-    forget(context);
-
-    Ok(intro)
-}
-
 fn volume_to_percent(volume: ChannelVolumes) -> f64 {
     let avg = volume.avg().0;
 
@@ -230,17 +132,34 @@ fn volume_to_percent(volume: ChannelVolumes) -> f64 {
     (avg - PaVolume::MUTED.0) as f64 / base_delta
 }
 
-pub struct PulseaudioProvider(Introspector);
+pub struct PulseaudioProvider {
+    request: Sender<()>,
+    data: Receiver<Option<(f64, bool)>>,
+}
 
 impl PulseaudioProvider {
     pub async fn new() -> Result<Self> {
-        Ok(Self(setup_pulseaudio().await?))
-    }
-}
+        let (request_tx, request_rx) = bounded(10);
+        let (data_tx, data_rx) = bounded(10);
+        spawn_blocking(move || {
+            let mut controller = pulsectl::controllers::SinkController::create().unwrap();
+            while request_rx.recv_blocking().is_ok() {
+                let data = if let Ok(default_device) = controller.get_default_device() {
+                    Some((
+                        volume_to_percent(default_device.volume),
+                        default_device.mute,
+                    ))
+                } else {
+                    None
+                };
 
-impl From<Introspector> for PulseaudioProvider {
-    fn from(value: Introspector) -> Self {
-        Self(value)
+                data_tx.send_blocking(data).unwrap();
+            }
+        });
+        Ok(Self {
+            request: request_tx,
+            data: data_rx,
+        })
     }
 }
 
@@ -253,13 +172,12 @@ impl std::fmt::Debug for PulseaudioProvider {
 #[async_trait]
 impl VolumeProvider for PulseaudioProvider {
     async fn volume(&self) -> Option<f64> {
-        get_default_volume(&self.0)
-            .await
-            .map(volume_to_percent)
-            .map(Into::into)
+        self.request.send(()).await.ok()?;
+        self.data.recv().await.ok()?.map(|(v, _)| v)
     }
     async fn muted(&self) -> Option<bool> {
-        get_default_mute(&self.0).await
+        self.request.send(()).await.ok()?;
+        self.data.recv().await.ok()?.map(|(_, m)| m)
     }
 }
 
@@ -267,12 +185,4 @@ impl VolumeProvider for PulseaudioProvider {
 #[error(transparent)]
 pub enum Error {
     Psutil(#[from] psutil::Error),
-    #[error("PulseAudio error: {0}")]
-    PulseAudio(String),
-}
-
-impl From<PAErr> for Error {
-    fn from(value: PAErr) -> Self {
-        Self::PulseAudio(value.to_string().unwrap_or_else(|| "Unknown error".into()))
-    }
 }

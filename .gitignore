@@ -2,3 +2,4 @@
 Makefile
 test.py
 .ropeproject
+**/Cargo.lock
