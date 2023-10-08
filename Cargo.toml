@@ -8,7 +8,7 @@ members = [
 
 [workspace.dependencies]
 async-trait = "0.1.71"
-cairo-rs = { version = "0.15.12", features = ["xcb", "png"] }
+cairo-rs = { version = "0.15.12", features = ["xcb"] }
 chrono = "0.4.22"
 iwlib = "0.1.0"
 log = "0.4.17"

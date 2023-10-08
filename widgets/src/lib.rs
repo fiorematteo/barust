@@ -12,7 +12,6 @@ mod cpu;
 mod disk;
 mod memory;
 mod network;
-mod png;
 mod qtile_workspaces;
 mod spacer;
 mod systray;
@@ -30,7 +29,6 @@ pub use cpu::Cpu;
 pub use disk::Disk;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
-pub use png::Png;
 pub use qtile_workspaces::QtileWorkspaces;
 pub use spacer::Spacer;
 pub use systray::Systray;
@@ -136,7 +134,6 @@ pub enum WidgetError {
     Disk(#[from] disk::Error),
     Memory(#[from] memory::Error),
     Network(#[from] network::Error),
-    Png(#[from] png::Error),
     #[error("Spacer")]
     Spacer,
     Systray(#[from] systray::Error),
