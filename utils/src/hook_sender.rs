@@ -8,7 +8,7 @@ pub enum RightLeft {
 
 pub type WidgetID = (RightLeft, usize);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HookSender {
     sender: Sender<WidgetID>,
     id: WidgetID,

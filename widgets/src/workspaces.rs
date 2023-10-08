@@ -5,7 +5,7 @@ use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::fmt::Display;
-use tokio::{spawn, task::yield_now};
+use tokio::task::spawn_blocking;
 use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
@@ -165,16 +165,13 @@ impl Widget for Workspaces {
             })
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
-        spawn(async move {
-            loop {
-                if matches!(
-                    connection.poll_for_event(),
-                    Ok(Some(xcb::Event::X(xcb::x::Event::PropertyNotify(_))))
-                ) && sender.send().await.is_err()
-                {
-                    break;
-                }
-                yield_now().await;
+        spawn_blocking(move || loop {
+            if matches!(
+                connection.wait_for_event(),
+                Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_)))
+            ) && sender.send_blocking().is_err()
+            {
+                break;
             }
         });
         Ok(())

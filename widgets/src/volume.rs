@@ -2,11 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_trait::async_trait;
 use libpulse_binding::{
     callbacks::ListResult,
-    context::{
-        self,
-        introspect::{Introspector, SinkInfo},
-        Context, FlagSet,
-    },
+    context::{self, introspect::Introspector, Context, FlagSet},
     error::PAErr,
     mainloop::threaded::Mainloop,
     operation::{Operation, State},
@@ -18,7 +14,6 @@ use std::{
     mem::forget,
     sync::{Arc, Mutex},
 };
-use tokio::task::yield_now;
 use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
 /// Icons used by [Volume]
@@ -145,9 +140,7 @@ trait WaitOp<T: ?Sized> {
 #[async_trait]
 impl<T: ?Sized> WaitOp<T> for Operation<T> {
     async fn wait(&self) {
-        while self.get_state() == State::Running {
-            yield_now().await;
-        }
+        while self.get_state() == State::Running {}
     }
 }
 

@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
 use std::{fmt::Display, sync::Arc, time::Duration};
-use tokio::{spawn, task::yield_now, time::sleep};
+use tokio::{spawn, time::sleep, task::spawn_blocking};
 use utils::{Atoms, HookSender, TimedHooks};
 use xcb::{
     x::{ChangeWindowAttributes, Cw, Event, EventMask, Window},
@@ -76,7 +76,7 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
+    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
         let (connection, screen_id) = Connection::connect(None).unwrap();
         let root_window = connection
             .get_setup()
@@ -96,46 +96,20 @@ impl Widget for ActiveWindow {
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
 
-        let property_sender = Arc::new(sender);
+        let property_sender = sender.clone();
         let property_connection = Arc::new(connection);
-        let name_sender = property_sender.clone();
-        let name_connection = property_connection.clone();
-
-        spawn(async move {
-            loop {
-                if matches!(
-                    property_connection.poll_for_event(),
-                    Ok(Some(xcb::Event::X(Event::PropertyNotify(_))))
-                ) && property_sender.send().await.is_err()
-                {
-                    error!("breaking active_window hook");
-                    break;
-                }
-
-                yield_now().await;
-            }
+        spawn_blocking(move || loop {
+            if matches!(
+                property_connection.wait_for_event(),
+                Ok(xcb::Event::X(Event::PropertyNotify(_)))
+            ) && property_sender.send_blocking().is_err()
+            {
+                error!("breaking active_window hook");
+                break;
+            };
         });
 
-        let atoms = self.atoms;
-        let mut old_name = "".into();
-        spawn(async move {
-            loop {
-                sleep(Duration::from_secs(1)).await;
-                let Ok(new_name) = get_active_window_name(&name_connection, &atoms) else {
-                    continue
-                };
-
-                if old_name == new_name {
-                    continue;
-                }
-
-                old_name = new_name;
-                if name_sender.send().await.is_err() {
-                    error!("breaking active_window hook");
-                    break;
-                }
-            }
-        });
+        timed_hooks.subscribe(sender);
         Ok(())
     }
 

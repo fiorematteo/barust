@@ -6,8 +6,8 @@ use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
 };
-use std::{ffi::c_int, sync::Arc, time::Duration};
-use tokio::{select, spawn, task::yield_now};
+use std::{ffi::c_int, sync::Arc, time::Duration, process::exit};
+use tokio::{select, spawn, task::spawn_blocking};
 use utils::{
     hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
     HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
@@ -107,7 +107,7 @@ impl StatusBar {
                     for wd in self.left_widgets.iter_mut().chain(&mut self.right_widgets){
                         log_error_and_replace!(wd, wd.last_update());
                     }
-                    return Ok(());
+                    exit(0);
                 },
             );
 
@@ -375,15 +375,10 @@ impl StatusBarBuilder {
 
 fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     let (tx, rx) = bounded(10);
-    spawn(async move {
-        loop {
-            if matches!(connection.poll_for_event(), Ok(Some(Event::X(_))))
-                && tx.send(()).await.is_err()
-            {
-                error!("bar_event_listener channel closed");
-                break;
-            }
-            yield_now().await;
+    spawn_blocking(move || loop {
+        if matches!(connection.wait_for_event(), Ok(Event::X(_))) && tx.send_blocking(()).is_err() {
+            error!("bar_event_listener channel closed");
+            break;
         }
     });
     Ok(rx)

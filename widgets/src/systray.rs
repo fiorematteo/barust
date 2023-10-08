@@ -3,8 +3,8 @@ use async_channel::{bounded, Receiver};
 use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error, warn};
+use tokio::spawn;
 use std::{fmt::Display, sync::Arc};
-use tokio::{spawn, task::yield_now};
 use utils::{
     screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
     TimedHooks,
@@ -430,8 +430,6 @@ impl Widget for Systray {
                         break;
                     }
                 }
-
-                yield_now().await;
             }
         });
         Ok(())
