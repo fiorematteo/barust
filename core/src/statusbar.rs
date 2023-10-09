@@ -6,7 +6,7 @@ use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
 };
-use std::{ffi::c_int, sync::Arc, time::Duration, process::exit};
+use std::{ffi::c_int, process::exit, sync::Arc, time::Duration};
 use tokio::{select, spawn, task::spawn_blocking};
 use utils::{
     hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,

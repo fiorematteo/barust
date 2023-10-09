@@ -38,6 +38,7 @@ pub use volume::{Volume, VolumeIcons};
 pub use wlan::Wlan;
 pub use workspaces::Workspaces;
 
+pub use brightness::{BrightnessProvider, LightProvider, SysfsProvider};
 pub use volume::{PulseaudioProvider, VolumeProvider};
 
 pub enum Size {

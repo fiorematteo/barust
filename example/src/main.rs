@@ -3,12 +3,12 @@ use barust::{
     utils::{Color, Position},
     widgets::{
         ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, PulseaudioProvider, QtileWorkspaces,
-        Spacer, Systray, Volume, WidgetConfig, Wlan,
+        Spacer, SysfsProvider, Systray, Volume, WidgetConfig, Wlan,
     },
     Result,
 };
 use log::LevelFilter;
-use std::{env, fs::OpenOptions, process::Command, time::Duration};
+use std::{env, fs::OpenOptions, time::Duration};
 
 const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
@@ -60,14 +60,7 @@ async fn main() -> Result<()> {
             .await,
             Brightness::new(
                 "%i %p%",
-                &|| -> Option<u32> {
-                    String::from_utf8(Command::new("light").output().ok()?.stdout)
-                        .ok()?
-                        .trim()
-                        .parse::<f64>()
-                        .ok()
-                        .map(|n| n as _)
-                },
+                Box::new(SysfsProvider::new().await?),
                 None,
                 &wd_config,
             )

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
 use log::debug;
 use pulsectl::controllers::DeviceControl;
-use std::fmt::Display;
+use std::{fmt::Display, marker::Send};
 use tokio::task::spawn_blocking;
 use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
@@ -48,7 +48,7 @@ impl Volume {
     ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
-        provider: Box<impl VolumeProvider + 'static + std::marker::Send>,
+        provider: Box<impl VolumeProvider + 'static + Send>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
     ) -> Box<Self> {
@@ -72,10 +72,8 @@ impl Widget for Volume {
 
     async fn update(&mut self) -> Result<()> {
         debug!("updating volume");
-        let volume = self.provider.volume();
-        let volume = volume.await.unwrap_or(0.0);
-        let muted = self.provider.muted();
-        let muted = muted.await.unwrap_or(false);
+        let f = self.provider.volume_and_muted();
+        let (volume, muted) = f.await.unwrap_or((0.0, false));
 
         if self.previous_muted != muted || self.previous_volume != volume {
             self.previous_muted = muted;
@@ -122,6 +120,7 @@ impl Display for Volume {
 pub trait VolumeProvider: std::fmt::Debug {
     async fn volume(&self) -> Option<f64>;
     async fn muted(&self) -> Option<bool>;
+    async fn volume_and_muted(&self) -> Option<(f64, bool)>;
 }
 
 fn volume_to_percent(volume: ChannelVolumes) -> f64 {
@@ -175,9 +174,15 @@ impl VolumeProvider for PulseaudioProvider {
         self.request.send(()).await.ok()?;
         self.data.recv().await.ok()?.map(|(v, _)| v)
     }
+
     async fn muted(&self) -> Option<bool> {
         self.request.send(()).await.ok()?;
         self.data.recv().await.ok()?.map(|(_, m)| m)
+    }
+
+    async fn volume_and_muted(&self) -> Option<(f64, bool)> {
+        self.request.send(()).await.ok()?;
+        self.data.recv().await.ok()?
     }
 }
 
