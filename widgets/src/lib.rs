@@ -78,7 +78,6 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     }
     fn size(&self, context: &Context) -> Result<Size>;
     fn padding(&self) -> u32;
-    fn on_click(&self, _x: u32, _y: u32) {}
 }
 
 #[derive(Debug, Clone)]

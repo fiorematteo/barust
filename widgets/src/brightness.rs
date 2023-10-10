@@ -41,7 +41,6 @@ impl Brightness {
     ///* `brightness_command` a function that returns the brightness in a range from 0 to 100
     ///* `icons` sets a custom [VolumeIcons]
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
         brightness_provider: Box<impl BrightnessProvider + 'static + Send>,

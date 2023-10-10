@@ -20,7 +20,6 @@ pub struct Text {
 impl Text {
     ///* `text` text to display
     ///* `config` a [WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(text: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             text: text.to_string(),

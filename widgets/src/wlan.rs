@@ -20,7 +20,6 @@ impl Wlan {
     ///  * `%q` will be replaced with the signal quality
     ///* `interface` name of the network interface
     ///* `fg_color` foreground color
-    ///* `on_click` callback to run on click
     pub async fn new(format: impl ToString, interface: String, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),

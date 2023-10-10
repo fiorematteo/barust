@@ -56,7 +56,6 @@ impl Network {
     ///* `icons` sets a custom [NetworkIcons]
     ///* `interface` name of the network interface
     ///* `fg_color` foreground color
-    ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
         interface: String,

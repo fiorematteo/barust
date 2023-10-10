@@ -17,7 +17,6 @@ impl Temperatures {
     ///* `format`
     ///  * `%t` will be replaced with the temperature in celsius
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),

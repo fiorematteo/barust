@@ -19,7 +19,6 @@ impl QtileWorkspaces {
     ///* `active_workspace_color` color of the active workspace
     ///* `internal_padding` space to leave between workspaces name
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(
         active_workspace_color: Color,
         internal_padding: u32,

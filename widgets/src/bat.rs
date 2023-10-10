@@ -42,7 +42,6 @@ impl Battery {
     ///  * `%i` will be replaced with the correct icon from `icons`
     ///* `icons` sets a custom [BatteryIcons]
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
         icons: Option<BatteryIcons>,

@@ -23,7 +23,6 @@ impl Cpu {
     ///  * *%i* will be replaced with the time spent idle
     ///  * *%b* will be replaced with the time spent busy
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(format: impl ToString, config: &WidgetConfig) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             format: format.to_string(),

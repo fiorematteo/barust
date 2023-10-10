@@ -18,7 +18,6 @@ impl Disk {
     ///  * *%f* will be replaced with the free disk
     ///  * *%t* will be replaced with the total disk
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
         path: impl ToString,

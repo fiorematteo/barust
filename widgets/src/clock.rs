@@ -26,7 +26,6 @@ impl Debug for Clock {
 impl Clock {
     ///* `format` describes how to display the time following [chrono format rules](chrono::format::strftime)
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         let format = format.to_string();
         Box::new(Self {

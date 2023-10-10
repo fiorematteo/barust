@@ -21,7 +21,6 @@ impl Memory {
     ///  * *%u* will be replaced with the used ram
     ///  * *%f* will be replaced with the free ram
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(format: impl ToString, config: &WidgetConfig) -> Box<Self> {
         Box::new(Self {
             format: format.to_string(),

@@ -45,7 +45,6 @@ impl Volume {
     ///* `muted_command` a function that returns true if the volume is muted
     ///* `icons` sets a custom [VolumeIcons]
     ///* `config` a [&WidgetConfig]
-    ///* `on_click` callback to run on click
     pub async fn new(
         format: impl ToString,
         provider: Box<impl VolumeProvider + 'static + Send>,
