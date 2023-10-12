@@ -1,11 +1,10 @@
 use crate::{BarustError, Result};
 use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
+use futures_util::stream::StreamExt;
 use log::{debug, error};
-use signal_hook::{
-    consts::{SIGINT, SIGTERM},
-    iterator::Signals,
-};
+use signal_hook::consts::signal::{SIGINT, SIGTERM};
+use signal_hook_tokio::Signals;
 use std::{ffi::c_int, process::exit, sync::Arc, time::Duration};
 use tokio::{select, spawn, task::spawn_blocking};
 use utils::{
@@ -115,7 +114,7 @@ impl StatusBar {
                 self.update(to_update).await?;
             }
             // greedy updating
-            while let Some(to_update) = widgets_events.try_recv().ok() {
+            while let Ok(to_update) = widgets_events.try_recv() {
                 self.update(to_update).await?;
             }
 
@@ -476,7 +475,7 @@ async fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, Barus
     let (s, r) = bounded(10);
     let mut signals = Signals::new(signals).unwrap();
     spawn(async move {
-        for signal in signals.forever() {
+        while let Some(signal) = signals.next().await {
             if s.send(signal).await.is_err() {
                 break;
             }

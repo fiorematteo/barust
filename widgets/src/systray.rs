@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error, warn};
 use std::{fmt::Display, sync::Arc};
-use tokio::spawn;
+use tokio::task::spawn_blocking;
 use utils::{
     screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
     TimedHooks,
@@ -416,19 +416,17 @@ impl Widget for Systray {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);
-        spawn(async move {
-            loop {
-                let event = if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
-                    let event: xcb::x::Event = event;
-                    Some(SystrayEvent::from(event))
-                } else {
-                    None
-                };
-                if let Some(event) = event {
-                    if tx.send(event).await.is_err() || sender.send().await.is_err() {
-                        error!("breaking systray hook loop");
-                        break;
-                    }
+        spawn_blocking(move || loop {
+            let event = if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
+                let event: xcb::x::Event = event;
+                Some(SystrayEvent::from(event))
+            } else {
+                None
+            };
+            if let Some(event) = event {
+                if tx.send_blocking(event).is_err() || sender.send_blocking().is_err() {
+                    error!("breaking systray hook loop");
+                    break;
                 }
             }
         });

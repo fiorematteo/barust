@@ -16,7 +16,6 @@ log = "0.4.17"
 pango = "0.15.10"
 pangocairo = "0.15.1"
 psutil = "3.2.2"
-signal-hook = "0.3.14"
 thiserror = "1.0.37"
 tokio = { version = "1.29.1", features = ["full"] }
 xcb = { git = "https://github.com/rust-x-bindings/rust-xcb", rev = "dbdaa01" }

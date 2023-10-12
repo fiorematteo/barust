@@ -16,6 +16,8 @@ const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 #[tokio::main]
 async fn main() -> Result<()> {
     setup_logger();
+    #[cfg(debug_assertions)]
+    console_subscriber::init();
 
     let wd_config = WidgetConfig {
         font: "DejaVu Sans Mono".into(),

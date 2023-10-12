@@ -40,6 +40,6 @@ impl Deref for Atoms {
     type Target = InnerAtoms;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }

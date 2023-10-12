@@ -131,10 +131,10 @@ impl Widget for Workspaces {
         let atoms = Atoms::intern_all(&connection).map_err(Error::from)?;
 
         let Ok(workspace) = get_desktops_names(&connection, &atoms) else {
-            return Ok(())
+            return Ok(());
         };
         let Ok(index) = get_current_desktop(&connection, &atoms) else {
-            return Ok(())
+            return Ok(());
         };
         self.workspaces = workspace
             .iter()

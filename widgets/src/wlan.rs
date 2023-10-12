@@ -30,7 +30,7 @@ impl Wlan {
 
     fn build_string(&self) -> String {
         let Some(data) = iwlib::get_wireless_info(self.interface.clone()) else {
-            return String::from("No interface")
+            return String::from("No interface");
         };
         self.format
             .replace("%i", &self.interface)
