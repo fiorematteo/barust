@@ -14,14 +14,14 @@ impl TimedHooks {
     }
 
     pub async fn start(self) {
+        let duration = Duration::from_secs(1) / self.senders.len() as u32;
         spawn(async move {
-            loop {
-                for s in &self.senders {
-                    if s.send().await.is_err() {
-                        error!("breaking thread loop")
-                    }
+            for s in self.senders.into_iter().cycle() {
+                if s.send().await.is_err() {
+                    error!("breaking thread loop")
                 }
-                sleep(Duration::from_secs(1)).await;
+
+                sleep(duration).await;
                 debug!("waking from sleep");
             }
         });

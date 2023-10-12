@@ -114,6 +114,11 @@ impl StatusBar {
             if let Some(to_update) = to_update {
                 self.update(to_update).await?;
             }
+            // greedy updating
+            while let Some(to_update) = widgets_events.try_recv().ok() {
+                self.update(to_update).await?;
+            }
+
             self.generate_regions()?;
 
             if draw_timer.is_done() {
@@ -443,7 +448,7 @@ pub(crate) fn create_xwindow(
         ],
     })?;
 
-    let atoms = Atoms::new(connection)?;
+    let atoms = Atoms::intern_all(connection)?;
     connection.send_and_check_request(&xcb::x::ChangeProperty {
         mode: xcb::x::PropMode::Replace,
         window,

@@ -1,46 +1,45 @@
-use xcb::{
-    x::{Atom, InternAtom},
-    Connection,
-};
+#![allow(non_snake_case)]
 
-macro_rules! atoms {
-    ( $struct_name:ident, $( $x:ident ),* ) => {
-        #[allow(non_snake_case)]
-        #[derive(Debug, Clone, Copy)]
-        pub struct $struct_name{
-            $(pub $x: Atom,)*
-        }
+use std::ops::Deref;
+use xcb::{atoms_struct, Connection};
 
-        impl $struct_name {
-            pub fn new(connection: &Connection) -> Result<Self, xcb::Error>{
-                Ok(Self {
-                    $($x: Self::intern(connection, stringify!($x))?,)*
-                })
+static mut ATOMS: Option<InnerAtoms> = None;
+
+atoms_struct!(
+#[derive(Copy, Clone, Debug)]
+     pub struct InnerAtoms {
+        pub UTF8_STRING => b"UTF8_STRING",
+        pub _NET_ACTIVE_WINDOW => b"_NET_ACTIVE_WINDOW",
+        pub _NET_CURRENT_DESKTOP => b"_NET_CURRENT_DESKTOP",
+        pub _NET_DESKTOP_NAMES => b"_NET_DESKTOP_NAMES",
+        pub _NET_SYSTEM_TRAY_OPCODE => b"_NET_SYSTEM_TRAY_OPCODE",
+        pub _NET_SYSTEM_TRAY_ORIENTATION => b"_NET_SYSTEM_TRAY_ORIENTATION",
+        pub _NET_SYSTEM_TRAY_S0 => b"_NET_SYSTEM_TRAY_S0",
+        pub _NET_WM_NAME => b"_NET_WM_NAME",
+        pub _NET_WM_WINDOW_TYPE => b"_NET_WM_WINDOW_TYPE",
+        pub _NET_WM_WINDOW_TYPE_DOCK => b"_NET_WM_WINDOW_TYPE_DOCK",
+        pub MANAGER => b"MANAGER",
+    }
+);
+
+#[derive(Copy, Clone, Debug)]
+pub struct Atoms(&'static InnerAtoms);
+
+impl Atoms {
+    pub fn intern_all(connection: &Connection) -> xcb::Result<Self> {
+        unsafe {
+            if ATOMS.is_none() {
+                ATOMS = Some(InnerAtoms::intern_all(connection)?);
             }
-            fn intern(connection: &Connection, name: &str) -> Result<Atom, xcb::Error> {
-                Ok(connection
-                    .wait_for_reply(connection.send_request(&InternAtom {
-                        only_if_exists: false,
-                        name: name.as_bytes(),
-                    }))
-                    .unwrap()
-                    .atom())
-            }
+            Ok(Self(ATOMS.as_ref().unwrap()))
         }
     }
 }
 
-atoms!(
-    Atoms,
-    UTF8_STRING,
-    _NET_ACTIVE_WINDOW,
-    _NET_CURRENT_DESKTOP,
-    _NET_DESKTOP_NAMES,
-    _NET_SYSTEM_TRAY_OPCODE,
-    _NET_SYSTEM_TRAY_ORIENTATION,
-    _NET_SYSTEM_TRAY_S0,
-    _NET_WM_NAME,
-    _NET_WM_WINDOW_TYPE,
-    _NET_WM_WINDOW_TYPE_DOCK,
-    MANAGER
-);
+impl Deref for Atoms {
+    type Target = InnerAtoms;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

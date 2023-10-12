@@ -53,7 +53,7 @@ impl std::fmt::Debug for ActiveWindow {
 impl ActiveWindow {
     pub async fn new(config: &WidgetConfig) -> Result<Box<Self>> {
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let atoms = Atoms::new(&connection).map_err(Error::from)?;
+        let atoms = Atoms::intern_all(&connection).map_err(Error::from)?;
         Ok(Box::new(Self {
             inner: *Text::new("", config).await,
             connection,

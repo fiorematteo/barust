@@ -128,7 +128,7 @@ impl Widget for Workspaces {
     async fn update(&mut self) -> Result<()> {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let atoms = Atoms::new(&connection).map_err(Error::from)?;
+        let atoms = Atoms::intern_all(&connection).map_err(Error::from)?;
 
         let Ok(workspace) = get_desktops_names(&connection, &atoms) else {
             return Ok(())

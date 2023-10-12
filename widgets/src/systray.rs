@@ -160,7 +160,7 @@ impl Systray {
             })
             .map_err(Error::from)?;
 
-        let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
+        let atoms = Atoms::intern_all(&self.connection).map_err(Error::from)?;
         self.connection
             .send_and_check_request(&xcb::x::ChangeProperty {
                 mode: xcb::x::PropMode::Replace,
@@ -186,7 +186,7 @@ impl Systray {
     }
 
     fn take_selection(&self, time: u32) -> Result<bool> {
-        let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
+        let atoms = Atoms::intern_all(&self.connection).map_err(Error::from)?;
         let selection = atoms._NET_SYSTEM_TRAY_S0;
         let window = self.window.ok_or(Error::MissingWindow)?;
 
