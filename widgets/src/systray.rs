@@ -305,7 +305,6 @@ impl Systray {
                     self.forget(window)?;
                 }
             }
-            SystrayEvent::SelectionClear => self.last_update()?,
             _ => (),
         }
         Ok(())
@@ -370,48 +369,6 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn last_update(&mut self) -> Result<()> {
-        let setup = self.connection.get_setup();
-        let screen = setup.roots().nth(self.screen_id as _).unwrap();
-        let root = screen.root();
-
-        for (window, _) in &self.children {
-            let window = *window;
-            self.connection
-                .send_and_check_request(&ChangeWindowAttributes {
-                    window,
-                    value_list: &[Cw::EventMask(EventMask::NO_EVENT)],
-                })
-                .map_err(Error::from)?;
-            self.connection
-                .send_and_check_request(&UnmapWindow { window })
-                .map_err(Error::from)?;
-            self.connection
-                .send_and_check_request(
-                    &(ReparentWindow {
-                        window,
-                        parent: root,
-                        x: 0,
-                        y: 0,
-                    }),
-                )
-                .map_err(Error::from)?;
-        }
-        self.connection
-            .send_and_check_request(&ChangeWindowAttributes {
-                window: self.window.unwrap(),
-                value_list: &[Cw::EventMask(EventMask::STRUCTURE_NOTIFY)],
-            })
-            .map_err(Error::from)?;
-        self.connection
-            .send_and_check_request(&DestroyWindow {
-                window: self.window.unwrap(),
-            })
-            .map_err(Error::from)?;
-        self.connection.flush().map_err(Error::from)?;
-        Ok(())
-    }
-
     async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
@@ -448,6 +405,49 @@ impl Widget for Systray {
 
     fn padding(&self) -> u32 {
         self.padding
+    }
+}
+
+impl Drop for Systray {
+    fn drop(&mut self) {
+        let setup = self.connection.get_setup();
+        let screen = setup.roots().nth(self.screen_id as _).unwrap();
+        let root = screen.root();
+
+        for (window, _) in &self.children {
+            let window = *window;
+            self.connection
+                .send_and_check_request(&ChangeWindowAttributes {
+                    window,
+                    value_list: &[Cw::EventMask(EventMask::NO_EVENT)],
+                })
+                .unwrap();
+            self.connection
+                .send_and_check_request(&UnmapWindow { window })
+                .unwrap();
+            self.connection
+                .send_and_check_request(
+                    &(ReparentWindow {
+                        window,
+                        parent: root,
+                        x: 0,
+                        y: 0,
+                    }),
+                )
+                .unwrap();
+        }
+        self.connection
+            .send_and_check_request(&ChangeWindowAttributes {
+                window: self.window.unwrap(),
+                value_list: &[Cw::EventMask(EventMask::STRUCTURE_NOTIFY)],
+            })
+            .unwrap();
+        self.connection
+            .send_and_check_request(&DestroyWindow {
+                window: self.window.unwrap(),
+            })
+            .unwrap();
+        self.connection.flush().unwrap();
     }
 }
 

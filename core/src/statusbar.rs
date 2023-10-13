@@ -103,9 +103,6 @@ impl StatusBar {
                 }
                 _ = bar_events.recv() => {/* just redraw? */ }
                 _ = signal.recv() => {
-                    for wd in self.left_widgets.iter_mut().chain(&mut self.right_widgets){
-                        log_error_and_replace!(wd, wd.last_update());
-                    }
                     exit(0);
                 },
             );

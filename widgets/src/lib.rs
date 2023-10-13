@@ -70,9 +70,6 @@ pub trait Widget: std::fmt::Debug + Display + Send {
     async fn update(&mut self) -> Result<()> {
         Ok(())
     }
-    fn last_update(&mut self) -> Result<()> {
-        Ok(())
-    }
     async fn hook(&mut self, _sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
         Ok(())
     }
