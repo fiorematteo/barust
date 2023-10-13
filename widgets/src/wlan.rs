@@ -41,9 +41,6 @@ impl Wlan {
 
 #[async_trait]
 impl Widget for Wlan {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
     async fn update(&mut self) -> Result<()> {
         debug!("updating wlan");
         let text = self.build_string();
@@ -56,7 +53,7 @@ impl Widget for Wlan {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for Wlan {

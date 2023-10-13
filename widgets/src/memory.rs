@@ -31,10 +31,6 @@ impl Memory {
 
 #[async_trait]
 impl Widget for Memory {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         debug!("updating memory");
         let ram = virtual_memory().map_err(Error::from)?;
@@ -49,7 +45,7 @@ impl Widget for Memory {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for Memory {

@@ -71,10 +71,6 @@ impl Brightness {
 
 #[async_trait]
 impl Widget for Brightness {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         let f = self.brightness_provider.brightness();
         let current_brightness = f.await.ok_or(Error::Command)?;
@@ -94,7 +90,7 @@ impl Widget for Brightness {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for Brightness {

@@ -64,10 +64,6 @@ impl ActiveWindow {
 
 #[async_trait]
 impl Widget for ActiveWindow {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         debug!("updating active_window");
         if let Ok(window_name) = get_active_window_name(&self.connection, &self.atoms) {
@@ -113,7 +109,7 @@ impl Widget for ActiveWindow {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for ActiveWindow {

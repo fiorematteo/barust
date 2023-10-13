@@ -1,6 +1,7 @@
 use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_channel::{bounded, Receiver, Sender};
 use async_trait::async_trait;
+use cairo::Context;
 use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
 use log::debug;
 use pulsectl::controllers::DeviceControl;
@@ -65,10 +66,6 @@ impl Volume {
 
 #[async_trait]
 impl Widget for Volume {
-    fn draw(&self, context: &cairo::Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         debug!("updating volume");
         let f = self.provider.volume_and_muted();
@@ -90,7 +87,7 @@ impl Widget for Volume {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Volume {

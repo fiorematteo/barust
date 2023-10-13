@@ -27,10 +27,6 @@ impl Temperatures {
 
 #[async_trait]
 impl Widget for Temperatures {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         debug!("updating temp");
         let mut temp: f64 = 0.0;
@@ -49,7 +45,7 @@ impl Widget for Temperatures {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for Temperatures {

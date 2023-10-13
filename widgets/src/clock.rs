@@ -37,10 +37,6 @@ impl Clock {
 
 #[async_trait]
 impl Widget for Clock {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         debug!("updating clock");
         let text = Local::now().format(&self.format);
@@ -53,7 +49,7 @@ impl Widget for Clock {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for Clock {

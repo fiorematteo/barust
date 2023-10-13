@@ -73,10 +73,6 @@ impl Network {
 
 #[async_trait]
 impl Widget for Network {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        self.inner.draw(context, rectangle)
-    }
-
     async fn update(&mut self) -> Result<()> {
         debug!("updating network");
         let text = if let Ok((wireless, online)) = get_interface_stats(&self.interface) {
@@ -103,7 +99,7 @@ impl Widget for Network {
         Ok(())
     }
 
-    widget_default!(size, padding);
+    widget_default!(draw, size, padding);
 }
 
 impl Display for Network {

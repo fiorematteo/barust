@@ -154,7 +154,11 @@ macro_rules! widget_default {
             self.inner.padding()
         }
     };
-
+    (draw) => {
+        fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
+            self.inner.draw(context, rectangle)
+        }
+    };
     ($a:ident, $($b:tt)*) => {
         widget_default!($a);
         widget_default!($($b)*);
