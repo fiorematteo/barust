@@ -2,7 +2,7 @@ use crate::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
 use async_channel::{bounded, Receiver};
 use async_trait::async_trait;
 use cairo::Context;
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use std::{fmt::Display, sync::Arc};
 use tokio::task::spawn_blocking;
 use utils::{
@@ -19,8 +19,6 @@ use xcb::{
 };
 
 const SYSTEM_TRAY_REQUEST_DOCK: u32 = 0;
-const SYSTEM_TRAY_BEGIN_MESSAGE: u32 = 1;
-const SYSTEM_TRAY_CANCEL_MESSAGE: u32 = 2;
 
 /// Displays a system tray
 pub struct Systray {
@@ -259,32 +257,16 @@ impl Systray {
         };
         let opcode = data[1];
         let window = data[2];
-        match opcode {
-            SYSTEM_TRAY_REQUEST_DOCK => {
-                debug!("systray request dock message");
+        if let SYSTEM_TRAY_REQUEST_DOCK = opcode {
+            debug!("systray request dock message");
 
-                let window = unsafe { Window::new(window) };
+            let window = unsafe { Window::new(window) };
 
-                if let Err(e) = self.adopt(window) {
-                    if let WidgetError::Systray(Error::Xcb(xcb::Error::Protocol(
-                        xcb::ProtocolError::X(xcb::x::Error::Window(ref e), _),
-                    ))) = e
-                    {
-                        warn!("possible bad window error: {:?}", e);
-                    } else {
-                        return Err(e);
-                    }
-                }
+            if let Err(e) = self.adopt(window) {
+                warn!("{:#?}", e);
             }
-            SYSTEM_TRAY_BEGIN_MESSAGE => {
-                debug!("systray begin message");
-            }
-            SYSTEM_TRAY_CANCEL_MESSAGE => {
-                debug!("systray cancel message");
-            }
-            _ => {
-                unreachable!("Invalid opcode")
-            }
+        } else {
+            unreachable!("Invalid opcode: {}, data: {:?}", opcode, data)
         };
         Ok(())
     }
