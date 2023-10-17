@@ -183,7 +183,7 @@ impl Systray {
         Ok(window)
     }
 
-    fn take_selection(&self, time: u32) -> Result<bool> {
+    fn take_selection(&self, time: u32) -> Result<()> {
         let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
         let selection = atoms._NET_SYSTEM_TRAY_S0;
         let window = self.window.ok_or(Error::MissingWindow)?;
@@ -198,11 +198,11 @@ impl Systray {
             .owner();
 
         if owner == window {
-            return Ok(true);
+            return Ok(());
         }
 
         if !owner.is_none() {
-            return Ok(false);
+            return Err(Error::NoSelection.into());
         }
 
         self.connection
@@ -223,7 +223,7 @@ impl Systray {
             .owner();
 
         if owner != window {
-            return Ok(false);
+            return Err(Error::NoSelection.into());
         }
 
         let setup = self.connection.get_setup();
@@ -248,7 +248,7 @@ impl Systray {
             })
             .map_err(Error::from)?;
         self.connection.flush().map_err(Error::from)?;
-        Ok(true)
+        Ok(())
     }
 
     fn handle_client_message(&mut self, event: ClientMessageEvent) -> Result<()> {
@@ -278,9 +278,7 @@ impl Systray {
             }
             SystrayEvent::DestroyNotify(window) => self.forget(window)?,
             SystrayEvent::PropertyNotify(time) => {
-                if !self.take_selection(time)? {
-                    return Err(Error::NoSelection.into());
-                }
+                self.take_selection(time)?;
             }
             SystrayEvent::ReparentNotify((parent, window)) => {
                 if parent != self.window.unwrap() {
