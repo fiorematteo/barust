@@ -444,7 +444,7 @@ pub(crate) fn create_xwindow(
         ],
     })?;
 
-    let atoms = Atoms::intern_all(connection)?;
+    let atoms = Atoms::new(connection)?;
     connection.send_and_check_request(&xcb::x::ChangeProperty {
         mode: xcb::x::PropMode::Replace,
         window,

@@ -10,7 +10,8 @@ use xcb::{
     Connection, XidNew,
 };
 
-pub fn get_active_window_name(connection: &Connection, atoms: &Atoms) -> Result<String> {
+pub fn get_active_window_name(connection: &Connection) -> Result<String> {
+    let atoms = Atoms::new(connection).map_err(Error::from)?;
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
@@ -41,7 +42,6 @@ pub fn get_active_window_name(connection: &Connection, atoms: &Atoms) -> Result<
 pub struct ActiveWindow {
     inner: Text,
     connection: Connection,
-    atoms: Atoms,
 }
 
 impl std::fmt::Debug for ActiveWindow {
@@ -53,11 +53,9 @@ impl std::fmt::Debug for ActiveWindow {
 impl ActiveWindow {
     pub async fn new(config: &WidgetConfig) -> Result<Box<Self>> {
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let atoms = Atoms::intern_all(&connection).map_err(Error::from)?;
         Ok(Box::new(Self {
             inner: *Text::new("", config).await,
             connection,
-            atoms,
         }))
     }
 }
@@ -66,7 +64,7 @@ impl ActiveWindow {
 impl Widget for ActiveWindow {
     async fn update(&mut self) -> Result<()> {
         debug!("updating active_window");
-        if let Ok(window_name) = get_active_window_name(&self.connection, &self.atoms) {
+        if let Ok(window_name) = get_active_window_name(&self.connection) {
             self.inner.set_text(window_name);
         }
         Ok(())

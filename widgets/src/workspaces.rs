@@ -9,7 +9,8 @@ use tokio::task::spawn_blocking;
 use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
-pub fn get_desktops_names(connection: &Connection, atoms: &Atoms) -> Result<Vec<String>> {
+pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
+    let atoms = Atoms::new(connection).map_err(Error::from)?;
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
@@ -26,7 +27,8 @@ pub fn get_desktops_names(connection: &Connection, atoms: &Atoms) -> Result<Vec<
         .collect::<Vec<String>>())
 }
 
-pub fn get_current_desktop(connection: &Connection, atoms: &Atoms) -> Result<u32> {
+pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
+    let atoms = Atoms::new(connection).map_err(Error::from)?;
     let cookie = connection.send_request(&xcb::x::GetProperty {
         delete: false,
         window: connection.get_setup().roots().next().unwrap().root(),
@@ -128,12 +130,10 @@ impl Widget for Workspaces {
     async fn update(&mut self) -> Result<()> {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let atoms = Atoms::intern_all(&connection).map_err(Error::from)?;
-
-        let Ok(workspace) = get_desktops_names(&connection, &atoms) else {
+        let Ok(workspace) = get_desktops_names(&connection) else {
             return Ok(());
         };
-        let Ok(index) = get_current_desktop(&connection, &atoms) else {
+        let Ok(index) = get_current_desktop(&connection) else {
             return Ok(());
         };
         self.workspaces = workspace

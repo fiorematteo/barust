@@ -1,13 +1,13 @@
 #![allow(non_snake_case)]
 
-use crate::atoms_struct_2;
-use std::ops::Deref;
+use crate::atoms;
+use std::sync::OnceLock;
 use xcb::Connection;
 
-static mut ATOMS: Option<InnerAtoms> = None;
+static ATOMS: OnceLock<Atoms> = OnceLock::new();
 
-atoms_struct_2!(
-     struct InnerAtoms {
+atoms!(
+     struct Atoms {
         UTF8_STRING,
         _NET_ACTIVE_WINDOW,
         _NET_CURRENT_DESKTOP,
@@ -23,7 +23,7 @@ atoms_struct_2!(
 );
 
 #[macro_export]
-macro_rules! atoms_struct_2 {
+macro_rules! atoms {
     (
         struct $Atoms:ident {
             $(
@@ -37,7 +37,7 @@ macro_rules! atoms_struct_2 {
         }
         impl $Atoms {
             #[allow(dead_code)]
-            pub fn intern_all(conn: &xcb::Connection) -> xcb::Result<$Atoms> {
+            fn intern_all(conn: &xcb::Connection) -> xcb::Result<$Atoms> {
                 $(
                     let $field = conn.send_request(&xcb::x::InternAtom {
                         only_if_exists: false, // NOTE: this is important
@@ -54,24 +54,12 @@ macro_rules! atoms_struct_2 {
     };
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Atoms(&'static InnerAtoms);
-
 impl Atoms {
-    pub fn intern_all(connection: &Connection) -> xcb::Result<Self> {
-        unsafe {
-            if ATOMS.is_none() {
-                ATOMS = Some(InnerAtoms::intern_all(connection)?);
-            }
-            Ok(Self(ATOMS.as_ref().unwrap()))
+    pub fn new(connection: &Connection) -> xcb::Result<&'static Atoms> {
+        if ATOMS.get().is_none() {
+            let inner = Atoms::intern_all(connection)?;
+            ATOMS.set(inner).unwrap();
         }
-    }
-}
-
-impl Deref for Atoms {
-    type Target = InnerAtoms;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
+        Ok(ATOMS.get().unwrap())
     }
 }
