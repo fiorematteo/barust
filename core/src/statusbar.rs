@@ -486,7 +486,7 @@ macro_rules! log_error_and_replace {
         if let Err(e) = $r {
             error!("{:?}", e);
             error!("Replacing widget with default");
-            *$wd = Text::new("Widget Crashed :(", &WidgetConfig::default()).await
+            *$wd = Text::new("Widget Crashed 🙃", &WidgetConfig::default()).await
         }
     };
 }

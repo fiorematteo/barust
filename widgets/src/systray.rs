@@ -1,8 +1,8 @@
-use crate::{Rectangle, Result, Size, Widget, WidgetConfig, WidgetError};
+use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
 use async_channel::{bounded, Receiver};
 use async_trait::async_trait;
 use cairo::Context;
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use std::{fmt::Display, sync::Arc};
 use tokio::task::spawn_blocking;
 use utils::{
