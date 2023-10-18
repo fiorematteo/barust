@@ -4,8 +4,7 @@ use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
-use std::fmt::Display;
-use tokio::task::spawn_blocking;
+use std::{fmt::Display, thread};
 use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
@@ -165,7 +164,7 @@ impl Widget for Workspaces {
             })
             .map_err(Error::from)?;
         connection.flush().map_err(Error::from)?;
-        spawn_blocking(move || loop {
+        thread::spawn(move || loop {
             if matches!(
                 connection.wait_for_event(),
                 Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_)))

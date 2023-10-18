@@ -3,8 +3,7 @@ use async_channel::{bounded, Receiver};
 use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error, warn};
-use std::{fmt::Display, sync::Arc};
-use tokio::task::spawn_blocking;
+use std::{fmt::Display, sync::Arc, thread};
 use utils::{
     screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
     TimedHooks,
@@ -353,7 +352,7 @@ impl Widget for Systray {
         let connection = self.connection.clone();
         let (tx, rx) = bounded(10);
         self.event_receiver = Some(rx);
-        spawn_blocking(move || loop {
+        thread::spawn(move || loop {
             let event = if let Ok(xcb::Event::X(event)) = connection.wait_for_event() {
                 let event: xcb::x::Event = event;
                 Some(SystrayEvent::from(event))

@@ -2,8 +2,7 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
-use std::{fmt::Display, sync::Arc};
-use tokio::task::spawn_blocking;
+use std::{fmt::Display, sync::Arc, thread};
 use utils::{Atoms, HookSender, TimedHooks};
 use xcb::{
     x::{ChangeWindowAttributes, Cw, Event, EventMask, Window},
@@ -92,7 +91,7 @@ impl Widget for ActiveWindow {
 
         let property_sender = sender.clone();
         let property_connection = Arc::new(connection);
-        spawn_blocking(move || loop {
+        thread::spawn(move || loop {
             if matches!(
                 property_connection.wait_for_event(),
                 Ok(xcb::Event::X(Event::PropertyNotify(_)))

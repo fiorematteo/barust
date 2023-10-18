@@ -5,8 +5,7 @@ use cairo::Context;
 use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
 use log::debug;
 use pulsectl::controllers::DeviceControl;
-use std::{fmt::Display, marker::Send};
-use tokio::task::spawn_blocking;
+use std::{fmt::Display, marker::Send, thread};
 use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
 /// Icons used by [Volume]
@@ -136,7 +135,7 @@ impl PulseaudioProvider {
     pub async fn new() -> Result<Self> {
         let (request_tx, request_rx) = bounded(10);
         let (data_tx, data_rx) = bounded(10);
-        spawn_blocking(move || {
+        thread::spawn(move || {
             let mut controller = pulsectl::controllers::SinkController::create().unwrap();
             while request_rx.recv_blocking().is_ok() {
                 let data = if let Ok(default_device) = controller.get_default_device() {

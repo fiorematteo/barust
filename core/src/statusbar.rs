@@ -5,8 +5,8 @@ use futures_util::stream::StreamExt;
 use log::{debug, error};
 use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
-use std::{ffi::c_int, process::exit, sync::Arc, time::Duration};
-use tokio::{select, spawn, task::spawn_blocking};
+use std::{ffi::c_int, sync::Arc, thread, time::Duration};
+use tokio::{select, spawn};
 use utils::{
     hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
     HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
@@ -103,7 +103,8 @@ impl StatusBar {
                 }
                 _ = bar_events.recv() => {/* just redraw? */ }
                 _ = signal.recv() => {
-                    exit(0);
+                    // shutdown
+                    return Ok(())
                 },
             );
 
@@ -376,7 +377,7 @@ impl StatusBarBuilder {
 
 fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     let (tx, rx) = bounded(10);
-    spawn_blocking(move || loop {
+    thread::spawn(move || loop {
         if matches!(connection.wait_for_event(), Ok(Event::X(_))) && tx.send_blocking(()).is_err() {
             error!("bar_event_listener channel closed");
             break;
