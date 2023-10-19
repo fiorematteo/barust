@@ -4,6 +4,10 @@ use std::{fmt::Display, time::Duration};
 use thiserror::Error;
 use utils::{error::Erc, Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
 
+mod replaceable;
+
+pub use replaceable::ReplaceableWidget;
+
 mod active_window;
 mod bat;
 mod brightness;
