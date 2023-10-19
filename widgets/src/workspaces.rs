@@ -44,7 +44,7 @@ pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
         .map(|v| *v)
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum WorkspaceStatus {
     Active,
     Used,
@@ -61,6 +61,7 @@ pub struct Workspaces {
     internal_padding: u32,
     active_workspace_color: Color,
     ignored_workspaces: Vec<String>,
+    hide_if_empty: Vec<String>,
     pub workspaces: Vec<(String, WorkspaceStatus)>,
 }
 
@@ -73,6 +74,7 @@ impl Workspaces {
         internal_padding: u32,
         config: &WidgetConfig,
         ignored_workspaces: &[impl ToString],
+        hide_if_empty: &[impl ToString],
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
@@ -83,6 +85,7 @@ impl Workspaces {
             font: config.font.to_owned(),
             font_size: config.font_size,
             ignored_workspaces: ignored_workspaces.iter().map(ToString::to_string).collect(),
+            hide_if_empty: hide_if_empty.iter().map(ToString::to_string).collect(),
         })
     }
 
@@ -108,6 +111,9 @@ impl Widget for Workspaces {
                 WorkspaceStatus::Used => self.fg_color,
                 WorkspaceStatus::Empty => Color::new(0.4, 0.4, 0.4, 1.0),
             };
+            if self.hide_if_empty.contains(workspace) && *active == WorkspaceStatus::Empty {
+                continue;
+            }
             set_source_rgba(context, color);
             layout.set_text(workspace);
             if first {
@@ -177,17 +183,28 @@ impl Widget for Workspaces {
     }
 
     fn size(&self, context: &Context) -> Result<Size> {
+        let hidden_workspaces: Vec<_> = self
+            .workspaces
+            .iter()
+            .filter(|w| self.hide_if_empty.contains(&w.0))
+            .filter(|w| w.1 == WorkspaceStatus::Empty)
+            .collect();
+
         let layout = self.get_layout(context)?;
         let big_string = self
             .workspaces
             .iter()
+            .filter(|w| !hidden_workspaces.contains(w))
             .map(|(text, _)| text.clone())
             .collect::<Vec<_>>()
             .join("");
+
         layout.set_text(&big_string);
         let text_size: u32 = layout.pixel_size().0 as u32;
+        let valid_workspaces = self.workspaces.len() - hidden_workspaces.len();
+
         Ok(Size::Static(
-            text_size + (2 * self.padding) + (self.workspaces.len() as u32 * self.internal_padding),
+            text_size + (2 * self.padding) + ((valid_workspaces as u32) * self.internal_padding),
         ))
     }
 

@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
         ..WidgetConfig::default()
     };
 
-    let bar = StatusBar::create()
+    StatusBar::create()
         .position(Position::Top)
         .background(BLANK)
         .left_widgets(vec![
@@ -39,6 +39,7 @@ async fn main() -> Result<()> {
                     ..wd_config.clone()
                 },
                 &["scratchpad", "pulsemixer"],
+                &(5..=9).map(|i| i.to_string()).collect::<Vec<_>>(),
             )
             .await,
             ActiveWindow::new(&WidgetConfig {
@@ -70,8 +71,9 @@ async fn main() -> Result<()> {
             Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config).await,
         ])
         .build()
-        .await?;
-    bar.start().await
+        .await?
+        .start()
+        .await
 }
 
 fn setup_logger() {

@@ -24,12 +24,14 @@ impl QtileWorkspaces {
         internal_padding: u32,
         config: &WidgetConfig,
         ignored_workspaces: &[impl ToString],
+        hide_if_empty: &[impl ToString],
     ) -> Box<Self> {
         let inner = Workspaces::new(
             active_workspace_color,
             internal_padding,
             config,
             ignored_workspaces,
+            hide_if_empty
         );
         let python_module = Python::with_gil(|py| -> PyResult<Py<PyModule>> {
             Ok(PyModule::from_code(
