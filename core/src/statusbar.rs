@@ -11,7 +11,7 @@ use utils::{
     hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
     HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
 };
-use widgets::{Size, Text, Widget, WidgetConfig};
+use widgets::{ReplaceableWidget, Size, Widget};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -25,9 +25,9 @@ pub struct StatusBar {
     background: Color,
     connection: Arc<Connection>,
     left_regions: Vec<Rectangle>,
-    left_widgets: Vec<Box<dyn Widget>>,
+    left_widgets: Vec<ReplaceableWidget>,
     right_regions: Vec<Rectangle>,
-    right_widgets: Vec<Box<dyn Widget>>,
+    right_widgets: Vec<ReplaceableWidget>,
     surface: XCBSurface,
     height: u32,
     width: u32,
@@ -58,38 +58,32 @@ impl StatusBar {
         };
         let mut pool = TimedHooks::default();
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
-            log_error_and_replace!(wd, wd.setup(&info));
-            log_error_and_replace!(
-                wd,
-                wd.hook(
-                    HookSender::new(tx.clone(), (RightLeft::Left, index)),
-                    &mut pool
-                )
-                .await
-            );
+            wd.setup_or_replace(&info).await;
+            wd.hook_or_replace(
+                HookSender::new(tx.clone(), (RightLeft::Left, index)),
+                &mut pool,
+            )
+            .await;
         }
         for (index, wd) in self.right_widgets.iter_mut().enumerate() {
-            log_error_and_replace!(wd, wd.setup(&info));
-            log_error_and_replace!(
-                wd,
-                wd.hook(
-                    HookSender::new(tx.clone(), (RightLeft::Right, index)),
-                    &mut pool
-                )
-                .await
-            );
+            wd.setup_or_replace(&info).await;
+            wd.hook_or_replace(
+                HookSender::new(tx.clone(), (RightLeft::Right, index)),
+                &mut pool,
+            )
+            .await;
         }
         for wd in self.left_widgets.iter_mut() {
-            log_error_and_replace!(wd, wd.update().await);
+            wd.update_or_replace().await;
         }
         for wd in self.right_widgets.iter_mut() {
-            log_error_and_replace!(wd, wd.update().await);
+            wd.update_or_replace().await;
         }
 
         let signal = notify(&[SIGINT, SIGTERM]).await?;
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
-        self.generate_regions()?;
+        self.generate_regions().await?;
         self.draw().await?;
         self.show()?;
         pool.start().await;
@@ -116,7 +110,7 @@ impl StatusBar {
                 self.update(to_update).await?;
             }
 
-            self.generate_regions()?;
+            self.generate_regions().await?;
 
             if draw_timer.is_done() {
                 draw_timer.reset();
@@ -125,16 +119,16 @@ impl StatusBar {
         }
     }
 
-    async fn update(&mut self, to_update: WidgetID) -> Result<()> {
-        let wd = match to_update {
-            (RightLeft::Left, index) => &mut self.left_widgets[index],
-            (RightLeft::Right, index) => &mut self.right_widgets[index],
+    async fn update(&mut self, (side, index): WidgetID) -> Result<()> {
+        let wd = match side {
+            RightLeft::Left => &mut self.left_widgets[index],
+            RightLeft::Right => &mut self.right_widgets[index],
         };
-        log_error_and_replace!(wd, wd.update().await);
+        wd.update_or_replace().await;
         Ok(())
     }
 
-    fn generate_regions(&mut self) -> Result<()> {
+    async fn generate_regions(&mut self) -> Result<()> {
         let context = Context::new(&self.surface)?;
         let mut rectangle = Rectangle {
             x: 0,
@@ -168,7 +162,7 @@ impl StatusBar {
 
         self.left_regions.clear();
         for wd in &mut self.left_widgets {
-            let widget_width = wd.size(&context)?.unwrap_or(flex_size);
+            let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
             rectangle.width = widget_width;
             self.left_regions.push(rectangle);
             rectangle.x += widget_width;
@@ -176,7 +170,7 @@ impl StatusBar {
 
         self.right_regions.clear();
         for wd in &mut self.right_widgets {
-            let widget_width = wd.size(&context)?.unwrap_or(flex_size);
+            let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
             rectangle.width = widget_width;
             self.right_regions.push(rectangle);
             rectangle.x += widget_width;
@@ -219,7 +213,7 @@ impl StatusBar {
             .collect();
 
         for ((wd, rectangle), context) in widgets.zip(regions).zip(contexts) {
-            log_error_and_replace!(wd, wd.draw(&context?, rectangle));
+            wd.draw_or_replace(&context?, rectangle).await;
         }
         tmp_surface.flush();
 
@@ -349,24 +343,94 @@ impl StatusBarBuilder {
             .width
             .unwrap_or_else(|| screen_true_width(&connection, screen_id));
 
-        let (window, surface) = create_xwindow(
-            &connection,
-            screen_id,
-            self.xoff,
-            self.yoff,
+        let window: Window = connection.generate_id();
+        let colormap: Colormap = connection.generate_id();
+
+        let screen = connection
+            .get_setup()
+            .roots()
+            .nth(screen_id as _)
+            .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id));
+
+        let depth = screen
+            .allowed_depths()
+            .find(|d| d.depth() == 32)
+            .expect("cannot find valid depth");
+
+        let mut visual_type = depth
+            .visuals()
+            .iter()
+            .find(|v| v.class() == VisualClass::TrueColor)
+            .expect("cannot find valid visual type")
+            .to_owned();
+
+        connection.send_and_check_request(&CreateColormap {
+            alloc: ColormapAlloc::None,
+            mid: colormap,
+            window: screen.root(),
+            visual: visual_type.visual_id(),
+        })?;
+
+        connection.send_and_check_request(&CreateWindow {
+            depth: depth.depth(),
+            wid: window,
+            parent: screen.root(),
+            x: self.xoff as _,
+            y: match self.position {
+                Position::Top => self.yoff,
+                Position::Bottom => screen_true_height(&connection, screen_id) - self.height,
+            } as _,
             width,
-            self.height,
-            self.position,
-        )?;
+            height: self.height,
+            border_width: 0,
+            class: WindowClass::InputOutput,
+            visual: visual_type.visual_id(),
+            value_list: &[
+                Cw::BackPixmap(Pixmap::none()),
+                Cw::BorderPixel(screen.black_pixel()),
+                Cw::EventMask(EventMask::all()),
+                Cw::Colormap(colormap),
+            ],
+        })?;
+
+        let atoms = Atoms::new(&connection)?;
+        connection.send_and_check_request(&xcb::x::ChangeProperty {
+            mode: xcb::x::PropMode::Replace,
+            window,
+            property: atoms._NET_WM_WINDOW_TYPE,
+            r#type: xcb::x::ATOM_ATOM,
+            data: &[atoms._NET_WM_WINDOW_TYPE_DOCK],
+        })?;
+
+        let surface = unsafe {
+            let conn_ptr = connection.get_raw_conn() as _;
+            XCBSurface::create(
+                &XCBConnection::from_raw_none(conn_ptr),
+                &XCBDrawable(window.resource_id()),
+                &XCBVisualType::from_raw_none(&mut visual_type as *mut Visualtype as _),
+                i32::from(width),
+                i32::from(self.height),
+            )?
+        };
+
+        connection.flush()?;
 
         Ok(StatusBar {
             background: self.background,
             connection,
             height: u32::from(self.height),
             left_regions: Vec::new(),
-            left_widgets: self.left_widgets,
+            left_widgets: self
+                .left_widgets
+                .into_iter()
+                .map(ReplaceableWidget::new)
+                .collect(),
             right_regions: Vec::new(),
-            right_widgets: self.right_widgets,
+            right_widgets: self
+                .right_widgets
+                .into_iter()
+                .map(ReplaceableWidget::new)
+                .collect(),
             surface,
             width: u32::from(width),
             window,
@@ -386,89 +450,6 @@ fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     Ok(rx)
 }
 
-pub(crate) fn create_xwindow(
-    connection: &Connection,
-    screen_id: i32,
-    x: u16,
-    y: u16,
-    width: u16,
-    height: u16,
-    position: Position,
-) -> Result<(Window, XCBSurface)> {
-    let window: Window = connection.generate_id();
-    let colormap: Colormap = connection.generate_id();
-
-    let screen = connection
-        .get_setup()
-        .roots()
-        .nth(screen_id as _)
-        .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id));
-
-    let depth = screen
-        .allowed_depths()
-        .find(|d| d.depth() == 32)
-        .expect("cannot find valid depth");
-
-    let mut visual_type = depth
-        .visuals()
-        .iter()
-        .find(|v| v.class() == VisualClass::TrueColor)
-        .expect("cannot find valid visual type")
-        .to_owned();
-
-    connection.send_and_check_request(&CreateColormap {
-        alloc: ColormapAlloc::None,
-        mid: colormap,
-        window: screen.root(),
-        visual: visual_type.visual_id(),
-    })?;
-
-    connection.send_and_check_request(&CreateWindow {
-        depth: depth.depth(),
-        wid: window,
-        parent: screen.root(),
-        x: x as _,
-        y: match position {
-            Position::Top => y,
-            Position::Bottom => screen_true_height(connection, screen_id) - height,
-        } as _,
-        width,
-        height,
-        border_width: 0,
-        class: WindowClass::InputOutput,
-        visual: visual_type.visual_id(),
-        value_list: &[
-            Cw::BackPixmap(Pixmap::none()),
-            Cw::BorderPixel(screen.black_pixel()),
-            Cw::EventMask(EventMask::all()),
-            Cw::Colormap(colormap),
-        ],
-    })?;
-
-    let atoms = Atoms::new(connection)?;
-    connection.send_and_check_request(&xcb::x::ChangeProperty {
-        mode: xcb::x::PropMode::Replace,
-        window,
-        property: atoms._NET_WM_WINDOW_TYPE,
-        r#type: xcb::x::ATOM_ATOM,
-        data: &[atoms._NET_WM_WINDOW_TYPE_DOCK],
-    })?;
-
-    let surface = unsafe {
-        let conn_ptr = connection.get_raw_conn() as _;
-        XCBSurface::create(
-            &XCBConnection::from_raw_none(conn_ptr),
-            &XCBDrawable(window.resource_id()),
-            &XCBVisualType::from_raw_none(&mut visual_type as *mut Visualtype as _),
-            i32::from(width),
-            i32::from(height),
-        )?
-    };
-
-    connection.flush()?;
-    Ok((window, surface))
-}
-
 async fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
     let (s, r) = bounded(10);
     let mut signals = Signals::new(signals).unwrap();
@@ -481,14 +462,3 @@ async fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, Barus
     });
     Ok(r)
 }
-
-macro_rules! log_error_and_replace {
-    ( $wd:expr, $r:expr ) => {
-        if let Err(e) = $r {
-            error!("{:?}", e);
-            error!("Replacing widget with default");
-            *$wd = Text::new("Widget Crashed 🙃", &WidgetConfig::default()).await
-        }
-    };
-}
-pub(crate) use log_error_and_replace;
