@@ -30,7 +30,7 @@ impl Default for VolumeIcons {
 pub struct Volume {
     format: String,
     inner: Text,
-    provider: Box<dyn VolumeProvider + Send>,
+    provider: Box<dyn VolumeProvider>,
     icons: VolumeIcons,
     previous_volume: f64,
     previous_muted: bool,
@@ -47,7 +47,7 @@ impl Volume {
     ///* `config` a [&WidgetConfig]
     pub async fn new(
         format: impl ToString,
-        provider: Box<impl VolumeProvider + 'static + Send>,
+        provider: Box<impl VolumeProvider + 'static>,
         icons: Option<VolumeIcons>,
         config: &WidgetConfig,
     ) -> Box<Self> {
@@ -112,7 +112,7 @@ impl Display for Volume {
 }
 
 #[async_trait]
-pub trait VolumeProvider: std::fmt::Debug {
+pub trait VolumeProvider: std::fmt::Debug + Send {
     async fn volume(&self) -> Option<f64>;
     async fn muted(&self) -> Option<bool>;
     async fn volume_and_muted(&self) -> Option<(f64, bool)>;

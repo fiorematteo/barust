@@ -27,7 +27,7 @@ impl Default for BrightnessIcons {
 #[derive(Debug)]
 pub struct Brightness {
     format: String,
-    brightness_provider: Box<dyn BrightnessProvider + Send>,
+    brightness_provider: Box<dyn BrightnessProvider>,
     previous_brightness: f64,
     show_counter: ResettableTimer,
     inner: Text,
@@ -43,7 +43,7 @@ impl Brightness {
     ///* `config` a [&WidgetConfig]
     pub async fn new(
         format: impl ToString,
-        brightness_provider: Box<impl BrightnessProvider + 'static + Send>,
+        brightness_provider: Box<impl BrightnessProvider + 'static>,
         icons: Option<BrightnessIcons>,
         config: &WidgetConfig,
     ) -> Box<Self> {
@@ -110,7 +110,7 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait BrightnessProvider: std::fmt::Debug {
+pub trait BrightnessProvider: std::fmt::Debug + Send {
     async fn brightness(&self) -> Option<f64>;
 }
 

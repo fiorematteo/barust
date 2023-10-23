@@ -4,7 +4,6 @@ use xcb::Connection;
 
 pub mod atoms;
 pub mod color;
-pub mod error;
 pub mod hook_sender;
 pub mod resettable_timer;
 pub mod timed_hooks;
@@ -48,6 +47,7 @@ pub fn screen_true_height(connection: &Connection, screen_id: i32) -> u16 {
         .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id))
         .height_in_pixels()
 }
+
 
 pub fn percentage_to_index(v: f64, out_range: (usize, usize)) -> usize {
     let scale = (out_range.1 - out_range.0) as f64 / 100.0;

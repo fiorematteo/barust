@@ -2,28 +2,27 @@ use async_trait::async_trait;
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
 use thiserror::Error;
-use utils::{error::Erc, Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
+use utils::{Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
 
 mod replaceable;
 
 pub use replaceable::ReplaceableWidget;
 
-mod active_window;
-mod bat;
-mod brightness;
-mod clock;
-mod cpu;
-mod disk;
-mod memory;
-mod network;
-mod qtile_workspaces;
-mod spacer;
-mod systray;
-mod temp;
-mod text;
-mod volume;
-mod wlan;
-mod workspaces;
+pub mod active_window;
+pub mod bat;
+pub mod brightness;
+pub mod clock;
+pub mod cpu;
+pub mod disk;
+pub mod memory;
+pub mod network;
+pub mod spacer;
+pub mod systray;
+pub mod temp;
+pub mod text;
+pub mod volume;
+pub mod wlan;
+pub mod workspaces;
 
 pub use active_window::ActiveWindow;
 pub use bat::{Battery, BatteryIcons};
@@ -33,7 +32,6 @@ pub use cpu::Cpu;
 pub use disk::Disk;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
-pub use qtile_workspaces::QtileWorkspaces;
 pub use spacer::Spacer;
 pub use systray::Systray;
 pub use temp::Temperatures;
@@ -44,6 +42,7 @@ pub use workspaces::Workspaces;
 
 pub use brightness::{BrightnessProvider, LightProvider, SysfsProvider};
 pub use volume::{PulseaudioProvider, VolumeProvider};
+pub use workspaces::{NeverHide, WorkspaceHider, WorkspaceStatus, WorkspaceStatusProvider};
 
 pub enum Size {
     Flex,
@@ -143,7 +142,7 @@ pub enum WidgetError {
     Volume(#[from] volume::Error),
     Wlan(#[from] wlan::Error),
     Workspaces(#[from] workspaces::Error),
-    CustomWidget(#[from] Erc),
+    CustomWidget(#[from] Box<dyn std::error::Error>),
 }
 
 #[macro_export]

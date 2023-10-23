@@ -1,10 +1,10 @@
+mod qtile;
+
+use crate::qtile::QtileStatusProvider;
 use barust::{
     statusbar::StatusBar,
     utils::{Color, Position},
-    widgets::{
-        ActiveWindow, Battery, Brightness, Clock, Cpu, Disk, PulseaudioProvider, QtileWorkspaces,
-        Spacer, SysfsProvider, Systray, Volume, WidgetConfig, Wlan,
-    },
+    widgets::*,
     Result,
 };
 use log::LevelFilter;
@@ -31,15 +31,15 @@ async fn main() -> Result<()> {
         .background(BLANK)
         .left_widgets(vec![
             Spacer::new(20).await,
-            QtileWorkspaces::new(
+            Workspaces::new(
                 PURPLE,
                 10,
                 &WidgetConfig {
                     padding: 0,
                     ..wd_config.clone()
                 },
-                &["scratchpad", "pulsemixer"],
-                &(5..=9).map(|i| i.to_string()).collect::<Vec<_>>(),
+                WorkspaceFilter,
+                QtileStatusProvider::new().await?,
             )
             .await,
             ActiveWindow::new(&WidgetConfig {
@@ -74,6 +74,18 @@ async fn main() -> Result<()> {
         .await?
         .start()
         .await
+}
+
+#[derive(Debug)]
+struct WorkspaceFilter;
+
+impl WorkspaceHider for WorkspaceFilter {
+    fn should_hide(&self, workspace: &str, status: &WorkspaceStatus) -> bool {
+        if ["scratchpad", "pulsemixer"].contains(&workspace) {
+            return true;
+        }
+        !matches!(status, WorkspaceStatus::Active | WorkspaceStatus::Used)
+    }
 }
 
 fn setup_logger() {

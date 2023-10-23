@@ -4,7 +4,7 @@ use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
-use std::{fmt::Display, thread};
+use std::{collections::HashSet, fmt::Display, thread};
 use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
@@ -26,24 +26,6 @@ pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
         .collect::<Vec<String>>())
 }
 
-pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
-    let atoms = Atoms::new(connection).map_err(Error::from)?;
-    let cookie = connection.send_request(&xcb::x::GetProperty {
-        delete: false,
-        window: connection.get_setup().roots().next().unwrap().root(),
-        property: atoms._NET_CURRENT_DESKTOP,
-        r#type: xcb::x::ATOM_CARDINAL,
-        long_offset: 0,
-        long_length: u32::MAX,
-    });
-    let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
-    reply
-        .value::<u32>()
-        .first()
-        .ok_or_else(|| Error::Ewmh.into())
-        .map(|v| *v)
-}
-
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum WorkspaceStatus {
     Active,
@@ -60,9 +42,9 @@ pub struct Workspaces {
     font_size: f64,
     internal_padding: u32,
     active_workspace_color: Color,
-    ignored_workspaces: Vec<String>,
-    hide_if_empty: Vec<String>,
-    pub workspaces: Vec<(String, WorkspaceStatus)>,
+    policy: Box<dyn WorkspaceHider>,
+    status_provider: Box<dyn WorkspaceStatusProvider>,
+    workspaces: Vec<(String, WorkspaceStatus)>,
 }
 
 impl Workspaces {
@@ -73,8 +55,8 @@ impl Workspaces {
         active_workspace_color: Color,
         internal_padding: u32,
         config: &WidgetConfig,
-        ignored_workspaces: &[impl ToString],
-        hide_if_empty: &[impl ToString],
+        policy: impl WorkspaceHider + 'static,
+        status_provider: impl WorkspaceStatusProvider + 'static,
     ) -> Box<Self> {
         Box::new(Self {
             padding: config.padding,
@@ -84,8 +66,8 @@ impl Workspaces {
             workspaces: Vec::new(),
             font: config.font.to_owned(),
             font_size: config.font_size,
-            ignored_workspaces: ignored_workspaces.iter().map(ToString::to_string).collect(),
-            hide_if_empty: hide_if_empty.iter().map(ToString::to_string).collect(),
+            policy: Box::new(policy),
+            status_provider: Box::new(status_provider),
         })
     }
 
@@ -111,7 +93,7 @@ impl Widget for Workspaces {
                 WorkspaceStatus::Used => self.fg_color,
                 WorkspaceStatus::Empty => Color::new(0.4, 0.4, 0.4, 1.0),
             };
-            if self.hide_if_empty.contains(workspace) && *active == WorkspaceStatus::Empty {
+            if self.policy.should_hide(workspace, active) {
                 continue;
             }
             set_source_rgba(context, color);
@@ -135,22 +117,18 @@ impl Widget for Workspaces {
     async fn update(&mut self) -> Result<()> {
         debug!("updating workspaces");
         let (connection, _) = Connection::connect(None).map_err(Error::from)?;
-        let Ok(workspace) = get_desktops_names(&connection) else {
+        let Ok(workspaces) = get_desktops_names(&connection) else {
             return Ok(());
         };
-        let Ok(index) = get_current_desktop(&connection) else {
-            return Ok(());
-        };
-        self.workspaces = workspace
-            .iter()
-            .map(|w| (w.to_owned(), WorkspaceStatus::Empty))
-            .collect();
-        if let Some(active_workspace) = self.workspaces.get_mut(index as usize) {
-            active_workspace.1 = WorkspaceStatus::Active;
-        }
 
-        self.workspaces
-            .retain(|name| !self.ignored_workspaces.contains(&name.0));
+        self.workspaces.clear();
+
+        self.status_provider.update().await?;
+        for (i, workspace) in workspaces.into_iter().enumerate() {
+            let f = self.status_provider.status(&workspace, i);
+            let new_status = f.await;
+            self.workspaces.push((workspace, new_status));
+        }
 
         Ok(())
     }
@@ -183,21 +161,20 @@ impl Widget for Workspaces {
     }
 
     fn size(&self, context: &Context) -> Result<Size> {
-        let hidden_workspaces: Vec<_> = self
+        let hidden_workspaces: HashSet<_> = self
             .workspaces
             .iter()
-            .filter(|w| self.hide_if_empty.contains(&w.0))
-            .filter(|w| w.1 == WorkspaceStatus::Empty)
+            .filter(|(w, status)| self.policy.should_hide(w, status))
+            .map(|(w, _)| w)
             .collect();
 
         let layout = self.get_layout(context)?;
         let big_string = self
             .workspaces
             .iter()
-            .filter(|w| !hidden_workspaces.contains(w))
+            .filter(|(w, _)| !hidden_workspaces.contains(w))
             .map(|(text, _)| text.clone())
-            .collect::<Vec<_>>()
-            .join("");
+            .collect::<String>();
 
         layout.set_text(&big_string);
         let text_size: u32 = layout.pixel_size().0 as u32;
@@ -219,6 +196,79 @@ impl Display for Workspaces {
     }
 }
 
+pub trait WorkspaceHider: std::fmt::Debug + Send {
+    fn should_hide(&self, workspace: &str, status: &WorkspaceStatus) -> bool;
+}
+
+#[derive(Debug)]
+pub struct NeverHide;
+
+impl WorkspaceHider for NeverHide {
+    fn should_hide(&self, _workspace: &str, _status: &WorkspaceStatus) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+pub trait WorkspaceStatusProvider: std::fmt::Debug + Send {
+    async fn update(&mut self) -> Result<()>;
+    async fn status(&self, workspaces: &str, index: usize) -> WorkspaceStatus;
+}
+
+pub struct ActiveProvider {
+    connection: Connection,
+    active_index: usize,
+}
+
+impl ActiveProvider {
+    pub fn new() -> Result<Self> {
+        let (connection, _) = Connection::connect(None).map_err(Error::from)?;
+        Ok(Self {
+            connection,
+            active_index: 0,
+        })
+    }
+}
+
+impl std::fmt::Debug for ActiveProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt("ActiveProvider", f)
+    }
+}
+
+#[async_trait]
+impl WorkspaceStatusProvider for ActiveProvider {
+    async fn status(&self, _workspace: &str, index: usize) -> WorkspaceStatus {
+        if index == self.active_index {
+            WorkspaceStatus::Active
+        } else {
+            WorkspaceStatus::Used
+        }
+    }
+    async fn update(&mut self) -> Result<()> {
+        self.active_index = get_current_desktop(&self.connection)? as usize;
+        Ok(())
+    }
+}
+
+pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
+    let atoms = Atoms::new(connection).map_err(Error::from)?;
+    let cookie = connection.send_request(&xcb::x::GetProperty {
+        delete: false,
+        window: connection.get_setup().roots().next().unwrap().root(),
+        property: atoms._NET_CURRENT_DESKTOP,
+        r#type: xcb::x::ATOM_CARDINAL,
+        long_offset: 0,
+        long_length: u32::MAX,
+    });
+    let reply = connection.wait_for_reply(cookie).map_err(Error::Xcb)?;
+    reply
+        .value::<u32>()
+        .first()
+        .ok_or_else(|| Error::Ewmh.into())
+        .map(|v| *v)
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
@@ -227,6 +277,7 @@ pub enum Error {
     #[error("Pango")]
     Pango,
     Xcb(#[from] xcb::Error),
+    Py(#[from] pyo3::PyErr),
 }
 
 impl From<xcb::ConnError> for Error {
