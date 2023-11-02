@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use barust::widgets::{workspaces::ActiveProvider, WorkspaceStatusProvider, *};
+use barust::widgets::*;
 use pyo3::{types::PyModule, Py, PyResult, Python};
 use std::{collections::HashMap, fmt::Display};
 

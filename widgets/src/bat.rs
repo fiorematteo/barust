@@ -2,7 +2,11 @@ use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
 use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
-use std::{fmt::Display, fs::read_dir};
+use std::{
+    fmt::Display,
+    fs::read_dir,
+    time::{Duration, Instant},
+};
 use utils::{percentage_to_index, HookSender, TimedHooks};
 
 /// Icons used by [Battery]
@@ -34,6 +38,7 @@ pub struct Battery {
     inner: Text,
     root_path: String,
     icons: BatteryIcons,
+    low_battery_warning: Box<dyn LowBatteryWarner>,
 }
 
 impl Battery {
@@ -46,6 +51,7 @@ impl Battery {
         format: impl ToString,
         icons: Option<BatteryIcons>,
         config: &WidgetConfig,
+        low_battery_warning: impl LowBatteryWarner + 'static,
     ) -> Result<Box<Self>> {
         let mut root_path = String::default();
         for path in read_dir("/sys/class/power_supply")
@@ -67,6 +73,7 @@ impl Battery {
             inner: *Text::new("", config).await,
             root_path,
             icons: icons.unwrap_or_default(),
+            low_battery_warning: Box::new(low_battery_warning),
         }))
     }
 
@@ -102,7 +109,14 @@ impl Widget for Battery {
             (None, None) => return Ok(()),
         };
 
-        let percentages = if self.read_os_file("status") == Some("Charging".into()) {
+        let is_charging = self.read_os_file("status") == Some("Charging".into());
+
+        if self.low_battery_warning.should_warn(percent, is_charging) {
+            let f = self.low_battery_warning.warn(percent);
+            f.await;
+        }
+
+        let percentages = if is_charging {
             &self.icons.percentages_charging
         } else {
             &self.icons.percentages
@@ -133,6 +147,72 @@ impl Widget for Battery {
 impl Display for Battery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         String::from("Battery").fmt(f)
+    }
+}
+
+#[async_trait]
+pub trait LowBatteryWarner: Send + std::fmt::Debug {
+    fn should_warn(&mut self, charge: f64, is_charging: bool) -> bool;
+    async fn warn(&self, charge: f64);
+}
+
+#[derive(Debug)]
+pub struct NotifySend {
+    warn_time_20: Option<Instant>,
+    warn_time_5: Option<Instant>,
+}
+
+#[async_trait]
+impl LowBatteryWarner for NotifySend {
+    fn should_warn(&mut self, charge: f64, is_charging: bool) -> bool {
+        if is_charging {
+            return false;
+        }
+
+        const FIVE_MINUTES: Duration = Duration::from_secs(60 * 5);
+        if charge < 20.0
+            && self
+                .warn_time_20
+                .map(|d| d.elapsed() > FIVE_MINUTES)
+                .unwrap_or(true)
+        {
+            self.warn_time_20 = Some(Instant::now());
+            return true;
+        }
+
+        if charge < 5.0
+            && self
+                .warn_time_5
+                .map(|d| d.elapsed() > FIVE_MINUTES)
+                .unwrap_or(true)
+        {
+            self.warn_time_5 = Some(Instant::now());
+            return true;
+        }
+
+        false
+    }
+
+    async fn warn(&self, charge: f64) {
+        let body = format!("Battery is low: {:.1}% left", charge);
+        let n = libnotify::Notification::new("Low battery", Some(body.as_ref()), None);
+        n.set_timeout(5000);
+        n.set_urgency(if charge < 5.0 {
+            libnotify::Urgency::Critical
+        } else {
+            libnotify::Urgency::Normal
+        });
+        n.show().expect("failed to show notification");
+    }
+}
+
+impl Default for NotifySend {
+    fn default() -> Self {
+        libnotify::init("barust").expect("libnotify init failed");
+        Self {
+            warn_time_20: None,
+            warn_time_5: None,
+        }
     }
 }
 

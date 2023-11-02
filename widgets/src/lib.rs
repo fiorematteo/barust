@@ -8,25 +8,25 @@ mod replaceable;
 
 pub use replaceable::ReplaceableWidget;
 
-pub mod active_window;
-pub mod bat;
-pub mod brightness;
-pub mod clock;
-pub mod cpu;
-pub mod disk;
-pub mod memory;
-pub mod network;
-pub mod spacer;
-pub mod systray;
-pub mod temp;
-pub mod text;
-pub mod volume;
-pub mod wlan;
-pub mod workspaces;
+mod active_window;
+mod bat;
+mod brightness;
+mod clock;
+mod cpu;
+mod disk;
+mod memory;
+mod network;
+mod spacer;
+mod systray;
+mod temp;
+mod text;
+mod volume;
+mod wlan;
+mod workspaces;
 
 pub use active_window::ActiveWindow;
-pub use bat::{Battery, BatteryIcons};
-pub use brightness::Brightness;
+pub use bat::{Battery, BatteryIcons, LowBatteryWarner, NotifySend};
+pub use brightness::{Brightness, BrightnessProvider, LightProvider, SysfsProvider};
 pub use clock::Clock;
 pub use cpu::Cpu;
 pub use disk::Disk;
@@ -36,13 +36,11 @@ pub use spacer::Spacer;
 pub use systray::Systray;
 pub use temp::Temperatures;
 pub use text::Text;
-pub use volume::{Volume, VolumeIcons};
+pub use volume::{PulseaudioProvider, Volume, VolumeIcons, VolumeProvider};
 pub use wlan::Wlan;
-pub use workspaces::Workspaces;
-
-pub use brightness::{BrightnessProvider, LightProvider, SysfsProvider};
-pub use volume::{PulseaudioProvider, VolumeProvider};
-pub use workspaces::{NeverHide, WorkspaceHider, WorkspaceStatus, WorkspaceStatusProvider};
+pub use workspaces::{
+    ActiveProvider, NeverHide, WorkspaceHider, WorkspaceStatus, WorkspaceStatusProvider, Workspaces,
+};
 
 pub enum Size {
     Flex,

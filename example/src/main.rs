@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
             Cpu::new("💻 %p%", &wd_config).await?,
-            Battery::new("%i %c%", None, &wd_config).await?,
+            Battery::new("%i %c%", None, &wd_config, NotifySend::default()).await?,
             Volume::new(
                 "%i %p",
                 Box::new(PulseaudioProvider::new().await.unwrap()),
