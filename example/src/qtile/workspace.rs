@@ -21,13 +21,14 @@ impl std::fmt::Debug for QtileStatusProvider {
 impl WorkspaceStatusProvider for QtileStatusProvider {
     async fn update(&mut self) -> Result<()> {
         self.active_provider.update().await?;
-        let group_count = Python::with_gil(|py| -> PyResult<HashMap<String, usize>> {
+        let Ok(group_count) = Python::with_gil(|py| -> PyResult<HashMap<String, usize>> {
             self.python_module
                 .getattr(py, "windows")?
                 .call0(py)?
                 .extract::<HashMap<String, usize>>(py)
-        })
-        .map_err(Error::from)?;
+        }) else {
+            return Ok(());
+        };
         self.group_count.clear();
         for (k, v) in group_count {
             self.group_count.insert(k, v);
