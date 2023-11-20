@@ -196,7 +196,6 @@ impl LowBatteryWarner for NotifySend {
     async fn warn(&self, charge: f64) {
         let body = format!("Battery is low: {:.1}% left", charge);
         let n = libnotify::Notification::new("Low battery", Some(body.as_ref()), None);
-        n.set_timeout(5000);
         n.set_urgency(if charge < 5.0 {
             libnotify::Urgency::Critical
         } else {

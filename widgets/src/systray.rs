@@ -2,7 +2,7 @@ use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
 use async_channel::{bounded, Receiver};
 use async_trait::async_trait;
 use cairo::Context;
-use log::{debug, error, warn};
+use log::{debug, error};
 use std::{fmt::Display, sync::Arc, thread};
 use utils::{
     screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
@@ -10,9 +10,10 @@ use utils::{
 };
 use xcb::{
     x::{
-        ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, ConfigWindow,
-        ConfigureWindow, CreateWindow, Cw, DestroyWindow, Drawable, EventMask, GetGeometry,
-        MapWindow, Pixmap, ReparentWindow, SendEventDest, UnmapWindow, Window, WindowClass,
+        ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, Colormap, ColormapAlloc,
+        ConfigWindow, ConfigureWindow, CreateColormap, CreateWindow, Cw, DestroyWindow, Drawable,
+        EventMask, MapWindow, Pixmap, ReparentWindow, SendEventDest, UnmapWindow, VisualClass,
+        Window, WindowClass,
     },
     Connection, Xid, XidNew,
 };
@@ -26,8 +27,9 @@ pub struct Systray {
     window: Option<Window>,
     connection: Arc<Connection>,
     screen_id: i32,
-    children: Vec<(Window, u16)>,
+    children: Vec<Window>,
     event_receiver: Option<Receiver<SystrayEvent>>,
+    height: u32,
 }
 
 impl std::fmt::Debug for Systray {
@@ -41,7 +43,6 @@ impl std::fmt::Debug for Systray {
 }
 
 impl Systray {
-    ///* `icon_size` width of the icons
     ///* `config` a [&WidgetConfig]
     pub async fn new(internal_padding: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let (connection, screen_id) = Connection::connect(None).map_err(Error::from)?;
@@ -54,11 +55,12 @@ impl Systray {
             children: Vec::new(),
             event_receiver: None,
             internal_padding,
+            height: 0,
         }))
     }
 
     fn adopt(&mut self, window: Window) -> Result<()> {
-        if self.children.iter().any(|(c, _)| *c == window) {
+        if self.children.contains(&window) {
             return Ok(());
         }
 
@@ -80,15 +82,17 @@ impl Systray {
                 .map_err(Error::from)?;
         }
 
-        let window_width = self
-            .connection
-            .wait_for_reply(self.connection.send_request(&GetGeometry {
-                drawable: Drawable::Window(window),
-            }))
-            .map_err(Error::from)?
-            .width();
+        self.connection
+            .send_and_check_request(&ConfigureWindow {
+                window,
+                value_list: &[
+                    xcb::x::ConfigWindow::Width(self.height),
+                    xcb::x::ConfigWindow::Height(self.height),
+                ],
+            })
+            .ok();
 
-        self.children.push((window, window_width));
+        self.children.push(window);
         self.reposition_children()?;
         self.connection
             .send_and_check_request(&MapWindow { window })
@@ -98,27 +102,57 @@ impl Systray {
     }
 
     fn reposition_children(&mut self) -> Result<()> {
-        let mut offset = 0;
-        for (window, width) in &self.children {
-            offset += u32::from(*width) + self.internal_padding;
-            self.connection.send_request(
-                &(ReparentWindow {
-                    window: *window,
-                    parent: self.window.unwrap(),
-                    x: offset.try_into().unwrap(),
-                    y: 0,
-                }),
-            );
+        let mut offset = self.padding;
+        for window in &self.children {
+            // Since there are no ways to ping a window
+            // destroyed windows can sometimes still be in self.children
+
+            self.connection
+                .send_and_check_request(
+                    &(ReparentWindow {
+                        window: *window,
+                        parent: self.window.unwrap(),
+                        x: offset as _,
+                        y: 0,
+                    }),
+                )
+                .ok();
+
+            offset += self.height + self.internal_padding;
         }
-        // Since there are no ways to ping a window
-        // destroyed windows can sometimes still be in self.children
-        self.connection.flush().ok();
         Ok(())
     }
 
     fn forget(&mut self, window: Window) -> Result<()> {
-        self.children.retain(|(child, _)| *child != window);
+        if !self.children.contains(&window) {
+            return Ok(());
+        }
+        self.children.retain(|child| *child != window);
         self.reposition_children()?;
+
+        self.connection
+            .send_and_check_request(&ChangeWindowAttributes {
+                window,
+                value_list: &[
+                    Cw::OverrideRedirect(false),
+                    Cw::EventMask(EventMask::NO_EVENT),
+                ],
+            })
+            .ok();
+        self.connection
+            .send_and_check_request(&UnmapWindow { window })
+            .ok();
+        self.connection
+            .send_and_check_request(
+                &(ReparentWindow {
+                    window,
+                    parent: self.connection.get_setup().roots().next().unwrap().root(),
+                    x: 0,
+                    y: 0,
+                }),
+            )
+            .ok();
+
         if self.children.is_empty() {
             self.connection
                 .send_and_check_request(&UnmapWindow {
@@ -129,30 +163,55 @@ impl Systray {
         Ok(())
     }
 
-    fn create_tray_window(&self, y: i16) -> Result<Window> {
+    fn create_tray_window(&self, y: i16, height: u16, width: u16) -> Result<Window> {
         let window: Window = self.connection.generate_id();
+        let colormap: Colormap = self.connection.generate_id();
+
         let screen = self
             .connection
             .get_setup()
             .roots()
-            .nth(self.screen_id as _)
-            .unwrap_or_else(|| panic!("cannot find screen:{}", self.screen_id));
+            .next()
+            .unwrap_or_else(|| panic!("cannot find screen:{}", 0));
+
+        let depth = screen
+            .allowed_depths()
+            .find(|d| d.depth() == 24) // MUST BE 24 to match icons
+            .expect("cannot find valid depth");
+
+        let visual_type = depth
+            .visuals()
+            .iter()
+            .find(|v| v.class() == VisualClass::TrueColor)
+            .expect("cannot find valid visual type")
+            .to_owned();
+
+        self.connection
+            .send_and_check_request(&CreateColormap {
+                alloc: ColormapAlloc::None,
+                mid: colormap,
+                window: screen.root(),
+                visual: visual_type.visual_id(),
+            })
+            .map_err(Error::from)?;
 
         self.connection
             .send_and_check_request(&CreateWindow {
-                depth: xcb::x::COPY_FROM_PARENT as _,
+                depth: depth.depth(),
                 wid: window,
                 parent: screen.root(),
                 x: 0,
                 y,
-                width: 1,
-                height: 1,
+                width,
+                height,
                 border_width: 0,
                 class: WindowClass::InputOutput,
-                visual: xcb::x::COPY_FROM_PARENT,
+                visual: visual_type.visual_id(),
                 value_list: &[
                     Cw::BackPixmap(Pixmap::none()),
+                    Cw::BorderPixel(screen.black_pixel()),
                     Cw::EventMask(EventMask::PROPERTY_CHANGE | EventMask::STRUCTURE_NOTIFY),
+                    Cw::Colormap(colormap),
                 ],
             })
             .map_err(Error::from)?;
@@ -261,8 +320,8 @@ impl Systray {
 
             let window = unsafe { Window::new(window) };
 
-            if let Err(e) = self.adopt(window) {
-                warn!("{:#?}", e);
+            if self.adopt(window).is_err() {
+                self.forget(window)?;
             }
         } else {
             unreachable!("Invalid opcode: {}, data: {:?}", opcode, data)
@@ -332,7 +391,8 @@ impl Widget for Systray {
                 screen_true_height(&self.connection, self.screen_id) - info.height as u16
             }
         };
-        self.window = Some(self.create_tray_window(y as _)?);
+        self.window = Some(self.create_tray_window(y as _, info.height as _, info.width as _)?);
+        self.height = info.height;
         Ok(())
     }
 
@@ -374,11 +434,7 @@ impl Widget for Systray {
             return Ok(Size::Static(1));
         }
         Ok(Size::Static(
-            self.children
-                .iter()
-                .map(|(_, width)| u32::from(*width) + self.internal_padding)
-                .sum::<u32>()
-                + 2 * self.padding,
+            self.children.len() as u32 * (self.height + self.internal_padding) + 2 * self.padding,
         ))
     }
 
@@ -393,17 +449,17 @@ impl Drop for Systray {
         let screen = setup.roots().nth(self.screen_id as _).unwrap();
         let root = screen.root();
 
-        for (window, _) in &self.children {
+        for window in &self.children {
             let window = *window;
             self.connection
                 .send_and_check_request(&ChangeWindowAttributes {
                     window,
                     value_list: &[Cw::EventMask(EventMask::NO_EVENT)],
                 })
-                .unwrap();
+                .ok();
             self.connection
                 .send_and_check_request(&UnmapWindow { window })
-                .unwrap();
+                .ok();
             self.connection
                 .send_and_check_request(
                     &(ReparentWindow {
@@ -413,20 +469,20 @@ impl Drop for Systray {
                         y: 0,
                     }),
                 )
-                .unwrap();
+                .ok();
         }
         self.connection
             .send_and_check_request(&ChangeWindowAttributes {
                 window: self.window.unwrap(),
                 value_list: &[Cw::EventMask(EventMask::STRUCTURE_NOTIFY)],
             })
-            .unwrap();
+            .ok();
         self.connection
             .send_and_check_request(&DestroyWindow {
                 window: self.window.unwrap(),
             })
-            .unwrap();
-        self.connection.flush().unwrap();
+            .ok();
+        self.connection.flush().ok();
     }
 }
 
