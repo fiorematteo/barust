@@ -104,19 +104,23 @@ impl Systray {
     fn reposition_children(&mut self) -> Result<()> {
         let mut offset = self.padding;
         for window in &self.children {
-            // Since there are no ways to ping a window
-            // destroyed windows can sometimes still be in self.children
-
-            self.connection
-                .send_and_check_request(
-                    &(ReparentWindow {
-                        window: *window,
-                        parent: self.window.unwrap(),
-                        x: offset as _,
-                        y: 0,
-                    }),
-                )
-                .ok();
+            if let Err(e) = self.connection.send_and_check_request(
+                &(ReparentWindow {
+                    window: *window,
+                    parent: self.window.unwrap(),
+                    x: offset as _,
+                    y: 0,
+                }),
+            ) {
+                // Destroyed windows can sometimes still be in self.children
+                if !matches!(
+                    e,
+                    xcb::ProtocolError::X(xcb::x::Error::Window(xcb::x::ValueError { .. }), _)
+                ) {
+                    // this error matters
+                    error!("Error reparenting window ({window:?}): {e}");
+                }
+            }
 
             offset += self.height + self.internal_padding;
         }
@@ -241,7 +245,7 @@ impl Systray {
         Ok(window)
     }
 
-    fn take_selection(&self, time: u32) -> Result<()> {
+    fn take_selection(&self) -> Result<()> {
         let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
         let selection = atoms._NET_SYSTEM_TRAY_S0;
         let window = self.window.ok_or(Error::MissingWindow)?;
@@ -267,7 +271,7 @@ impl Systray {
             .send_and_check_request(&xcb::x::SetSelectionOwner {
                 owner: window,
                 selection,
-                time,
+                time: xcb::x::CURRENT_TIME,
             })
             .map_err(Error::from)?;
 
@@ -290,7 +294,7 @@ impl Systray {
             screen.root(),
             atoms.MANAGER,
             xcb::x::ClientMessageData::Data32([
-                time,
+                xcb::x::CURRENT_TIME,
                 selection.resource_id(),
                 window.resource_id(),
                 0,
@@ -335,8 +339,14 @@ impl Systray {
                 self.handle_client_message(event)?;
             }
             SystrayEvent::DestroyNotify(window) => self.forget(window)?,
-            SystrayEvent::PropertyNotify(time) => {
-                self.take_selection(time)?;
+            SystrayEvent::PropertyNotify(_) => {
+                if !self.children.is_empty() {
+                    self.connection
+                        .send_and_check_request(&MapWindow {
+                            window: self.window.unwrap(),
+                        })
+                        .map_err(Error::from)?;
+                }
             }
             SystrayEvent::ReparentNotify((parent, window)) => {
                 if parent != self.window.unwrap() {
@@ -393,6 +403,7 @@ impl Widget for Systray {
         };
         self.window = Some(self.create_tray_window(y as _, info.height as _, info.width as _)?);
         self.height = info.height;
+        self.take_selection()?;
         Ok(())
     }
 

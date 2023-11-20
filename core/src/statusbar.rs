@@ -55,6 +55,7 @@ impl StatusBar {
             height: self.height,
             width: self.width,
             position: self.position,
+            window: self.window,
         };
         let mut pool = TimedHooks::default();
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {

@@ -22,6 +22,7 @@ pub struct StatusBarInfo {
     pub height: u32,
     pub width: u32,
     pub position: Position,
+    pub window: xcb::x::Window
 }
 
 #[derive(Clone, Copy, Debug)]
