@@ -49,7 +49,14 @@ async fn main() -> Result<()> {
             .await?,
         ])
         .right_widgets(vec![
-            Systray::new(40, &wd_config).await?,
+            Systray::new(
+                10,
+                &WidgetConfig {
+                    padding: 0,
+                    ..wd_config.clone()
+                },
+            )
+            .await?,
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
             Cpu::new("💻 %p%", &wd_config).await?,

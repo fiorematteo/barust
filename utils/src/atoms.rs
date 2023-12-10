@@ -8,6 +8,7 @@ static ATOMS: OnceLock<Atoms> = OnceLock::new();
 
 atoms!(
      struct Atoms {
+        MANAGER,
         UTF8_STRING,
         _NET_ACTIVE_WINDOW,
         _NET_CURRENT_DESKTOP,
@@ -15,10 +16,12 @@ atoms!(
         _NET_SYSTEM_TRAY_OPCODE,
         _NET_SYSTEM_TRAY_ORIENTATION,
         _NET_SYSTEM_TRAY_S0,
+        _NET_SYSTEM_TRAY_VISUAL,
         _NET_WM_NAME,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_DOCK,
-        MANAGER,
+        _XEMBED,
+        _XEMBED_EMBEDDED_NOTIFY,
     }
 );
 

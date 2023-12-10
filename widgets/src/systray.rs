@@ -4,16 +4,13 @@ use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
 use std::{fmt::Display, sync::Arc, thread};
-use utils::{
-    screen_true_height, set_source_rgba, Atoms, Color, HookSender, Position, StatusBarInfo,
-    TimedHooks,
-};
+use utils::{screen_true_height, Atoms, HookSender, Position, StatusBarInfo, TimedHooks};
 use xcb::{
     x::{
-        ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, Colormap, ColormapAlloc,
-        ConfigWindow, ConfigureWindow, CreateColormap, CreateWindow, Cw, DestroyWindow, Drawable,
-        EventMask, MapWindow, Pixmap, ReparentWindow, SendEventDest, UnmapWindow, VisualClass,
-        Window, WindowClass,
+        ChangeProperty, ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, Colormap,
+        ColormapAlloc, ConfigWindow, ConfigureWindow, CreateColormap, CreateWindow, Cw,
+        DestroyWindow, Drawable, EventMask, Gcontext, MapWindow, Pixmap, PropMode, ReparentWindow,
+        SendEvent, SendEventDest, UnmapWindow, VisualClass, Window, WindowClass, CURRENT_TIME,
     },
     Connection, Xid, XidNew,
 };
@@ -29,7 +26,8 @@ pub struct Systray {
     screen_id: i32,
     children: Vec<Window>,
     event_receiver: Option<Receiver<SystrayEvent>>,
-    height: u32,
+    icon_size: u32,
+    context: Option<Gcontext>,
 }
 
 impl std::fmt::Debug for Systray {
@@ -55,7 +53,8 @@ impl Systray {
             children: Vec::new(),
             event_receiver: None,
             internal_padding,
-            height: 0,
+            icon_size: 0,
+            context: None,
         }))
     }
 
@@ -63,6 +62,15 @@ impl Systray {
         if self.children.contains(&window) {
             return Ok(());
         }
+
+        self.connection
+            .send_and_check_request(&ReparentWindow {
+                window,
+                parent: self.window.unwrap(),
+                x: 0,
+                y: 0,
+            })
+            .map_err(Error::from)?;
 
         self.connection
             .send_and_check_request(&ChangeWindowAttributes {
@@ -82,48 +90,8 @@ impl Systray {
                 .map_err(Error::from)?;
         }
 
-        self.connection
-            .send_and_check_request(&ConfigureWindow {
-                window,
-                value_list: &[
-                    xcb::x::ConfigWindow::Width(self.height),
-                    xcb::x::ConfigWindow::Height(self.height),
-                ],
-            })
-            .ok();
-
         self.children.push(window);
-        self.reposition_children()?;
-        self.connection
-            .send_and_check_request(&MapWindow { window })
-            .map_err(Error::from)?;
         self.connection.flush().map_err(Error::from)?;
-        Ok(())
-    }
-
-    fn reposition_children(&mut self) -> Result<()> {
-        let mut offset = self.padding;
-        for window in &self.children {
-            if let Err(e) = self.connection.send_and_check_request(
-                &(ReparentWindow {
-                    window: *window,
-                    parent: self.window.unwrap(),
-                    x: offset as _,
-                    y: 0,
-                }),
-            ) {
-                // Destroyed windows can sometimes still be in self.children
-                if !matches!(
-                    e,
-                    xcb::ProtocolError::X(xcb::x::Error::Window(xcb::x::ValueError { .. }), _)
-                ) {
-                    // this error matters
-                    error!("Error reparenting window ({window:?}): {e}");
-                }
-            }
-
-            offset += self.height + self.internal_padding;
-        }
         Ok(())
     }
 
@@ -132,7 +100,6 @@ impl Systray {
             return Ok(());
         }
         self.children.retain(|child| *child != window);
-        self.reposition_children()?;
 
         self.connection
             .send_and_check_request(&ChangeWindowAttributes {
@@ -167,7 +134,7 @@ impl Systray {
         Ok(())
     }
 
-    fn create_tray_window(&self, y: i16, height: u16, width: u16) -> Result<Window> {
+    fn create_tray_window(&mut self, y: i16, height: u16) -> Result<()> {
         let window: Window = self.connection.generate_id();
         let colormap: Colormap = self.connection.generate_id();
 
@@ -180,7 +147,7 @@ impl Systray {
 
         let depth = screen
             .allowed_depths()
-            .find(|d| d.depth() == 24) // MUST BE 24 to match icons
+            .find(|d| d.depth() == 32)
             .expect("cannot find valid depth");
 
         let visual_type = depth
@@ -206,7 +173,7 @@ impl Systray {
                 parent: screen.root(),
                 x: 0,
                 y,
-                width,
+                width: 1,
                 height,
                 border_width: 0,
                 class: WindowClass::InputOutput,
@@ -222,7 +189,17 @@ impl Systray {
 
         let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
         self.connection
-            .send_and_check_request(&xcb::x::ChangeProperty {
+            .send_and_check_request(&ChangeProperty {
+                mode: PropMode::Replace,
+                window,
+                property: atoms._NET_SYSTEM_TRAY_VISUAL,
+                r#type: xcb::x::ATOM_VISUALID,
+                data: &[visual_type.visual_id()],
+            })
+            .map_err(Error::from)?;
+
+        self.connection
+            .send_and_check_request(&ChangeProperty {
                 mode: xcb::x::PropMode::Replace,
                 window,
                 property: atoms._NET_WM_WINDOW_TYPE,
@@ -232,7 +209,7 @@ impl Systray {
             .map_err(Error::from)?;
 
         self.connection
-            .send_and_check_request(&xcb::x::ChangeProperty {
+            .send_and_check_request(&ChangeProperty {
                 mode: xcb::x::PropMode::Replace,
                 window,
                 property: atoms._NET_SYSTEM_TRAY_ORIENTATION,
@@ -242,7 +219,25 @@ impl Systray {
             .map_err(Error::from)?;
         self.connection.flush().map_err(Error::from)?;
 
-        Ok(window)
+        // get context
+        // can't use cairo because it's not Send
+        let cid = self.connection.generate_id();
+        xcb::x::CreateGc {
+            cid,
+            drawable: Drawable::Window(window),
+            value_list: &[],
+        };
+        self.connection
+            .send_and_check_request(&xcb::x::CreateGc {
+                cid,
+                drawable: Drawable::Window(window),
+                value_list: &[],
+            })
+            .map_err(Error::from)?;
+
+        self.window = Some(window);
+        self.context = Some(cid);
+        Ok(())
     }
 
     fn take_selection(&self) -> Result<()> {
@@ -290,7 +285,7 @@ impl Systray {
 
         let setup = self.connection.get_setup();
         let screen = setup.roots().next().unwrap();
-        let client_event = xcb::x::ClientMessageEvent::new(
+        let client_event = ClientMessageEvent::new(
             screen.root(),
             atoms.MANAGER,
             xcb::x::ClientMessageData::Data32([
@@ -302,7 +297,7 @@ impl Systray {
             ]),
         );
         self.connection
-            .send_and_check_request(&xcb::x::SendEvent {
+            .send_and_check_request(&SendEvent {
                 propagate: false,
                 destination: SendEventDest::Window(screen.root()),
                 event_mask: EventMask::STRUCTURE_NOTIFY,
@@ -319,7 +314,7 @@ impl Systray {
         };
         let opcode = data[1];
         let window = data[2];
-        if let SYSTEM_TRAY_REQUEST_DOCK = opcode {
+        if SYSTEM_TRAY_REQUEST_DOCK == opcode {
             debug!("systray request dock message");
 
             let window = unsafe { Window::new(window) };
@@ -327,8 +322,6 @@ impl Systray {
             if self.adopt(window).is_err() {
                 self.forget(window)?;
             }
-        } else {
-            unreachable!("Invalid opcode: {}, data: {:?}", opcode, data)
         };
         Ok(())
     }
@@ -339,15 +332,7 @@ impl Systray {
                 self.handle_client_message(event)?;
             }
             SystrayEvent::DestroyNotify(window) => self.forget(window)?,
-            SystrayEvent::PropertyNotify(_) => {
-                if !self.children.is_empty() {
-                    self.connection
-                        .send_and_check_request(&MapWindow {
-                            window: self.window.unwrap(),
-                        })
-                        .map_err(Error::from)?;
-                }
-            }
+            SystrayEvent::PropertyNotify(_) => {}
             SystrayEvent::ReparentNotify((parent, window)) => {
                 if parent != self.window.unwrap() {
                     self.forget(window)?;
@@ -361,17 +346,8 @@ impl Systray {
 
 #[async_trait]
 impl Widget for Systray {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        set_source_rgba(
-            context,
-            Color {
-                r: 1.0,
-                g: 1.0,
-                b: 1.0,
-                a: 1.0,
-            },
-        );
-        context.fill().map_err(Error::from)?;
+    fn draw(&self, _: &Context, rectangle: &Rectangle) -> Result<()> {
+        // fit to rectangle
         let geometry = self
             .connection
             .wait_for_reply(self.connection.send_request(&xcb::x::GetGeometry {
@@ -391,6 +367,62 @@ impl Widget for Systray {
                 })
                 .map_err(Error::from)?;
         }
+
+        // clear surface
+        self.connection
+            .send_and_check_request(&xcb::x::PolyFillRectangle {
+                drawable: Drawable::Window(self.window.unwrap()),
+                gc: self.context.unwrap(),
+                rectangles: &[xcb::x::Rectangle {
+                    x: 0,
+                    y: 0,
+                    width: rectangle.width as _,
+                    height: rectangle.height as _,
+                }],
+            })
+            .map_err(Error::from)?;
+
+        // paint children
+        let mut offset = self.padding;
+        for child in &self.children {
+            let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
+            let data = ClientMessageData::Data32([
+                CURRENT_TIME,
+                atoms._XEMBED_EMBEDDED_NOTIFY.resource_id(),
+                0,
+                self.window.unwrap().resource_id(),
+                0,
+            ]);
+            // don't trust child windows
+            let event = &ClientMessageEvent::new(self.window.unwrap(), atoms._XEMBED, data);
+            self.connection
+                .send_and_check_request(&SendEvent {
+                    propagate: false,
+                    destination: SendEventDest::Window(*child),
+                    event_mask: EventMask::all(),
+                    event,
+                })
+                .ok();
+
+            self.connection
+                .send_and_check_request(&MapWindow { window: *child })
+                .ok();
+            self.connection
+                .send_and_check_request(
+                    &(ConfigureWindow {
+                        window: *child,
+                        value_list: &[
+                            ConfigWindow::X(offset as _),
+                            ConfigWindow::Y(0),
+                            ConfigWindow::Width(self.icon_size as _),
+                            ConfigWindow::Height(self.icon_size as _),
+                        ],
+                    }),
+                )
+                .ok();
+            offset += self.icon_size + self.internal_padding;
+        }
+
         Ok(())
     }
 
@@ -401,8 +433,9 @@ impl Widget for Systray {
                 screen_true_height(&self.connection, self.screen_id) - info.height as u16
             }
         };
-        self.window = Some(self.create_tray_window(y as _, info.height as _, info.width as _)?);
-        self.height = info.height;
+        self.create_tray_window(y as _, info.height as _)?;
+        self.icon_size = info.height;
+
         self.take_selection()?;
         Ok(())
     }
@@ -445,7 +478,8 @@ impl Widget for Systray {
             return Ok(Size::Static(1));
         }
         Ok(Size::Static(
-            self.children.len() as u32 * (self.height + self.internal_padding) + 2 * self.padding,
+            self.children.len() as u32 * (self.icon_size + self.internal_padding)
+                + 2 * self.padding,
         ))
     }
 
@@ -504,7 +538,7 @@ impl Display for Systray {
 }
 
 enum SystrayEvent {
-    ClientMessage(xcb::x::ClientMessageEvent),
+    ClientMessage(ClientMessageEvent),
     DestroyNotify(Window),
     PropertyNotify(u32),
     ReparentNotify((Window, Window)),
