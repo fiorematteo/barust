@@ -1,4 +1,4 @@
-use crate::{Rectangle, Result, Size, Widget};
+use crate::widgets::{Rectangle, Result, Size, Widget};
 use async_trait::async_trait;
 use cairo::Context;
 use std::fmt::Display;

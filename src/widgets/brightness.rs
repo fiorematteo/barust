@@ -1,4 +1,8 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks},
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use std::{fmt::Display, fs, io::SeekFrom, ops::DerefMut, path::PathBuf, process::Command};
@@ -7,7 +11,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt},
     sync::Mutex,
 };
-use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
 /// Icons used by [Brightness]
 #[derive(Debug)]

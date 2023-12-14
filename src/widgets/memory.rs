@@ -1,10 +1,15 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    utils::bytes_to_closest,
+    widget_default,
+    widgets::{Rectangle, Result},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use psutil::memory::virtual_memory;
 use std::fmt::Display;
-use utils::bytes_to_closest;
+
+use super::{Text, Widget, WidgetConfig};
 
 /// Displays memory informations
 #[derive(Debug)]

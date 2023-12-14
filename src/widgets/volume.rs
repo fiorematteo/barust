@@ -1,4 +1,8 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks},
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_channel::{bounded, Receiver, Sender};
 use async_trait::async_trait;
 use cairo::Context;
@@ -6,7 +10,6 @@ use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
 use log::debug;
 use pulsectl::controllers::DeviceControl;
 use std::{fmt::Display, marker::Send, thread};
-use utils::{percentage_to_index, HookSender, ResettableTimer, TimedHooks};
 
 /// Icons used by [Volume]
 #[derive(Debug)]

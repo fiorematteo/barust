@@ -1,10 +1,13 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    utils::{HookSender, TimedHooks},
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use psutil::cpu::{CpuPercentCollector, CpuTimesPercentCollector};
 use std::fmt::Display;
-use utils::{HookSender, TimedHooks};
 
 /// Displays cpu informations
 #[derive(Debug)]

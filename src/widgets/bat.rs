@@ -1,4 +1,8 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    utils::{percentage_to_index, HookSender, TimedHooks},
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
@@ -7,7 +11,6 @@ use std::{
     fs::read_dir,
     time::{Duration, Instant},
 };
-use utils::{percentage_to_index, HookSender, TimedHooks};
 
 /// Icons used by [Battery]
 #[derive(Debug)]

@@ -1,10 +1,12 @@
-use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
+use crate::{
+    utils::{screen_true_height, Atoms, HookSender, Position, StatusBarInfo, TimedHooks},
+    widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
+};
 use async_channel::{bounded, Receiver};
 use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
 use std::{fmt::Display, sync::Arc, thread};
-use utils::{screen_true_height, Atoms, HookSender, Position, StatusBarInfo, TimedHooks};
 use xcb::{
     x::{
         ChangeProperty, ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, Colormap,

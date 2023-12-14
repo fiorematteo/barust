@@ -1,4 +1,11 @@
-use crate::{BarustError, Result};
+use crate::utils::{
+    hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
+    HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
+};
+use crate::{
+    widgets::{ReplaceableWidget, Size, Widget},
+    BarustError, Result,
+};
 use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use futures_util::stream::StreamExt;
@@ -7,11 +14,6 @@ use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
 use std::{ffi::c_int, sync::Arc, thread, time::Duration};
 use tokio::{select, spawn};
-use utils::{
-    hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
-    HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
-};
-use widgets::{ReplaceableWidget, Size, Widget};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,

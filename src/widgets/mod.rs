@@ -1,8 +1,8 @@
+use crate::utils::{Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
 use async_trait::async_trait;
 use cairo::Context;
 use std::{fmt::Display, time::Duration};
 use thiserror::Error;
-use utils::{Color, HookSender, Rectangle, StatusBarInfo, TimedHooks};
 
 mod replaceable;
 

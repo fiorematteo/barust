@@ -1,9 +1,12 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::utils::{HookSender, TimedHooks};
+use crate::{
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use std::fmt::Display;
-use utils::{HookSender, TimedHooks};
 
 /// Displays informations about a network interface
 #[derive(Debug)]

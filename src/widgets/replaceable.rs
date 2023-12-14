@@ -1,8 +1,9 @@
+use crate::{
+    utils::{HookSender, Rectangle, StatusBarInfo, TimedHooks},
+    widgets::{Size, Text, Widget, WidgetConfig, WidgetError},
+};
 use cairo::Context;
 use log::error;
-use utils::{HookSender, Rectangle, StatusBarInfo, TimedHooks};
-
-use crate::{Size, Text, Widget, WidgetConfig, WidgetError};
 use std::{
     fmt,
     ops::{Deref, DerefMut},

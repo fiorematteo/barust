@@ -1,8 +1,11 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::utils::{bytes_to_closest, HookSender, TimedHooks};
+use crate::{
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use std::fmt::Display;
-use utils::{bytes_to_closest, HookSender, TimedHooks};
 
 #[derive(Debug)]
 pub struct Disk {

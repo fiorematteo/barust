@@ -1,9 +1,12 @@
-use crate::{widget_default, Rectangle, Result, Text, Widget, WidgetConfig};
+use crate::{
+    utils::{Atoms, HookSender, TimedHooks},
+    widget_default,
+    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use log::{debug, error};
 use std::{fmt::Display, sync::Arc, thread};
-use utils::{Atoms, HookSender, TimedHooks};
 use xcb::{
     x::{ChangeWindowAttributes, Cw, Event, EventMask, Window},
     Connection, XidNew,

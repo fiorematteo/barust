@@ -1,10 +1,12 @@
-use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
+use crate::{
+    utils::{set_source_rgba, Color},
+    widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::fmt::Display;
-use utils::{set_source_rgba, Color};
 
 /// Displays custom text
 #[derive(Debug)]

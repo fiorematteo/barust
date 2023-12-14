@@ -1,5 +1,5 @@
-pub use utils;
-pub use widgets;
+pub mod utils;
+pub mod widgets;
 
 pub mod statusbar;
 

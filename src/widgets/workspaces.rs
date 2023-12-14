@@ -1,11 +1,13 @@
-use crate::{Rectangle, Result, Size, Widget, WidgetConfig};
+use crate::{
+    utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks},
+    widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
+};
 use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
 use pangocairo::{create_context, show_layout};
 use std::{collections::HashSet, fmt::Display, thread};
-use utils::{set_source_rgba, Atoms, Color, HookSender, TimedHooks};
 use xcb::Connection;
 
 pub fn get_desktops_names(connection: &Connection) -> Result<Vec<String>> {
