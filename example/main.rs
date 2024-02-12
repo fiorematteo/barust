@@ -57,6 +57,7 @@ async fn main() -> Result<()> {
                 },
             )
             .await?,
+            Update::new(&wd_config, vec![Apt::new()]).await,
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
             Cpu::new("💻 %p%", &wd_config).await?,

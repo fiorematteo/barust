@@ -83,7 +83,7 @@ impl StatusBar {
             wd.update_or_replace().await;
         }
 
-        let signal = notify(&[SIGINT, SIGTERM]).await?;
+        let signal = notify(&[SIGINT, SIGTERM])?;
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.generate_regions().await?;
@@ -453,9 +453,9 @@ fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     Ok(rx)
 }
 
-async fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
+fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
     let (s, r) = bounded(10);
-    let mut signals = Signals::new(signals).unwrap();
+    let mut signals = Signals::new(signals)?;
     spawn(async move {
         while let Some(signal) = signals.next().await {
             if s.send(signal).await.is_err() {

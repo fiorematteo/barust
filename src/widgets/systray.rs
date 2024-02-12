@@ -224,11 +224,6 @@ impl Systray {
         // get context
         // can't use cairo because it's not Send
         let cid = self.connection.generate_id();
-        xcb::x::CreateGc {
-            cid,
-            drawable: Drawable::Window(window),
-            value_list: &[],
-        };
         self.connection
             .send_and_check_request(&xcb::x::CreateGc {
                 cid,

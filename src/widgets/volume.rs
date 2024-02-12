@@ -64,6 +64,20 @@ impl Volume {
             inner: *Text::new("", config).await,
         })
     }
+
+    fn build_string(&mut self, volume: f64, muted: bool) -> String {
+        if self.show_counter.is_done() {
+            return String::from("");
+        }
+        if muted {
+            return self.icons.muted.clone();
+        }
+        let percentages_len = self.icons.percentages.len();
+        let index = percentage_to_index(volume, (0, percentages_len - 1));
+        self.format
+            .replace("%p", &format!("{:.1}", volume))
+            .replace("%i", &self.icons.percentages[index].to_string())
+    }
 }
 
 #[async_trait]
@@ -90,22 +104,6 @@ impl Widget for Volume {
     }
 
     widget_default!(draw, size, padding);
-}
-
-impl Volume {
-    fn build_string(&mut self, volume: f64, muted: bool) -> String {
-        if self.show_counter.is_done() {
-            return String::from("");
-        }
-        if muted {
-            return self.icons.muted.clone();
-        }
-        let percentages_len = self.icons.percentages.len();
-        let index = percentage_to_index(volume, (0, percentages_len - 1));
-        self.format
-            .replace("%p", &format!("{:.1}", volume))
-            .replace("%i", &self.icons.percentages[index].to_string())
-    }
 }
 
 impl Display for Volume {

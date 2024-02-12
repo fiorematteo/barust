@@ -3,8 +3,6 @@ use barust::widgets::*;
 use pyo3::{types::PyModule, Py, PyResult, Python};
 use std::{collections::HashMap, fmt::Display};
 
-type Result<T> = std::result::Result<T, WidgetError>;
-
 pub struct QtileStatusProvider {
     python_module: Py<PyModule>,
     active_provider: ActiveProvider,

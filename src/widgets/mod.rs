@@ -20,6 +20,7 @@ mod spacer;
 mod systray;
 mod temp;
 mod text;
+mod update;
 mod volume;
 mod wlan;
 mod workspaces;
@@ -36,6 +37,7 @@ pub use spacer::Spacer;
 pub use systray::Systray;
 pub use temp::Temperatures;
 pub use text::Text;
+pub use update::{Apt, Update, UpdateSource};
 pub use volume::{PulseaudioProvider, Volume, VolumeIcons, VolumeProvider};
 pub use wlan::Wlan;
 pub use workspaces::{
@@ -89,7 +91,7 @@ pub struct WidgetConfig {
 }
 
 impl WidgetConfig {
-    pub async fn new(
+    pub fn new(
         font: impl ToString,
         font_size: f64,
         padding: u32,
@@ -137,6 +139,7 @@ pub enum WidgetError {
     Systray(#[from] systray::Error),
     Temperatures(#[from] temp::Error),
     Text(#[from] text::Error),
+    Update(#[from] update::Error),
     Volume(#[from] volume::Error),
     Wlan(#[from] wlan::Error),
     Workspaces(#[from] workspaces::Error),
