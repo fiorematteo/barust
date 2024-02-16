@@ -155,7 +155,7 @@ pub enum WidgetError {
 #[macro_export]
 macro_rules! widget_default {
     (size) => {
-        fn size(&self, context: &cairo::Context) -> Result<crate::widgets::Size> {
+        fn size(&self, context: &cairo::Context) -> Result<$crate::widgets::Size> {
             self.inner.size(context)
         }
     };
