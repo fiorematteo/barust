@@ -33,12 +33,12 @@ pub async fn get_current_meteo() -> Result<Meteo> {
             loc_info.latitude.parse::<f32>().unwrap(),
             loc_info.longitude.parse::<f32>().unwrap(),
         )
-        .map_err(|_| Error::OpenMeteoRequest)?
+        .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?
         .current_weather()
-        .map_err(|_| Error::OpenMeteoRequest)?
+        .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?
         .query()
         .await
-        .map_err(|_| Error::OpenMeteoRequest)?;
+        .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?;
 
     let current_weather = data.current_weather.ok_or(Error::MissingData)?;
     let daily = data.daily.ok_or(Error::MissingData)?;
@@ -70,20 +70,18 @@ pub async fn get_current_meteo() -> Result<Meteo> {
 /// A set of strings used as icons in the Weather widget
 #[derive(Debug)]
 pub struct MeteoIcons {
-    clear: String,
-    cloudy: String,
-    _duststorm: String,
-    fog: String,
-    freezing_rain: String,
-    freezing_drizzle: String,
-    hail: String,
-    rain: String,
-    snow: String,
-    drizzle: String,
-    light_snow: String,
-    _lighting: String,
-    thunderstorm: String,
-    unknown: String,
+    pub clear: String,
+    pub cloudy: String,
+    pub fog: String,
+    pub freezing_rain: String,
+    pub freezing_drizzle: String,
+    pub hail: String,
+    pub rain: String,
+    pub snow: String,
+    pub drizzle: String,
+    pub light_snow: String,
+    pub thunderstorm: String,
+    pub unknown: String,
 }
 
 impl Default for MeteoIcons {
@@ -92,13 +90,11 @@ impl Default for MeteoIcons {
             clear: "󰖙".to_string(),
             cloudy: "󰖐".to_string(),
             drizzle: "󰖗".to_string(),
-            _duststorm: "".to_string(),
             fog: "󰖑".to_string(),
             freezing_drizzle: "󰖘".to_string(),
             freezing_rain: "󰙿".to_string(),
             hail: "󰖒".to_string(),
             light_snow: "󰖘".to_string(),
-            _lighting: "󰖓".to_string(),
             rain: "󰖖".to_string(),
             snow: "󰼶".to_string(),
             thunderstorm: "".to_string(),
@@ -215,8 +211,8 @@ pub enum Error {
     Geo(#[from] GeoError),
     Request(#[from] reqwest::Error),
     SerdeJson(#[from] serde_json::Error),
-    #[error("OpenMeteo request error")]
-    OpenMeteoRequest,
+    #[error("OpenMeteo request error: {0}")]
+    OpenMeteoRequest(String),
     #[error("Missing data from weather provider")]
     MissingData,
 }
