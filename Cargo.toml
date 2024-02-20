@@ -49,9 +49,4 @@ simple-logging = "2.0.2"
 
 [[example]]
 name = "barust"
-path = "example/complete/main.rs"
-
-
-[[example]]
-name = "weather"
-path = "example/weather/main.rs"
+path = "example/main.rs"

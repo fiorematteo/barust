@@ -22,9 +22,7 @@ mod temp;
 mod text;
 mod update;
 mod volume;
-//mod wlan;
 mod weather;
-
 mod wlan;
 mod workspaces;
 
@@ -42,9 +40,8 @@ pub use temp::Temperatures;
 pub use text::Text;
 pub use update::{Apt, Update, UpdateSource};
 pub use volume::{PulseaudioProvider, Volume, VolumeIcons, VolumeProvider};
-pub use weather::{MeteoIcons, Weather};
+pub use weather::{MeteoIcons, Weather, WeatherProvider, OpenMeteoProvider};
 pub use wlan::Wlan;
-//pub use wlan::Wlan;
 pub use workspaces::{
     ActiveProvider, NeverHide, WorkspaceHider, WorkspaceStatus, WorkspaceStatusProvider, Workspaces,
 };
