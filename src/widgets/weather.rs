@@ -5,11 +5,8 @@ use crate::{
 };
 use async_trait::async_trait;
 use cairo::Context;
-use ipgeolocate::{GeoError, Locator, Service};
 use log::debug;
-use open_meteo_api::models::TimeZone;
-use std::fmt::Debug;
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 use tokio::time::sleep;
 
 #[derive(Debug)]
@@ -21,77 +18,89 @@ pub struct Meteo {
     pub min: String,
 }
 
-#[derive(Debug)]
-pub struct OpenMeteoProvider;
+#[cfg(feature = "openmeteo")]
+pub mod openmeteo {
+    use super::{Error, Meteo, Result, WeatherProvider};
+    use async_trait::async_trait;
+    use ipgeolocate::{Locator, Service};
+    use log::debug;
+    use open_meteo_api::models::TimeZone;
 
-impl OpenMeteoProvider {
-    pub fn new() -> Box<Self> {
-        Box::new(Self)
+    #[derive(Debug)]
+    pub struct OpenMeteoProvider;
+
+    impl OpenMeteoProvider {
+        pub fn new() -> Box<Self> {
+            Box::new(Self)
+        }
     }
-}
 
-#[async_trait]
-impl WeatherProvider for OpenMeteoProvider {
-    async fn get_current_meteo(&self) -> Result<Meteo> {
-        let addr = public_ip::addr_v4().await.ok_or(Error::PublicIpNotFound)?;
-        debug!("Reading current public ip:{}", addr);
-        let loc_info = Locator::get(&addr.to_string(), Service::IpApi)
-            .await
-            .map_err(Error::from)?;
+    #[async_trait]
+    impl WeatherProvider for OpenMeteoProvider {
+        async fn get_current_meteo(&self) -> Result<Meteo> {
+            let addr = public_ip::addr_v4()
+                .await
+                .ok_or(Error::MissingData("public ip"))?;
+            debug!("Reading current public ip:{}", addr);
+            let loc_info = Locator::get(&addr.to_string(), Service::IpApi)
+                .await
+                .map_err(Box::new)
+                .map_err(|e| Error::ProviderError(e))?;
 
-        let data = open_meteo_api::query::OpenMeteo::new()
-            .coordinates(
-                loc_info.latitude.parse::<f32>().unwrap(),
-                loc_info.longitude.parse::<f32>().unwrap(),
-            )
-            .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?
-            .current_weather()
-            .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?
-            .time_zone(TimeZone::Auto)
-            .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?
-            .daily()
-            .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?
-            .query()
-            .await
-            .map_err(|e| Error::OpenMeteoRequest(e.to_string()))?;
+            let data = open_meteo_api::query::OpenMeteo::new()
+                .coordinates(
+                    loc_info.latitude.parse::<f32>().unwrap(),
+                    loc_info.longitude.parse::<f32>().unwrap(),
+                )
+                .expect("why is this error not Send???")
+                .current_weather()
+                .expect("why is this error not Send???")
+                .time_zone(TimeZone::Auto)
+                .expect("why is this error not Send???")
+                .daily()
+                .expect("why is this error not Send???")
+                .query()
+                .await
+                .expect("why is this error not Send???");
 
-        let current_weather = data
-            .current_weather
-            .ok_or(Error::MissingData("current_weather"))?;
-        let daily = data.daily.ok_or(Error::MissingData("daily"))?;
-        let daily_units = data.daily_units.ok_or(Error::MissingData("daily_units"))?;
+            let current_weather = data
+                .current_weather
+                .ok_or(Error::MissingData("current_weather"))?;
+            let daily = data.daily.ok_or(Error::MissingData("daily"))?;
+            let daily_units = data.daily_units.ok_or(Error::MissingData("daily_units"))?;
 
-        let max = format!(
-            "{}{}",
-            daily
-                .temperature_2m_max
-                .first()
-                .ok_or(Error::MissingData("max_temperature"))?
-                .ok_or(Error::MissingData("max_temperature"))?,
-            daily_units.temperature_2m_max
-        );
-        let min = format!(
-            "{}{}",
-            daily
-                .temperature_2m_min
-                .first()
-                .ok_or(Error::MissingData("min_temperature"))?
-                .ok_or(Error::MissingData("min_temperature"))?,
-            daily_units.temperature_2m_min
-        );
-        let current = format!(
-            "{}{}",
-            current_weather.temperature, daily_units.temperature_2m_min
-        );
+            let max = format!(
+                "{}{}",
+                daily
+                    .temperature_2m_max
+                    .first()
+                    .ok_or(Error::MissingData("max_temperature"))?
+                    .ok_or(Error::MissingData("max_temperature"))?,
+                daily_units.temperature_2m_max
+            );
+            let min = format!(
+                "{}{}",
+                daily
+                    .temperature_2m_min
+                    .first()
+                    .ok_or(Error::MissingData("min_temperature"))?
+                    .ok_or(Error::MissingData("min_temperature"))?,
+                daily_units.temperature_2m_min
+            );
+            let current = format!(
+                "{}{}",
+                current_weather.temperature, daily_units.temperature_2m_min
+            );
 
-        let out = Meteo {
-            code: current_weather.weathercode,
-            city: loc_info.city,
-            current,
-            max,
-            min,
-        };
-        Ok(out)
+            let out = Meteo {
+                code: current_weather.weathercode,
+                city: loc_info.city,
+                current,
+                max,
+                min,
+            };
+            Ok(out)
+        }
     }
 }
 
@@ -232,11 +241,7 @@ impl std::fmt::Display for Weather {
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
-    #[error("Ip address not found")]
-    PublicIpNotFound,
-    Geo(#[from] GeoError),
-    #[error("OpenMeteo request error: {0}")]
-    OpenMeteoRequest(String),
     #[error("Missing data: {0}")]
     MissingData(&'static str),
+    ProviderError(#[from] Box<dyn std::error::Error + Send>),
 }

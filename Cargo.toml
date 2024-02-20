@@ -15,12 +15,12 @@ name = "barust"
 [dependencies]
 async-trait = "0.1.71"
 cairo-rs = { version = "0.15.12", features = ["xcb"] }
-chrono = "0.4.22"
-iwlib = "0.1.0"
+chrono = { version = "0.4.22", optional = true }
+iwlib = { version = "0.1.0", optional = true }
 log = "0.4.17"
 pango = "0.15.10"
 pangocairo = "0.15.1"
-psutil = "3.2.2"
+psutil = { version = "3.2.2", optional = true }
 thiserror = "1.0.37"
 tokio = { version = "1.29.1", features = ["full"] }
 xcb = "1.3.0"
@@ -28,18 +28,15 @@ async-channel = "1.9.0"
 futures-util = "0.3.28"
 signal-hook = "0.3.17"
 libnotify = "1.0.3"
-libpulse-binding = "2.28.1"
-pulsectl-rs = "0.3.2"
+libpulse-binding = { version = "2.28.1", optional = true }
+pulsectl-rs = {version = "0.3.2", optional = true }
 pyo3 = { version = "0.19.0", features = ["auto-initialize"] }
 signal-hook-tokio = { version = "0.3.1", features = ["futures-v0_3"] }
-ipgeolocate = "0.3.6"
-public-ip = "0.2.2"
-serde = "1.0.196"
-serde_json = "1.0.113"
-reqwest = "0.11.24"
-open-meteo-api = "0.1.3"
+ipgeolocate = { version = "0.3.6", optional = true }
+open-meteo-api = { version = "0.1.3", optional = true }
+public-ip = { version = "0.2.2", optional = true }
 
-[dev-dependencies] 
+[dev-dependencies]
 cairo-rs = { version = "0.15.12", features = ["xcb", "png"] }
 console-subscriber = "0.2.0"
 log = "0.4.17"
@@ -50,3 +47,16 @@ simple-logging = "2.0.2"
 [[example]]
 name = "barust"
 path = "example/main.rs"
+
+[features]
+default = ["all"]
+all = ["clock", "cpu", "disk", "memory", "psutil", "temp", "pulseaudio", "wlan", "openmeteo"]
+clock = ["dep:chrono"]
+cpu = ["dep:psutil"]
+disk = ["dep:psutil"]
+memory = ["dep:psutil"]
+psutil = ["dep:psutil"]
+temp = ["dep:psutil"]
+pulseaudio = ["dep:libpulse-binding", "dep:pulsectl-rs"]
+wlan = ["dep:iwlib"]
+openmeteo = ["dep:open-meteo-api", "dep:ipgeolocate", "dep:public-ip"]

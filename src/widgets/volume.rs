@@ -3,13 +3,10 @@ use crate::{
     widget_default,
     widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
 };
-use async_channel::{bounded, Receiver, Sender};
 use async_trait::async_trait;
 use cairo::Context;
-use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
 use log::debug;
-use pulsectl::controllers::DeviceControl;
-use std::{fmt::Display, marker::Send, thread};
+use std::{fmt::Display, marker::Send};
 
 /// Icons used by [Volume]
 #[derive(Debug)]
@@ -119,71 +116,80 @@ pub trait VolumeProvider: std::fmt::Debug + Send {
     async fn volume_and_muted(&self) -> Option<(f64, bool)>;
 }
 
-fn volume_to_percent(volume: ChannelVolumes) -> f64 {
-    let avg = volume.avg().0;
+#[cfg(feature = "pulseaudio")]
+pub mod pulseaudio {
+    use std::{fmt::Display, thread};
 
-    let base_delta = (PaVolume::NORMAL.0 as f64 - PaVolume::MUTED.0 as f64) / 100.0;
+    use super::{Result, VolumeProvider};
+    use async_channel::{bounded, Receiver, Sender};
+    use async_trait::async_trait;
+    use libpulse_binding::volume::{ChannelVolumes, Volume as PaVolume};
+    use pulsectl::controllers::DeviceControl;
 
-    (avg - PaVolume::MUTED.0) as f64 / base_delta
-}
+    fn volume_to_percent(volume: ChannelVolumes) -> f64 {
+        let avg = volume.avg().0;
 
-pub struct PulseaudioProvider {
-    request: Sender<()>,
-    data: Receiver<Option<(f64, bool)>>,
-}
+        let base_delta = (PaVolume::NORMAL.0 as f64 - PaVolume::MUTED.0 as f64) / 100.0;
 
-impl PulseaudioProvider {
-    pub async fn new() -> Result<Self> {
-        let (request_tx, request_rx) = bounded(10);
-        let (data_tx, data_rx) = bounded(10);
-        thread::spawn(move || {
-            let mut controller = pulsectl::controllers::SinkController::create().unwrap();
-            while request_rx.recv_blocking().is_ok() {
-                let data = if let Ok(default_device) = controller.get_default_device() {
-                    Some((
-                        volume_to_percent(default_device.volume),
-                        default_device.mute,
-                    ))
-                } else {
-                    None
-                };
-
-                data_tx.send_blocking(data).unwrap();
-            }
-        });
-        Ok(Self {
-            request: request_tx,
-            data: data_rx,
-        })
-    }
-}
-
-impl std::fmt::Debug for PulseaudioProvider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&"PulseAudio Provider", f)
-    }
-}
-
-#[async_trait]
-impl VolumeProvider for PulseaudioProvider {
-    async fn volume(&self) -> Option<f64> {
-        self.request.send(()).await.ok()?;
-        self.data.recv().await.ok()?.map(|(v, _)| v)
+        (avg - PaVolume::MUTED.0) as f64 / base_delta
     }
 
-    async fn muted(&self) -> Option<bool> {
-        self.request.send(()).await.ok()?;
-        self.data.recv().await.ok()?.map(|(_, m)| m)
+    pub struct PulseaudioProvider {
+        request: Sender<()>,
+        data: Receiver<Option<(f64, bool)>>,
     }
 
-    async fn volume_and_muted(&self) -> Option<(f64, bool)> {
-        self.request.send(()).await.ok()?;
-        self.data.recv().await.ok()?
+    impl PulseaudioProvider {
+        pub async fn new() -> Result<Self> {
+            let (request_tx, request_rx) = bounded(10);
+            let (data_tx, data_rx) = bounded(10);
+            thread::spawn(move || {
+                let mut controller = pulsectl::controllers::SinkController::create().unwrap();
+                while request_rx.recv_blocking().is_ok() {
+                    let data = if let Ok(default_device) = controller.get_default_device() {
+                        Some((
+                            volume_to_percent(default_device.volume),
+                            default_device.mute,
+                        ))
+                    } else {
+                        None
+                    };
+
+                    data_tx.send_blocking(data).unwrap();
+                }
+            });
+            Ok(Self {
+                request: request_tx,
+                data: data_rx,
+            })
+        }
+    }
+
+    impl std::fmt::Debug for PulseaudioProvider {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Display::fmt(&"PulseAudio Provider", f)
+        }
+    }
+
+    #[async_trait]
+    impl VolumeProvider for PulseaudioProvider {
+        async fn volume(&self) -> Option<f64> {
+            self.request.send(()).await.ok()?;
+            self.data.recv().await.ok()?.map(|(v, _)| v)
+        }
+
+        async fn muted(&self) -> Option<bool> {
+            self.request.send(()).await.ok()?;
+            self.data.recv().await.ok()?.map(|(_, m)| m)
+        }
+
+        async fn volume_and_muted(&self) -> Option<(f64, bool)> {
+            self.request.send(()).await.ok()?;
+            self.data.recv().await.ok()?
+        }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
-    Psutil(#[from] psutil::Error),
-}
+pub enum Error {}

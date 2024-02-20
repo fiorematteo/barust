@@ -11,36 +11,52 @@ pub use replaceable::ReplaceableWidget;
 mod active_window;
 mod bat;
 mod brightness;
+#[cfg(feature = "clock")]
 mod clock;
+#[cfg(feature = "cpu")]
 mod cpu;
+#[cfg(feature = "disk")]
 mod disk;
+#[cfg(feature = "memory")]
 mod memory;
 mod network;
 mod spacer;
 mod systray;
+#[cfg(feature = "temp")]
 mod temp;
 mod text;
 mod update;
 mod volume;
 mod weather;
+#[cfg(feature = "wlan")]
 mod wlan;
 mod workspaces;
 
 pub use active_window::ActiveWindow;
 pub use bat::{Battery, BatteryIcons, LowBatteryWarner, NotifySend};
 pub use brightness::{Brightness, BrightnessProvider, LightProvider, SysfsProvider};
+#[cfg(feature = "clock")]
 pub use clock::Clock;
+#[cfg(feature = "cpu")]
 pub use cpu::Cpu;
+#[cfg(feature = "disk")]
 pub use disk::Disk;
+#[cfg(feature = "memory")]
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
 pub use spacer::Spacer;
 pub use systray::Systray;
+#[cfg(feature = "temp")]
 pub use temp::Temperatures;
 pub use text::Text;
 pub use update::{Apt, Update, UpdateSource};
-pub use volume::{PulseaudioProvider, Volume, VolumeIcons, VolumeProvider};
-pub use weather::{MeteoIcons, Weather, WeatherProvider, OpenMeteoProvider};
+#[cfg(feature = "pulseaudio")]
+pub use volume::pulseaudio::PulseaudioProvider;
+pub use volume::{Volume, VolumeIcons, VolumeProvider};
+#[cfg(feature = "openmeteo")]
+pub use weather::openmeteo::OpenMeteoProvider;
+pub use weather::{MeteoIcons, Weather, WeatherProvider};
+#[cfg(feature = "wlan")]
 pub use wlan::Wlan;
 pub use workspaces::{
     ActiveProvider, NeverHide, WorkspaceHider, WorkspaceStatus, WorkspaceStatusProvider, Workspaces,
@@ -131,18 +147,24 @@ pub enum WidgetError {
     ActiveWindow(#[from] active_window::Error),
     Battery(#[from] bat::Error),
     Brightness(#[from] brightness::Error),
+    #[cfg(feature = "clock")]
     Clock(#[from] clock::Error),
+    #[cfg(feature = "cpu")]
     Cpu(#[from] cpu::Error),
+    #[cfg(feature = "disk")]
     Disk(#[from] disk::Error),
+    #[cfg(feature = "memory")]
     Memory(#[from] memory::Error),
     Network(#[from] network::Error),
     #[error("Spacer")]
     Spacer,
     Systray(#[from] systray::Error),
+    #[cfg(feature = "temp")]
     Temperatures(#[from] temp::Error),
     Text(#[from] text::Error),
     Update(#[from] update::Error),
     Volume(#[from] volume::Error),
+    #[cfg(feature = "wlan")]
     Wlan(#[from] wlan::Error),
     Weather(#[from] weather::Error),
     Workspaces(#[from] workspaces::Error),

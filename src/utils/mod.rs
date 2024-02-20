@@ -1,3 +1,4 @@
+#[cfg(feature = "psutil")]
 use psutil::Bytes;
 use std::fmt::Debug;
 use xcb::Connection;
@@ -54,6 +55,7 @@ pub fn percentage_to_index(v: f64, out_range: (usize, usize)) -> usize {
     (v * scale + out_range.0 as f64) as _
 }
 
+#[cfg(feature = "psutil")]
 pub fn bytes_to_closest(value: Bytes) -> String {
     if value == 0 {
         return "0B".to_string();
