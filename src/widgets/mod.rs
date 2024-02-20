@@ -22,6 +22,7 @@ mod temp;
 mod text;
 mod update;
 mod volume;
+mod weather;
 mod wlan;
 mod workspaces;
 
@@ -39,6 +40,7 @@ pub use temp::Temperatures;
 pub use text::Text;
 pub use update::{Apt, Update, UpdateSource};
 pub use volume::{PulseaudioProvider, Volume, VolumeIcons, VolumeProvider};
+pub use weather::{MeteoIcons, Weather, WeatherProvider, OpenMeteoProvider};
 pub use wlan::Wlan;
 pub use workspaces::{
     ActiveProvider, NeverHide, WorkspaceHider, WorkspaceStatus, WorkspaceStatusProvider, Workspaces,
@@ -142,6 +144,7 @@ pub enum WidgetError {
     Update(#[from] update::Error),
     Volume(#[from] volume::Error),
     Wlan(#[from] wlan::Error),
+    Weather(#[from] weather::Error),
     Workspaces(#[from] workspaces::Error),
     CustomWidget(#[from] Box<dyn std::error::Error>),
 }
@@ -149,7 +152,7 @@ pub enum WidgetError {
 #[macro_export]
 macro_rules! widget_default {
     (size) => {
-        fn size(&self, context: &cairo::Context) -> Result<super::Size> {
+        fn size(&self, context: &cairo::Context) -> Result<$crate::widgets::Size> {
             self.inner.size(context)
         }
     };

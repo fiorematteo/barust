@@ -16,11 +16,11 @@ const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
 #[tokio::main]
 async fn main() -> Result<()> {
     setup_logger();
-    #[cfg(debug_assertions)]
-    console_subscriber::init();
+    // #[cfg(debug_assertions)]
+    // console_subscriber::init();
 
     let wd_config = WidgetConfig {
-        font: "DejaVu Sans Mono".into(),
+        font: "DejaVuSansM Nerd Font Mono".into(),
         font_size: 16.0,
         hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()
@@ -58,6 +58,13 @@ async fn main() -> Result<()> {
             )
             .await?,
             Update::new(&wd_config, vec![Apt::new()]).await,
+            Weather::new(
+                &"%city %icon %cur (%min/%max)",
+                MeteoIcons::default(),
+                &wd_config,
+                OpenMeteoProvider::new(),
+            )
+            .await,
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
             Cpu::new("💻 %p%", &wd_config).await?,

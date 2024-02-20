@@ -3,3 +3,4 @@ Makefile
 test.py
 .ropeproject
 **/Cargo.lock
+/nothing.txt

@@ -22,7 +22,7 @@ pub struct StatusBarInfo {
     pub height: u32,
     pub width: u32,
     pub position: Position,
-    pub window: xcb::x::Window
+    pub window: xcb::x::Window,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -48,7 +48,6 @@ pub fn screen_true_height(connection: &Connection, screen_id: i32) -> u16 {
         .unwrap_or_else(|| panic!("cannot find screen:{}", screen_id))
         .height_in_pixels()
 }
-
 
 pub fn percentage_to_index(v: f64, out_range: (usize, usize)) -> usize {
     let scale = (out_range.1 - out_range.0) as f64 / 100.0;

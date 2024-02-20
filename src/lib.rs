@@ -1,7 +1,6 @@
+pub mod statusbar;
 pub mod utils;
 pub mod widgets;
-
-pub mod statusbar;
 
 use thiserror::Error;
 #[derive(Debug, Error)]
