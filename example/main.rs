@@ -1,3 +1,4 @@
+mod elite;
 mod qtile;
 
 use crate::qtile::QtileStatusProvider;
@@ -7,6 +8,7 @@ use barust::{
     widgets::*,
     Result,
 };
+use elite::Titans;
 use log::LevelFilter;
 use std::{env, fs::OpenOptions, time::Duration};
 
@@ -58,6 +60,7 @@ async fn main() -> Result<()> {
             )
             .await?,
             Update::new(&wd_config, vec![Apt::new()]).await,
+            Titans::new(&wd_config).await,
             Weather::new(
                 &"%city %icon %cur (%min/%max)",
                 MeteoIcons::default(),
