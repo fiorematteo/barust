@@ -4,7 +4,7 @@ use crate::{
     widgets::{Result, Text, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use log::debug;
+use log::{debug, warn};
 use std::{fmt::Debug, time::Duration};
 use tokio::time::sleep;
 
@@ -143,19 +143,23 @@ impl MeteoIcons {
     /// Convert meteo code to icon
     fn translate_code(&self, value: u8) -> &str {
         match value {
-            0 => &self.clear,
-            1..=3 => &self.cloudy,
-            45 | 48 => &self.fog,
-            51 | 53 | 55 => &self.drizzle,
-            56 | 57 => &self.freezing_drizzle,
-            61 | 63 | 65 => &self.rain,
-            66 | 67 => &self.freezing_rain,
-            71 | 73 | 75 => &self.snow,
-            77 => &self.light_snow,
-            85 | 86 => &self.snow,
-            95 => &self.thunderstorm,
-            96 | 99 => &self.hail,
-            _ => &self.unknown,
+            0 => &self.clear,                  // Clear sky
+            1..=3 => &self.cloudy,             // Mainly clear, partly cloudy, and overcast
+            45 | 48 => &self.fog,              // Fog and depositing rime fog
+            51 | 53 | 55 => &self.drizzle,     // Drizzle: Light, moderate, and dense intensity
+            56 | 57 => &self.freezing_drizzle, // Freezing Drizzle: Light and dense intensity
+            61 | 63 | 65 => &self.rain,        // Rain: Slight, moderate and heavy intensity
+            66 | 67 => &self.freezing_rain,    // Freezing Rain: Light and heavy intensity
+            71 | 73 | 75 => &self.snow,        // Snow fall: Slight, moderate, and heavy intensity
+            77 => &self.light_snow,            // Snow grains
+            80..=82 => &self.rain,             // Rain showers: Slight, moderate, and violent
+            85 | 86 => &self.snow,             // Snow showers slight and heavy
+            95 => &self.thunderstorm,          // Thunderstorm: Slight or moderate
+            96 | 99 => &self.hail,             // Thunderstorm with slight and heavy hail
+            _ => {
+                warn!("Unknown meteo code: {}", value);
+                &self.unknown
+            }
         }
     }
 }
