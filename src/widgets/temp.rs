@@ -1,10 +1,9 @@
 use crate::utils::{HookSender, TimedHooks};
 use crate::{
     widget_default,
-    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+    widgets::{Result, Text, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use cairo::Context;
 use log::debug;
 use psutil::sensors::temperatures;
 use std::fmt::Display;

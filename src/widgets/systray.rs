@@ -423,7 +423,7 @@ impl Widget for Systray {
         Ok(())
     }
 
-    fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
+    async fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
         let y = match info.position {
             Position::Top => 0,
             Position::Bottom => {

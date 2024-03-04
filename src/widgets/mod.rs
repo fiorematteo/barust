@@ -85,7 +85,7 @@ pub type Result<T> = std::result::Result<T, WidgetError>;
 #[async_trait]
 pub trait Widget: std::fmt::Debug + Display + Send {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()>;
-    fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
+    async fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
         Ok(())
     }
     async fn update(&mut self) -> Result<()> {
@@ -184,7 +184,7 @@ macro_rules! widget_default {
         }
     };
     (draw) => {
-        fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
+        fn draw(&self, context: &cairo::Context, rectangle: &$crate::utils::Rectangle) -> Result<()> {
             self.inner.draw(context, rectangle)
         }
     };

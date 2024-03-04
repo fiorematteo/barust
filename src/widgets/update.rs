@@ -1,10 +1,9 @@
 use crate::{
-    utils::{HookSender, StatusBarInfo, TimedHooks},
+    utils::{HookSender, TimedHooks},
     widget_default,
-    widgets::{Rectangle, Result, Text, Widget, WidgetConfig},
+    widgets::{Result, Text, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use cairo::Context;
 use log::error;
 use std::{fmt::Display, process::Stdio, time::Duration};
 use tokio::{
@@ -31,10 +30,6 @@ impl Update {
 
 #[async_trait]
 impl Widget for Update {
-    fn setup(&mut self, _info: &StatusBarInfo) -> Result<()> {
-        Ok(())
-    }
-
     async fn update(&mut self) -> Result<()> {
         let mut all_updates = Vec::new();
         for source in &mut self.sources {

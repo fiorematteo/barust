@@ -55,11 +55,11 @@ impl ReplaceableWidget {
     }
 
     pub async fn setup_or_replace(&mut self, info: &StatusBarInfo) {
-        match self.0.setup(info) {
+        match self.0.setup(info).await {
             Ok(s) => s,
             Err(e) => {
                 self.replace(e).await;
-                self.0.setup(info).unwrap()
+                self.0.setup(info).await.unwrap()
             }
         }
     }
