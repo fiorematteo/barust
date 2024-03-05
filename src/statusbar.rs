@@ -8,7 +8,8 @@ use crate::{
 };
 use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
-use futures_util::stream::StreamExt;
+use futures::future::join_all;
+use futures::StreamExt;
 use log::{debug, error};
 use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
@@ -60,8 +61,16 @@ impl StatusBar {
             window: self.window,
         };
         let mut pool = TimedHooks::default();
+
+        let setup_futures = self
+            .left_widgets
+            .iter_mut()
+            .chain(self.right_widgets.iter_mut())
+            .map(|w| w.setup_or_replace(&info))
+            .collect::<Vec<_>>();
+        join_all(setup_futures).await;
+
         for (index, wd) in self.left_widgets.iter_mut().enumerate() {
-            wd.setup_or_replace(&info).await;
             wd.hook_or_replace(
                 HookSender::new(tx.clone(), (RightLeft::Left, index)),
                 &mut pool,
@@ -69,27 +78,29 @@ impl StatusBar {
             .await;
         }
         for (index, wd) in self.right_widgets.iter_mut().enumerate() {
-            wd.setup_or_replace(&info).await;
             wd.hook_or_replace(
                 HookSender::new(tx.clone(), (RightLeft::Right, index)),
                 &mut pool,
             )
             .await;
         }
-        for wd in self.left_widgets.iter_mut() {
-            wd.update_or_replace().await;
-        }
-        for wd in self.right_widgets.iter_mut() {
-            wd.update_or_replace().await;
-        }
+
+        let update_futures = self
+            .left_widgets
+            .iter_mut()
+            .chain(self.right_widgets.iter_mut())
+            .map(|w| w.update_or_replace())
+            .collect::<Vec<_>>();
+        join_all(update_futures).await;
 
         let signal = notify(&[SIGINT, SIGTERM])?;
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.generate_regions().await?;
-        self.draw().await?;
         self.show()?;
+        self.draw().await?;
         pool.start().await;
+        self.connection.flush()?;
 
         let mut draw_timer = ResettableTimer::new(Duration::from_millis(1000 / 60));
         loop {
