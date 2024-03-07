@@ -157,9 +157,9 @@ impl StatusBar {
             .chain(&mut self.right_widgets)
             .map(|wd| {
                 if let Ok(Size::Static(width)) = wd.size(&context) {
-                    width
+                    width + 2 * wd.padding()
                 } else {
-                    0
+                    2 * wd.padding()
                 }
             })
             .sum();
@@ -176,18 +176,20 @@ impl StatusBar {
 
         self.left_regions.clear();
         for wd in &mut self.left_widgets {
+            rectangle.x += wd.padding();
             let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
             rectangle.width = widget_width;
             self.left_regions.push(rectangle);
-            rectangle.x += widget_width;
+            rectangle.x += widget_width + wd.padding();
         }
 
         self.right_regions.clear();
         for wd in &mut self.right_widgets {
+            rectangle.x += wd.padding();
             let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
             rectangle.width = widget_width;
             self.right_regions.push(rectangle);
-            rectangle.x += widget_width;
+            rectangle.x += widget_width + wd.padding();
         }
         Ok(())
     }
@@ -217,17 +219,11 @@ impl StatusBar {
             self.height as _,
         )?;
 
-        let contexts: Vec<_> = regions
-            .iter()
-            .map(|region| -> Result<Context> {
-                let cairo_rectangle: cairo::Rectangle = (**region).into();
-                let surface = &tmp_surface.create_for_rectangle(cairo_rectangle)?;
-                Ok(Context::new(surface)?)
-            })
-            .collect();
-
-        for ((wd, rectangle), context) in widgets.zip(regions).zip(contexts) {
-            wd.draw_or_replace(&context?, rectangle).await;
+        for (wd, rectangle) in widgets.zip(regions) {
+            let cairo_rectangle: cairo::Rectangle = (*rectangle).into();
+            let surface = &tmp_surface.create_for_rectangle(cairo_rectangle)?;
+            let context = Context::new(surface)?;
+            wd.draw_or_replace(&context, &rectangle).await;
         }
         tmp_surface.flush();
 

@@ -53,7 +53,7 @@ impl Widget for Text {
         set_source_rgba(context, self.fg_color);
         let layout = self.get_layout(context)?;
         context.move_to(
-            f64::from(self.padding),
+            0.,
             f64::from((rectangle.height - layout.pixel_size().1 as u32) / 2),
         );
         layout.set_text(&self.text);
@@ -67,7 +67,7 @@ impl Widget for Text {
         }
         let layout = self.get_layout(context)?;
         layout.set_text(&self.text);
-        let size = 2 * self.padding() + layout.pixel_size().0 as u32;
+        let size = layout.pixel_size().0 as u32;
         Ok(Size::Static(size))
     }
 

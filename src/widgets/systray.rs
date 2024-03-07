@@ -380,7 +380,7 @@ impl Widget for Systray {
             .map_err(Error::from)?;
 
         // paint children
-        let mut offset = self.padding;
+        let mut offset = 0;
         for child in &self.children {
             let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
             let data = ClientMessageData::Data32([
@@ -475,8 +475,7 @@ impl Widget for Systray {
             return Ok(Size::Static(1));
         }
         Ok(Size::Static(
-            self.children.len() as u32 * (self.icon_size + self.internal_padding)
-                + 2 * self.padding,
+            self.children.len() as u32 * (self.icon_size + self.internal_padding),
         ))
     }
 
