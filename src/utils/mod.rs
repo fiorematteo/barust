@@ -83,11 +83,6 @@ pub struct Rectangle {
 
 impl From<Rectangle> for cairo::Rectangle {
     fn from(r: Rectangle) -> Self {
-        cairo::Rectangle {
-            x: r.x.into(),
-            y: r.y.into(),
-            width: r.width.into(),
-            height: r.height.into(),
-        }
+        cairo::Rectangle::new(r.x as _, r.y as _, r.width as _, r.height as _)
     }
 }

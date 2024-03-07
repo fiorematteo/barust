@@ -21,6 +21,7 @@ mod disk;
 mod memory;
 mod network;
 mod spacer;
+mod svg;
 mod systray;
 #[cfg(feature = "temp")]
 mod temp;
@@ -45,6 +46,7 @@ pub use disk::Disk;
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
 pub use spacer::Spacer;
+pub use svg::Svg;
 pub use systray::Systray;
 #[cfg(feature = "temp")]
 pub use temp::Temperatures;
@@ -158,6 +160,7 @@ pub enum WidgetError {
     Network(#[from] network::Error),
     #[error("Spacer")]
     Spacer,
+    Svg(#[from] svg::Error),
     Systray(#[from] systray::Error),
     #[cfg(feature = "temp")]
     Temperatures(#[from] temp::Error),

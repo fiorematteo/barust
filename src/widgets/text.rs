@@ -5,7 +5,7 @@ use crate::{
 use async_trait::async_trait;
 use cairo::Context;
 use pango::{FontDescription, Layout};
-use pangocairo::{create_context, show_layout};
+use pangocairo::functions::{create_context, show_layout};
 use std::fmt::Display;
 
 /// Displays custom text
@@ -38,7 +38,7 @@ impl Text {
     }
 
     fn get_layout(&self, context: &Context) -> Result<Layout> {
-        let pango_context = create_context(context).ok_or(Error::PangoError)?;
+        let pango_context = create_context(context);
         let layout = Layout::new(&pango_context);
         let mut font = FontDescription::from_string(&self.font);
         font.set_absolute_size(self.font_size * f64::from(pango::SCALE));
@@ -87,7 +87,4 @@ impl Display for Text {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error("Pango error")]
-    PangoError,
-}
+pub enum Error {}

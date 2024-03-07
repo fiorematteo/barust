@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use cairo::Context;
 use log::debug;
 use pango::{FontDescription, Layout};
-use pangocairo::{create_context, show_layout};
+use pangocairo::functions::{create_context, show_layout};
 use std::{collections::HashSet, fmt::Display, thread};
 use xcb::Connection;
 
@@ -74,7 +74,7 @@ impl Workspaces {
     }
 
     fn get_layout(&self, context: &Context) -> Result<Layout> {
-        let pango_context = create_context(context).ok_or(Error::Pango)?;
+        let pango_context = create_context(context);
         let layout = Layout::new(&pango_context);
         let mut font = FontDescription::from_string(&self.font);
         font.set_absolute_size(self.font_size * f64::from(pango::SCALE));
