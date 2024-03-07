@@ -5,11 +5,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use log::debug;
-use std::{
-    fmt::Display,
-    fs::read_dir,
-    time::{Duration, Instant},
-};
+use std::{fmt::Display, fs::read_dir};
 
 /// Icons used by [Battery]
 #[derive(Debug)]
@@ -160,35 +156,26 @@ pub trait LowBatteryWarner: Send + std::fmt::Debug {
 
 #[derive(Debug)]
 pub struct NotifySend {
-    warn_time_20: Option<Instant>,
-    warn_time_5: Option<Instant>,
+    warn_20: bool,
+    warn_5: bool,
 }
 
 #[async_trait]
 impl LowBatteryWarner for NotifySend {
     fn should_warn(&mut self, charge: f64, is_charging: bool) -> bool {
         if is_charging {
+            self.warn_20 = false;
+            self.warn_5 = false;
             return false;
         }
 
-        const FIVE_MINUTES: Duration = Duration::from_secs(60 * 5);
-        if charge < 20.0
-            && self
-                .warn_time_20
-                .map(|d| d.elapsed() > FIVE_MINUTES)
-                .unwrap_or(true)
-        {
-            self.warn_time_20 = Some(Instant::now());
+        if charge < 20.0 && !self.warn_20 {
+            self.warn_20 = true;
             return true;
         }
 
-        if charge < 5.0
-            && self
-                .warn_time_5
-                .map(|d| d.elapsed() > FIVE_MINUTES)
-                .unwrap_or(true)
-        {
-            self.warn_time_5 = Some(Instant::now());
+        if charge < 5.0 && !self.warn_5 {
+            self.warn_20 = true;
             return true;
         }
 
@@ -211,8 +198,8 @@ impl Default for NotifySend {
     fn default() -> Self {
         libnotify::init("barust").expect("libnotify init failed");
         Self {
-            warn_time_20: None,
-            warn_time_5: None,
+            warn_20: false,
+            warn_5: false,
         }
     }
 }
