@@ -6,7 +6,7 @@ use barust::{
     widget_default,
     widgets::{Result, Text, Widget, WidgetConfig, WidgetError},
 };
-use log::debug;
+use log::{debug, error};
 use serde::Deserialize;
 use tokio::time::sleep;
 
@@ -41,7 +41,10 @@ impl Titans {
 #[async_trait]
 impl Widget for Titans {
     async fn update(&mut self) -> Result<()> {
-        self.update_data().await?;
+        if let Err(e) = self.update_data().await {
+            error!("Failed to update titans: {}", e);
+            self.titan = None;
+        }
         let text = if let Some(titan) = &self.titan {
             format!(
                 "🌸 {}: {:.2}% ({}💚)",
