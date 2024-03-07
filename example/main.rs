@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
                 },
             )
             .await?,
-            Svg::new("test.svg", 21, &wd_config)?,
+            // Svg::new("test.svg", 21, &wd_config)?,
             Update::new(&wd_config, vec![Apt::new()]).await,
             Titans::new(&wd_config).await,
             Weather::new(

@@ -1,5 +1,5 @@
 use crate::{
-    utils::{set_source_rgba, Color, HookSender, TimedHooks},
+    utils::{HookSender, TimedHooks},
     widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
@@ -10,7 +10,6 @@ use std::fmt::{Debug, Display};
 pub struct Svg {
     handle: SvgHandle,
     padding: u32,
-    fg_color: Color,
     width: u32,
 }
 
@@ -19,11 +18,7 @@ unsafe impl Send for Svg {}
 
 impl Debug for Svg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "padding: {:?}, fg_color: {:?}, width: {:?}",
-            self.padding, self.fg_color, self.width
-        )
+        write!(f, "padding: {:?}, width: {:?}", self.padding, self.width)
     }
 }
 
@@ -33,7 +28,6 @@ impl Svg {
         Ok(Box::new(Self {
             handle,
             padding: config.padding,
-            fg_color: config.fg_color,
             width,
         }))
     }
@@ -42,7 +36,6 @@ impl Svg {
 #[async_trait]
 impl Widget for Svg {
     fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        set_source_rgba(context, self.fg_color);
         let renderer = CairoRenderer::new(&self.handle);
         let cairo_rect = cairo::Rectangle::new(0., 0., self.width as _, rectangle.height as _);
         renderer
