@@ -512,17 +512,18 @@ impl Drop for Systray {
                 )
                 .ok();
         }
-        self.connection
-            .send_and_check_request(&ChangeWindowAttributes {
-                window: self.window.unwrap(),
-                value_list: &[Cw::EventMask(EventMask::STRUCTURE_NOTIFY)],
-            })
-            .ok();
-        self.connection
-            .send_and_check_request(&DestroyWindow {
-                window: self.window.unwrap(),
-            })
-            .ok();
+
+        if let Some(window) = self.window {
+            self.connection
+                .send_and_check_request(&ChangeWindowAttributes {
+                    window,
+                    value_list: &[Cw::EventMask(EventMask::STRUCTURE_NOTIFY)],
+                })
+                .ok();
+            self.connection
+                .send_and_check_request(&DestroyWindow { window })
+                .ok();
+        }
         self.connection.flush().ok();
     }
 }

@@ -20,6 +20,7 @@ mod disk;
 #[cfg(feature = "memory")]
 mod memory;
 mod network;
+mod png;
 mod spacer;
 mod svg;
 mod systray;
@@ -45,6 +46,7 @@ pub use disk::Disk;
 #[cfg(feature = "memory")]
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
+pub use png::Png;
 pub use spacer::Spacer;
 pub use svg::Svg;
 pub use systray::Systray;
@@ -158,6 +160,7 @@ pub enum WidgetError {
     #[cfg(feature = "memory")]
     Memory(#[from] memory::Error),
     Network(#[from] network::Error),
+    Png(#[from] png::Error),
     #[error("Spacer")]
     Spacer,
     Svg(#[from] svg::Error),

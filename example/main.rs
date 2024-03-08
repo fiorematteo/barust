@@ -61,6 +61,7 @@ async fn main() -> Result<()> {
             .await?,
             // Svg::new("test.svg", 21, &wd_config)?,
             Update::new(&wd_config, vec![Apt::new()]).await,
+            Png::new("interceptor.png", 21, &wd_config)?,
             Titans::new(&wd_config).await,
             Weather::new(
                 &"%city %icon %cur (%min/%max)",
