@@ -3,21 +3,19 @@ use crate::{
     widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use cairo::{Context, ImageSurface};
+use cairo::{Context, ImageSurface, ImageSurfaceDataOwned};
 use std::{
     fmt::{Debug, Display},
     fs::File,
+    sync::Mutex,
 };
 
 pub struct Png {
-    handle: ImageSurface,
+    handle: Mutex<Option<ImageSurfaceDataOwned>>,
     padding: u32,
     fg_color: Color,
     width: u32,
 }
-
-// I don't like this but I'll use it until it gives me problems
-unsafe impl Send for Png {}
 
 impl Debug for Png {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -32,9 +30,12 @@ impl Debug for Png {
 impl Png {
     pub fn new(path: &str, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let mut file = File::open(path).map_err(Error::from)?;
-        let handle = ImageSurface::create_from_png(&mut file).unwrap();
+        let handle = ImageSurface::create_from_png(&mut file)
+            .map_err(Error::from)?
+            .take_data()
+            .map_err(Error::from)?;
         Ok(Box::new(Self {
-            handle,
+            handle: Mutex::new(Some(handle)),
             padding: config.padding,
             fg_color: config.fg_color,
             width,
@@ -44,15 +45,32 @@ impl Png {
 
 #[async_trait]
 impl Widget for Png {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        let png_width = self.handle.width();
-        let png_height = self.handle.height();
+    fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
+        let handle = self
+            .handle
+            .lock()
+            .expect("Mutex is poisoned")
+            .take()
+            .expect("Handle is missing")
+            .into_inner();
+
+        let png_width = handle.width();
+        let png_height = handle.height();
         context.scale(
             rectangle.width as f64 / png_width as f64,
             rectangle.height as f64 / png_height as f64,
         );
-        context.set_source_surface(&self.handle, 0.0, 0.0).unwrap();
+        context.set_source_surface(&handle, 0.0, 0.0).unwrap();
         context.paint().unwrap();
+
+        // we need to clear all references to the handle
+        drop(context);
+
+        let owned_data = handle.take_data().map_err(Error::from)?;
+        self.handle
+            .lock()
+            .expect("Mutex is poisoned")
+            .replace(owned_data);
         Ok(())
     }
 
@@ -80,4 +98,7 @@ impl Display for Png {
 #[error(transparent)]
 pub enum Error {
     Io(#[from] std::io::Error),
+    Cairo(#[from] cairo::Error),
+    IoCairo(#[from] cairo::IoError),
+    BorrowCairo(#[from] cairo::BorrowError),
 }
