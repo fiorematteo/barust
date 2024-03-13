@@ -195,11 +195,11 @@ impl StatusBar {
     }
 
     async fn draw(&mut self) -> Result<()> {
-        if self.left_regions.len() != self.left_widgets.len()
-            || self.right_regions.len() != self.right_widgets.len()
-        {
-            return Err(BarustError::DrawBeforeUpdate);
-        }
+        assert!(
+            self.left_regions.len() == self.left_widgets.len()
+                && self.right_regions.len() == self.right_widgets.len(),
+            "Regions and widgets length mismatch"
+        );
 
         let widgets = self
             .left_widgets
@@ -223,7 +223,7 @@ impl StatusBar {
             let cairo_rectangle: cairo::Rectangle = (*rectangle).into();
             let surface = &tmp_surface.create_for_rectangle(cairo_rectangle)?;
             let context = Context::new(surface)?;
-            wd.draw_or_replace(&context, &rectangle).await;
+            wd.draw_or_replace(context, rectangle).await;
         }
         tmp_surface.flush();
 

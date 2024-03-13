@@ -85,9 +85,9 @@ impl Workspaces {
 
 #[async_trait]
 impl Widget for Workspaces {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
+    fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
         context.move_to(f64::from(self.padding), 0.0);
-        let layout = self.get_layout(context)?;
+        let layout = self.get_layout(&context)?;
         let mut first = true;
         for (workspace, active) in &self.workspaces {
             let color = match active {
@@ -98,7 +98,7 @@ impl Widget for Workspaces {
             if self.policy.should_hide(workspace, active) {
                 continue;
             }
-            set_source_rgba(context, color);
+            set_source_rgba(&context, color);
             layout.set_text(workspace);
             if first {
                 first = false;
@@ -107,7 +107,7 @@ impl Widget for Workspaces {
                     f64::from((rectangle.height - layout.pixel_size().1 as u32) / 2),
                 );
             }
-            show_layout(context, &layout);
+            show_layout(&context, &layout);
             context.rel_move_to(
                 f64::from(self.internal_padding) + f64::from(layout.pixel_size().0),
                 0.0,

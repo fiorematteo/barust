@@ -18,7 +18,7 @@ impl Spacer {
 
 #[async_trait]
 impl Widget for Spacer {
-    fn draw(&self, _context: &Context, _rectangle: &Rectangle) -> Result<()> {
+    fn draw(&self, _context: Context, _rectangle: &Rectangle) -> Result<()> {
         Ok(())
     }
 

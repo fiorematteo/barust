@@ -343,7 +343,7 @@ impl Systray {
 
 #[async_trait]
 impl Widget for Systray {
-    fn draw(&self, _: &Context, rectangle: &Rectangle) -> Result<()> {
+    fn draw(&self, _: Context, rectangle: &Rectangle) -> Result<()> {
         // fit to rectangle
         let geometry = self
             .connection

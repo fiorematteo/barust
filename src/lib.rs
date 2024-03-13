@@ -7,8 +7,6 @@ use thiserror::Error;
 #[error(transparent)]
 pub enum BarustError {
     Cairo(#[from] cairo::Error),
-    #[error("Draw was called without any regions defined")]
-    DrawBeforeUpdate,
     Io(#[from] std::io::Error),
     Widget(#[from] widgets::WidgetError),
     Xcb(#[from] xcb::Error),

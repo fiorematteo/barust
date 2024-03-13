@@ -49,15 +49,15 @@ impl Text {
 
 #[async_trait]
 impl Widget for Text {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        set_source_rgba(context, self.fg_color);
-        let layout = self.get_layout(context)?;
+    fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
+        set_source_rgba(&context, self.fg_color);
+        let layout = self.get_layout(&context)?;
         context.move_to(
             0.,
             f64::from((rectangle.height - layout.pixel_size().1 as u32) / 2),
         );
         layout.set_text(&self.text);
-        show_layout(context, &layout);
+        show_layout(&context, &layout);
         Ok(())
     }
 

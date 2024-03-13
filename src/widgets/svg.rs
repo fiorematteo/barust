@@ -35,11 +35,11 @@ impl Svg {
 
 #[async_trait]
 impl Widget for Svg {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
+    fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
         let renderer = CairoRenderer::new(&self.handle);
         let cairo_rect = cairo::Rectangle::new(0., 0., self.width as _, rectangle.height as _);
         renderer
-            .render_document(context, &cairo_rect)
+            .render_document(&context, &cairo_rect)
             .map_err(Error::from)?;
         Ok(())
     }

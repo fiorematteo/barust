@@ -37,10 +37,10 @@ impl ReplaceableWidget {
         Self(wd)
     }
 
-    pub async fn draw_or_replace(&mut self, context: &Context, rectangle: &Rectangle) {
+    pub async fn draw_or_replace(&mut self, context: Context, rectangle: &Rectangle) {
         if let Err(e) = self.0.draw(context, rectangle) {
             self.replace(e).await;
-            self.0.draw(context, rectangle).unwrap();
+            // we need to recompute the size before we draw again
         }
     }
 
