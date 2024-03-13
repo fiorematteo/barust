@@ -31,7 +31,7 @@ impl Debug for Png {
 
 impl Png {
     pub fn new(path: &str, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
-        let mut file = File::open(path).unwrap();
+        let mut file = File::open(path).map_err(Error::from)?;
         let handle = ImageSurface::create_from_png(&mut file).unwrap();
         Ok(Box::new(Self {
             handle,
@@ -77,4 +77,7 @@ impl Display for Png {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {}
+#[error(transparent)]
+pub enum Error {
+    Io(#[from] std::io::Error),
+}
