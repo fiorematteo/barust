@@ -65,9 +65,8 @@ impl Display for Svg {
 }
 
 #[derive(thiserror::Error, Debug)]
+#[error(transparent)]
 pub enum Error {
-    #[error("Error loading svg: {0}")]
     Loading(#[from] rsvg::LoadingError),
-    #[error("Error rendering svg: {0}")]
     Rendering(#[from] rsvg::RenderingError),
 }
