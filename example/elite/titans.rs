@@ -125,6 +125,6 @@ pub enum Error {
 
 impl From<Error> for WidgetError {
     fn from(value: Error) -> Self {
-        WidgetError::CustomWidget(Box::new(value))
+        WidgetError::custom(value)
     }
 }

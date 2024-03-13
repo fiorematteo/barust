@@ -174,7 +174,13 @@ pub enum WidgetError {
     Wlan(#[from] wlan::Error),
     Weather(#[from] weather::Error),
     Workspaces(#[from] workspaces::Error),
-    CustomWidget(#[from] Box<dyn std::error::Error>),
+    CustomWidget(#[from] Box<dyn std::error::Error + Send>),
+}
+
+impl WidgetError {
+    pub fn custom<E: std::error::Error + Send + 'static>(error: E) -> Self {
+        Self::CustomWidget(Box::new(error))
+    }
 }
 
 #[macro_export]
