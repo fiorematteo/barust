@@ -380,7 +380,7 @@ impl Widget for Systray {
             .map_err(Error::from)?;
 
         // paint children
-        let mut offset = 0;
+        let mut offset = 1;
         for child in &self.children {
             let atoms = Atoms::new(&self.connection).map_err(Error::from)?;
             let data = ClientMessageData::Data32([
@@ -410,7 +410,7 @@ impl Widget for Systray {
                         window: *child,
                         value_list: &[
                             ConfigWindow::X(offset as _),
-                            ConfigWindow::Y(0),
+                            ConfigWindow::Y(1),
                             ConfigWindow::Width(self.icon_size as _),
                             ConfigWindow::Height(self.icon_size as _),
                         ],
@@ -431,7 +431,7 @@ impl Widget for Systray {
             }
         };
         self.create_tray_window(y as _, info.height as _)?;
-        self.icon_size = info.height;
+        self.icon_size = info.height - 2;
 
         self.take_selection()?;
         Ok(())
@@ -474,8 +474,9 @@ impl Widget for Systray {
         if self.children.is_empty() {
             return Ok(Size::Static(1));
         }
+        let children_len = self.children.len() as u32;
         Ok(Size::Static(
-            self.children.len() as u32 * (self.icon_size + self.internal_padding),
+            children_len * self.icon_size + (children_len - 1) * self.internal_padding + 2,
         ))
     }
 
