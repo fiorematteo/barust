@@ -1,8 +1,9 @@
 use std::{cmp::Ordering, time::Duration};
 
+use async_channel::SendError;
 use async_trait::async_trait;
 use barust::{
-    utils::{HookSender, TimedHooks},
+    utils::{HookSender, TimedHooks, WidgetID},
     widget_default,
     widgets::{Result, Text, Widget, WidgetConfig, WidgetError},
 };
@@ -14,6 +15,7 @@ use tokio::time::sleep;
 pub struct Titans {
     inner: Text,
     titan: Option<Titan>,
+    hook: Option<HookSender>,
 }
 
 impl Titans {
@@ -21,6 +23,7 @@ impl Titans {
         Box::new(Self {
             inner: *Text::new("Titans", config).await,
             titan: None,
+            hook: None,
         })
     }
 
@@ -44,6 +47,12 @@ impl Widget for Titans {
         if let Err(e) = self.update_data().await {
             error!("Failed to update titans: {}", e);
             self.titan = None;
+            if let Some(hook) = self.hook.clone() {
+                tokio::spawn(async move {
+                    sleep(Duration::from_secs(5)).await;
+                    hook.send().await
+                });
+            }
         }
         let text = if let Some(titan) = &self.titan {
             format!(
@@ -60,6 +69,7 @@ impl Widget for Titans {
     }
 
     async fn hook(&mut self, sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
+        self.hook = Some(sender.clone());
         // 10 mins
         tokio::spawn(async move {
             loop {
@@ -121,6 +131,7 @@ struct Titan {
 #[error(transparent)]
 pub enum Error {
     Reqwest(#[from] reqwest::Error),
+    HookSender(#[from] SendError<WidgetID>),
 }
 
 impl From<Error> for WidgetError {
