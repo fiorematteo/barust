@@ -30,46 +30,28 @@ impl Icon {
 
 #[async_trait]
 impl Widget for Icon {
-    fn draw(&self, context: &Context, rectangle: &Rectangle) -> Result<()> {
-        match self {
-            Icon::Svg(svg) => svg.draw(context, rectangle),
-            Icon::Png(png) => png.draw(context, rectangle),
-        }
+    fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
+        icon!(self.draw(context, rectangle))
     }
 
     async fn setup(&mut self, info: &StatusBarInfo) -> Result<()> {
-        match self {
-            Icon::Svg(svg) => svg.setup(info).await,
-            Icon::Png(png) => png.setup(info).await,
-        }
+        icon!(self.setup(info).await)
     }
 
     async fn update(&mut self) -> Result<()> {
-        match self {
-            Icon::Svg(svg) => svg.update().await,
-            Icon::Png(png) => png.update().await,
-        }
+        icon!(self.update().await)
     }
 
     async fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
-        match self {
-            Icon::Svg(svg) => svg.hook(sender, pool).await,
-            Icon::Png(png) => png.hook(sender, pool).await,
-        }
+        icon!(self.hook(sender, pool).await)
     }
 
     fn size(&self, context: &Context) -> Result<Size> {
-        match self {
-            Icon::Svg(svg) => svg.size(context),
-            Icon::Png(png) => png.size(context),
-        }
+        icon!(self.size(context))
     }
 
     fn padding(&self) -> u32 {
-        match self {
-            Icon::Svg(svg) => svg.padding(),
-            Icon::Png(png) => png.padding(),
-        }
+        icon!(self.padding())
     }
 }
 
@@ -85,3 +67,24 @@ pub enum Error {
     #[error("unsupported file type: {0}")]
     UnsupportedFileType(String),
 }
+
+macro_rules! icon {
+    (
+        $self:ident.$fn_name:ident($($args:ident),*)
+    ) => {
+        match $self {
+            Icon::Svg(svg) => svg.$fn_name($($args,)*),
+            Icon::Png(png) => png.$fn_name($($args,)*),
+        }
+    };
+
+    (
+        $self:ident.$fn_name:ident($($args:ident),*).await
+    ) => {
+        match $self {
+            Icon::Svg(svg) => svg.$fn_name($($args,)*).await,
+            Icon::Png(png) => png.$fn_name($($args,)*).await,
+        }
+    };
+}
+use icon;
