@@ -17,6 +17,7 @@ mod clock;
 mod cpu;
 #[cfg(feature = "disk")]
 mod disk;
+mod icon;
 #[cfg(feature = "memory")]
 mod memory;
 mod network;
@@ -43,6 +44,7 @@ pub use clock::Clock;
 pub use cpu::Cpu;
 #[cfg(feature = "disk")]
 pub use disk::Disk;
+pub use icon::Icon;
 #[cfg(feature = "memory")]
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};
@@ -157,6 +159,7 @@ pub enum WidgetError {
     Cpu(#[from] cpu::Error),
     #[cfg(feature = "disk")]
     Disk(#[from] disk::Error),
+    Icon(#[from] icon::Error),
     #[cfg(feature = "memory")]
     Memory(#[from] memory::Error),
     Network(#[from] network::Error),

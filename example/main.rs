@@ -59,17 +59,16 @@ async fn main() -> Result<()> {
                 },
             )
             .await?,
-            // Svg::new("test.svg", 21, &wd_config)?,
-            Update::new(&wd_config, vec![Apt::new()]).await,
-            Png::new("interceptor.png", 21, &wd_config)?,
+            // Weather::new(
+            //     &"%city %icon %cur (%min/%max)",
+            //     MeteoIcons::default(),
+            //     &wd_config,
+            //     OpenMeteoProvider::new(),
+            // )
+            // .await,
+            Icon::new("test.svg", 21, &wd_config)?,
+            Icon::new("interceptor.png", 21, &wd_config)?,
             Titans::new(&wd_config).await,
-            Weather::new(
-                &"%city %icon %cur (%min/%max)",
-                MeteoIcons::default(),
-                &wd_config,
-                OpenMeteoProvider::new(),
-            )
-            .await,
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
             Cpu::new("💻 %p%", &wd_config).await?,
