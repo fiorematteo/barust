@@ -1,17 +1,14 @@
 use crate::{
-    utils::{HookSender, TimedHooks},
+    utils::{HookSender, OwnedImageSurface, TimedHooks},
     widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use cairo::{Context, Format, ImageSurface, ImageSurfaceDataOwned};
+use cairo::{Context, Format, ImageSurface};
 use rsvg::CairoRenderer;
-use std::{
-    fmt::{Debug, Display},
-    sync::Mutex,
-};
+use std::fmt::{Debug, Display};
 
 pub struct Svg {
-    surface: Mutex<Option<ImageSurfaceDataOwned>>,
+    surface: OwnedImageSurface,
     padding: u32,
     width: u32,
 }
@@ -28,8 +25,7 @@ impl Svg {
 
         let surface =
             ImageSurface::create(Format::ARgb32, width as _, width as _).map_err(Error::from)?;
-
-        let context = cairo::Context::new(&surface).unwrap();
+        let context = Context::new(&surface).unwrap();
         let renderer = CairoRenderer::new(&handle);
         let cairo_rect = cairo::Rectangle::new(0., 0., width as _, width as _);
         renderer
@@ -37,9 +33,8 @@ impl Svg {
             .map_err(Error::from)?;
         drop(context);
 
-        let owned_surface = surface.take_data().map_err(Error::from)?;
         Ok(Box::new(Self {
-            surface: Mutex::new(Some(owned_surface)),
+            surface: OwnedImageSurface::new(surface).map_err(Error::from)?,
             padding: config.padding,
             width,
         }))
@@ -49,26 +44,16 @@ impl Svg {
 #[async_trait]
 impl Widget for Svg {
     fn draw(&self, context: Context, _rectangle: &Rectangle) -> Result<()> {
-        let surface = self
-            .surface
-            .lock()
-            .expect("Mutex is poisoned")
-            .take()
-            .expect("Handle is missing")
-            .into_inner();
-
-        context.set_source_surface(&surface, 0.0, 0.0).unwrap();
-        context.paint().unwrap();
-
-        // we need to clear all references to the handle
-        drop(context);
-
-        let owned_data = surface.take_data().map_err(Error::from)?;
         self.surface
-            .lock()
-            .expect("Mutex is poisoned")
-            .replace(owned_data);
-        Ok(())
+            .with_surface(|surface: &ImageSurface| -> std::result::Result<(), Error> {
+                context.set_source_surface(surface, 0.0, 0.0).unwrap();
+                context.paint().unwrap();
+
+                // we need to clear all references to the handle
+                drop(context);
+                Ok(())
+            })
+            .map_err(|e| e.into())
     }
 
     fn size(&self, _context: &Context) -> Result<Size> {

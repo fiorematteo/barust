@@ -7,12 +7,14 @@ pub mod atoms;
 pub mod color;
 pub mod hook_sender;
 pub mod resettable_timer;
+pub mod image_surface;
 pub mod timed_hooks;
 
 pub use atoms::Atoms;
 pub use color::{set_source_rgba, Color};
 pub use hook_sender::{HookSender, WidgetID};
 pub use resettable_timer::ResettableTimer;
+pub use image_surface::OwnedImageSurface;
 pub use timed_hooks::TimedHooks;
 
 #[derive(Debug)]

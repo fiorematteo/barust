@@ -1,17 +1,16 @@
 use crate::{
-    utils::{Color, HookSender, TimedHooks},
+    utils::{Color, HookSender, OwnedImageSurface, TimedHooks},
     widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use cairo::{Context, ImageSurface, ImageSurfaceDataOwned};
+use cairo::{Context, ImageSurface};
 use std::{
     fmt::{Debug, Display},
     fs::File,
-    sync::Mutex,
 };
 
 pub struct Png {
-    handle: Mutex<Option<ImageSurfaceDataOwned>>,
+    surface: OwnedImageSurface,
     padding: u32,
     fg_color: Color,
     width: u32,
@@ -30,12 +29,9 @@ impl Debug for Png {
 impl Png {
     pub fn new(path: &str, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let mut file = File::open(path).map_err(Error::from)?;
-        let handle = ImageSurface::create_from_png(&mut file)
-            .map_err(Error::from)?
-            .take_data()
-            .map_err(Error::from)?;
+        let surface = ImageSurface::create_from_png(&mut file).map_err(Error::from)?;
         Ok(Box::new(Self {
-            handle: Mutex::new(Some(handle)),
+            surface: OwnedImageSurface::new(surface).map_err(Error::from)?,
             padding: config.padding,
             fg_color: config.fg_color,
             width,
@@ -46,32 +42,22 @@ impl Png {
 #[async_trait]
 impl Widget for Png {
     fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
-        let handle = self
-            .handle
-            .lock()
-            .expect("Mutex is poisoned")
-            .take()
-            .expect("Handle is missing")
-            .into_inner();
+        self.surface
+            .with_surface(|surface: &ImageSurface| -> std::result::Result<(), Error> {
+                let png_width = surface.width();
+                let png_height = surface.height();
+                context.scale(
+                    rectangle.width as f64 / png_width as f64,
+                    rectangle.height as f64 / png_height as f64,
+                );
+                context.set_source_surface(surface, 0.0, 0.0).unwrap();
+                context.paint().unwrap();
 
-        let png_width = handle.width();
-        let png_height = handle.height();
-        context.scale(
-            rectangle.width as f64 / png_width as f64,
-            rectangle.height as f64 / png_height as f64,
-        );
-        context.set_source_surface(&handle, 0.0, 0.0).unwrap();
-        context.paint().unwrap();
-
-        // we need to clear all references to the handle
-        drop(context);
-
-        let owned_data = handle.take_data().map_err(Error::from)?;
-        self.handle
-            .lock()
-            .expect("Mutex is poisoned")
-            .replace(owned_data);
-        Ok(())
+                // we need to clear all references to the handle
+                drop(context);
+                Ok(())
+            })
+            .map_err(|e| e.into())
     }
 
     fn size(&self, _context: &Context) -> Result<Size> {
