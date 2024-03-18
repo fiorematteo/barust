@@ -3,18 +3,18 @@ use crate::{
     widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use cairo::Context;
-use rsvg::{CairoRenderer, SvgHandle};
-use std::fmt::{Debug, Display};
+use cairo::{Context, Format, ImageSurface, ImageSurfaceDataOwned};
+use rsvg::CairoRenderer;
+use std::{
+    fmt::{Debug, Display},
+    sync::Mutex,
+};
 
 pub struct Svg {
-    handle: SvgHandle,
+    surface: Mutex<Option<ImageSurfaceDataOwned>>,
     padding: u32,
     width: u32,
 }
-
-// I don't like this but I'll use it until it gives me problems
-unsafe impl Send for Svg {}
 
 impl Debug for Svg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -25,8 +25,21 @@ impl Debug for Svg {
 impl Svg {
     pub fn new(path: &str, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let handle = rsvg::Loader::new().read_path(path).map_err(Error::from)?;
+
+        let surface =
+            ImageSurface::create(Format::ARgb32, width as _, width as _).map_err(Error::from)?;
+
+        let context = cairo::Context::new(&surface).unwrap();
+        let renderer = CairoRenderer::new(&handle);
+        let cairo_rect = cairo::Rectangle::new(0., 0., width as _, width as _);
+        renderer
+            .render_document(&context, &cairo_rect)
+            .map_err(Error::from)?;
+        drop(context);
+
+        let owned_surface = surface.take_data().map_err(Error::from)?;
         Ok(Box::new(Self {
-            handle,
+            surface: Mutex::new(Some(owned_surface)),
             padding: config.padding,
             width,
         }))
@@ -35,12 +48,26 @@ impl Svg {
 
 #[async_trait]
 impl Widget for Svg {
-    fn draw(&self, context: Context, rectangle: &Rectangle) -> Result<()> {
-        let renderer = CairoRenderer::new(&self.handle);
-        let cairo_rect = cairo::Rectangle::new(0., 0., self.width as _, rectangle.height as _);
-        renderer
-            .render_document(&context, &cairo_rect)
-            .map_err(Error::from)?;
+    fn draw(&self, context: Context, _rectangle: &Rectangle) -> Result<()> {
+        let surface = self
+            .surface
+            .lock()
+            .expect("Mutex is poisoned")
+            .take()
+            .expect("Handle is missing")
+            .into_inner();
+
+        context.set_source_surface(&surface, 0.0, 0.0).unwrap();
+        context.paint().unwrap();
+
+        // we need to clear all references to the handle
+        drop(context);
+
+        let owned_data = surface.take_data().map_err(Error::from)?;
+        self.surface
+            .lock()
+            .expect("Mutex is poisoned")
+            .replace(owned_data);
         Ok(())
     }
 
@@ -69,4 +96,6 @@ impl Display for Svg {
 pub enum Error {
     Loading(#[from] rsvg::LoadingError),
     Rendering(#[from] rsvg::RenderingError),
+    Cairo(#[from] cairo::Error),
+    BorrowCairo(#[from] cairo::BorrowError),
 }
