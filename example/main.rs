@@ -9,6 +9,7 @@ use barust::{
     Result,
 };
 use elite::Titans;
+use envtime::envtime;
 use log::LevelFilter;
 use std::{env, fs::OpenOptions, time::Duration};
 
@@ -27,6 +28,9 @@ async fn main() -> Result<()> {
         hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()
     };
+
+    let mail_user = envtime!("MAIL_USER").expect("MAIL_USER not set");
+    let mail_password = envtime!("MAIL_PASSWORD").expect("MAIL_PASSWORD not set");
 
     StatusBar::create()
         .position(Position::Top)
@@ -66,8 +70,9 @@ async fn main() -> Result<()> {
             //     OpenMeteoProvider::new(),
             // )
             // .await,
-            Icon::new("test.svg", 21, &wd_config)?,
-            Icon::new("interceptor.png", 21, &wd_config)?,
+            // Icon::new("test.svg", 21, &wd_config)?,
+            // Icon::new("interceptor.png", 21, &wd_config)?,
+            Mail::new("imap.gmail.com", mail_user, mail_password, &wd_config).await?,
             Titans::new(&wd_config).await,
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
