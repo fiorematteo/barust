@@ -46,7 +46,7 @@ pub use cpu::Cpu;
 #[cfg(feature = "disk")]
 pub use disk::Disk;
 pub use icon::Icon;
-pub use mail::Mail;
+pub use mail::{GmailLogin, ImapLogin, Mail, PasswordLogin};
 #[cfg(feature = "memory")]
 pub use memory::Memory;
 pub use network::{Network, NetworkIcons};

@@ -72,7 +72,21 @@ async fn main() -> Result<()> {
             // .await,
             // Icon::new("test.svg", 21, &wd_config)?,
             // Icon::new("interceptor.png", 21, &wd_config)?,
-            Mail::new("imap.gmail.com", mail_user, mail_password, &wd_config).await?,
+            Mail::new(
+                "(fiorematteo2002) %c 📧",
+                PasswordLogin::new("imap.gmail.com", mail_user, mail_password),
+                &wd_config,
+            )
+            .await?,
+            Mail::new(
+                "(m.fiorina1) %c 📧",
+                GmailLogin::new(
+                    "m.fiorina1@campus.unimib.it",
+                    "/home/matteo/.local/share/barust_client_secret.json",
+                ),
+                &wd_config,
+            )
+            .await?,
             Titans::new(&wd_config).await,
             Disk::new("💾 %f", "/", &wd_config).await,
             Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
