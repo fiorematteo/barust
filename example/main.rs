@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
 
     let wd_config = WidgetConfig {
         font: "DejaVuSansM Nerd Font Mono".into(),
-        font_size: 16.0,
+        font_size: 17.0,
         hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()
     };
@@ -33,6 +33,7 @@ async fn main() -> Result<()> {
     let mail_password = envtime!("MAIL_PASSWORD").expect("MAIL_PASSWORD not set");
 
     StatusBar::create()
+        .height(25)
         .position(Position::Top)
         .background(BLANK)
         .left_widgets(vec![

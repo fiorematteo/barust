@@ -60,9 +60,6 @@ impl Brightness {
     }
 
     fn build_string(&self, current_brightness: f64) -> String {
-        if self.show_counter.is_done() {
-            return String::from("");
-        }
         let percentages_len = self.icons.percentages.len();
         let index = percentage_to_index(current_brightness, (0, percentages_len - 1));
         self.format
@@ -81,9 +78,12 @@ impl Widget for Brightness {
             self.previous_brightness = current_brightness;
             self.show_counter.reset();
         }
-        let text = self.build_string(current_brightness);
-        self.inner.set_text(text);
-
+        if self.show_counter.is_done() {
+            self.inner.clear();
+        } else {
+            let text = self.build_string(current_brightness);
+            self.inner.set_text(text);
+        }
         Ok(())
     }
 

@@ -62,9 +62,6 @@ impl Volume {
     }
 
     fn build_string(&mut self, volume: f64, muted: bool) -> String {
-        if self.show_counter.is_done() {
-            return String::from("");
-        }
         if muted {
             return self.icons.muted.clone();
         }
@@ -88,9 +85,12 @@ impl Widget for Volume {
             self.previous_volume = volume;
             self.show_counter.reset();
         }
-        let text = self.build_string(volume, muted);
-
-        self.inner.set_text(text);
+        if self.show_counter.is_done() {
+            self.inner.clear();
+        } else {
+            let text = self.build_string(volume, muted);
+            self.inner.set_text(text);
+        }
         Ok(())
     }
 

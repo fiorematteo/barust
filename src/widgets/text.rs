@@ -37,6 +37,10 @@ impl Text {
         self.text = text.to_string();
     }
 
+    pub fn clear(&mut self) {
+        self.text.clear();
+    }
+
     fn get_layout(&self, context: &Context) -> Result<Layout> {
         let pango_context = create_context(context);
         let layout = Layout::new(&pango_context);
