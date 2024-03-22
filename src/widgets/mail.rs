@@ -110,7 +110,7 @@ impl ImapLogin for GmailLogin {
         let auth =
             InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
                 .persist_tokens_to_disk(&format!("{}/tokencache.json", cache_path))
-                .flow_delegate(Box::new(InstalledFlowBrowserDelegate))
+                .flow_delegate(Box::new(InstalledFlowBrowserDelegate::new(&self.user)))
                 .build()
                 .await
                 .map_err(Error::from)?;
@@ -140,8 +140,18 @@ impl ImapLogin for GmailLogin {
 }
 
 /// https://github.com/dermesser/yup-oauth2/blob/master/examples/custom_flow.rs
-#[derive(Copy, Clone)]
-struct InstalledFlowBrowserDelegate;
+#[derive(Clone)]
+struct InstalledFlowBrowserDelegate {
+    user: String,
+}
+
+impl InstalledFlowBrowserDelegate {
+    fn new(user: &str) -> Self {
+        Self {
+            user: user.to_string(),
+        }
+    }
+}
 
 impl InstalledFlowDelegate for InstalledFlowBrowserDelegate {
     fn present_user_url<'a>(
@@ -160,7 +170,11 @@ impl InstalledFlowDelegate for InstalledFlowBrowserDelegate {
                 .await
         }
         warn!("opening browser for oauth2");
-        let n = libnotify::Notification::new("Login gmail", "Login to gmail account", None);
+        let n = libnotify::Notification::new(
+            "Login gmail",
+            format!("Login to {} account", self.user).as_str(),
+            None,
+        );
         n.set_urgency(libnotify::Urgency::Normal);
         n.show().ok();
 
