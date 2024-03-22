@@ -18,7 +18,6 @@ use yup_oauth2::{
 #[derive(Debug)]
 pub struct Mail {
     inner: Text,
-    session: Session<TlsStream<TcpStream>>,
     format: String,
     authenticator: Box<dyn ImapLogin>,
 }
@@ -181,12 +180,9 @@ impl Mail {
         authenticator: Box<dyn ImapLogin>,
         config: &WidgetConfig,
     ) -> Result<Box<Self>> {
-        let mut session = authenticator.login().await?;
-        session.select("INBOX").map_err(Error::from)?;
         Ok(Box::new(Self {
             inner: *Text::new("", config).await,
             authenticator,
-            session,
             format: format.to_string(),
         }))
     }
@@ -196,13 +192,12 @@ impl Mail {
 impl Widget for Mail {
     async fn update(&mut self) -> Result<()> {
         debug!("updating mail");
-        let message_count = match self.session.search("(UNSEEN)").map(|ids| ids.len()) {
+        let mut session = self.authenticator.login().await?;
+        session.select("INBOX").map_err(Error::from)?;
+        let message_count = match session.search("(UNSEEN)").map(|ids| ids.len()) {
             Ok(c) => c,
             Err(e) => {
                 error!("error getting mail count: {}", e);
-                error!("reconnecting mail");
-                self.session = self.authenticator.login().await?;
-                self.session.select("INBOX").map_err(Error::from)?;
                 return Ok(());
             }
         };
@@ -218,14 +213,14 @@ impl Widget for Mail {
     }
 
     async fn hook(&mut self, sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
-        // 1 min
+        // 5 min
         tokio::spawn(async move {
             loop {
                 if let Err(e) = sender.send().await {
                     debug!("breaking thread loop: {}", e);
                     break;
                 }
-                sleep(Duration::from_secs(60)).await;
+                sleep(Duration::from_secs(60 * 5)).await;
             }
         });
         Ok(())
