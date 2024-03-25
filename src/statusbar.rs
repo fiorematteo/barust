@@ -102,6 +102,9 @@ impl StatusBar {
         pool.start().await;
         self.connection.flush()?;
 
+        // clear all pending events
+        while let Ok(_) = widgets_events.try_recv() {}
+
         let mut draw_timer = ResettableTimer::new(Duration::from_millis(1000 / 60));
         loop {
             let mut to_update: Option<WidgetID> = None;
