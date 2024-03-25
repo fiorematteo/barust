@@ -19,6 +19,8 @@ use yup_oauth2::{
 pub struct Mail {
     inner: Text,
     format: String,
+    folder_name: String,
+    filter: String,
     authenticator: Box<dyn ImapLogin>,
 }
 
@@ -105,7 +107,7 @@ impl ImapLogin for GmailLogin {
 
         let secret = yup_oauth2::read_application_secret(&self.client_secret_path)
             .await
-            .expect("missing client_secret.json");
+            .map_err(Error::from)?;
 
         let auth =
             InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
@@ -186,17 +188,22 @@ impl Mail {
     ///* `format`
     ///  * *%c* will be replaced with the unread mail count
     ///* `domain` domain of the mail server
-    ///* `user` mail user
-    ///* `password` mail password
+    ///* `authenticator` implements `ImapLogin`
+    ///* `folder_name` folder to check for mail (defaults to "INBOX")
+    ///* `filter` filter for the mail (defaults to "(UNSEEN)")
     ///* `config` a [&WidgetConfig]
     pub async fn new(
         format: impl ToString,
         authenticator: Box<dyn ImapLogin>,
+        folder_name: impl Into<Option<&str>>,
+        filter: impl Into<Option<&str>>,
         config: &WidgetConfig,
     ) -> Result<Box<Self>> {
         Ok(Box::new(Self {
             inner: *Text::new("", config).await,
             authenticator,
+            folder_name: folder_name.into().unwrap_or("INBOX").to_string(),
+            filter: filter.into().unwrap_or("(UNSEEN)").to_string(),
             format: format.to_string(),
         }))
     }
@@ -207,10 +214,12 @@ impl Widget for Mail {
     async fn update(&mut self) -> Result<()> {
         debug!("updating mail");
         let mut session = self.authenticator.login().await?;
-        session.select("INBOX").map_err(Error::from)?;
-        let message_count = match session.search("(UNSEEN)").map(|ids| ids.len()) {
+        session.select(&self.folder_name).map_err(Error::from)?;
+        let message_count = match session.search(&self.filter).map(|ids| ids.len()) {
             Ok(c) => c,
             Err(e) => {
+                // TODO: some error should be non-recoverable
+                // right now we just log and continue
                 error!("error getting mail count: {}", e);
                 return Ok(());
             }

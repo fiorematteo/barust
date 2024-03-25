@@ -32,83 +32,90 @@ async fn main() -> Result<()> {
     let mail_user = envtime!("MAIL_USER").expect("MAIL_USER not set");
     let mail_password = envtime!("MAIL_PASSWORD").expect("MAIL_PASSWORD not set");
 
+    let left_widgets: Vec<Box<dyn Widget>> = vec![
+        Spacer::new(20).await,
+        Workspaces::new(
+            PURPLE,
+            10,
+            &WidgetConfig {
+                padding: 0,
+                ..wd_config.clone()
+            },
+            WorkspaceFilter,
+            QtileStatusProvider::new().await?,
+        )
+        .await,
+        ActiveWindow::new(&WidgetConfig {
+            flex: true,
+            ..wd_config.clone()
+        })
+        .await?,
+    ];
+
+    let right_widgets: Vec<Box<dyn Widget>> = vec![
+        Systray::new(
+            10,
+            &WidgetConfig {
+                padding: 0,
+                ..wd_config.clone()
+            },
+        )
+        .await?,
+        // Weather::new(
+        //     &"%city %icon %cur (%min/%max)",
+        //     MeteoIcons::default(),
+        //     &wd_config,
+        //     OpenMeteoProvider::new(),
+        // )
+        // .await,
+        // Icon::new("test.svg", 21, &wd_config)?,
+        // Icon::new("interceptor.png", 21, &wd_config)?,
+        Mail::new(
+            "(fiorematteo2002) %c 📧",
+            PasswordLogin::new("imap.gmail.com", mail_user, mail_password),
+            None,
+            None,
+            &wd_config,
+        )
+        .await?,
+        Mail::new(
+            "(m.fiorina1) %c 📧",
+            GmailLogin::new(
+                "m.fiorina1@campus.unimib.it",
+                "/home/matteo/.local/share/barust_client_secret.json",
+            ),
+            None,
+            None,
+            &wd_config,
+        )
+        .await?,
+        Titans::new(&wd_config).await,
+        Disk::new("💾 %f", "/", &wd_config).await,
+        Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
+        Cpu::new("💻 %p%", &wd_config).await?,
+        Battery::new("%i %c%", None, &wd_config, NotifySend::default()).await?,
+        Volume::new(
+            "%i %p",
+            Box::new(PulseaudioProvider::new().await.unwrap()),
+            None,
+            &wd_config,
+        )
+        .await,
+        Brightness::new(
+            "%i %p%",
+            Box::new(SysfsProvider::new().await?),
+            None,
+            &wd_config,
+        )
+        .await,
+        Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config).await,
+    ];
     StatusBar::create()
         .height(25)
         .position(Position::Top)
         .background(BLANK)
-        .left_widgets(vec![
-            Spacer::new(20).await,
-            Workspaces::new(
-                PURPLE,
-                10,
-                &WidgetConfig {
-                    padding: 0,
-                    ..wd_config.clone()
-                },
-                WorkspaceFilter,
-                QtileStatusProvider::new().await?,
-            )
-            .await,
-            ActiveWindow::new(&WidgetConfig {
-                flex: true,
-                ..wd_config.clone()
-            })
-            .await?,
-        ])
-        .right_widgets(vec![
-            Systray::new(
-                10,
-                &WidgetConfig {
-                    padding: 0,
-                    ..wd_config.clone()
-                },
-            )
-            .await?,
-            // Weather::new(
-            //     &"%city %icon %cur (%min/%max)",
-            //     MeteoIcons::default(),
-            //     &wd_config,
-            //     OpenMeteoProvider::new(),
-            // )
-            // .await,
-            // Icon::new("test.svg", 21, &wd_config)?,
-            // Icon::new("interceptor.png", 21, &wd_config)?,
-            Mail::new(
-                "(fiorematteo2002) %c 📧",
-                PasswordLogin::new("imap.gmail.com", mail_user, mail_password),
-                &wd_config,
-            )
-            .await?,
-            Mail::new(
-                "(m.fiorina1) %c 📧",
-                GmailLogin::new(
-                    "m.fiorina1@campus.unimib.it",
-                    "/home/matteo/.local/share/barust_client_secret.json",
-                ),
-                &wd_config,
-            )
-            .await?,
-            Titans::new(&wd_config).await,
-            Disk::new("💾 %f", "/", &wd_config).await,
-            Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
-            Cpu::new("💻 %p%", &wd_config).await?,
-            Battery::new("%i %c%", None, &wd_config, NotifySend::default()).await?,
-            Volume::new(
-                "%i %p",
-                Box::new(PulseaudioProvider::new().await.unwrap()),
-                None,
-                &wd_config,
-            )
-            .await,
-            Brightness::new(
-                "%i %p%",
-                Box::new(SysfsProvider::new().await?),
-                None,
-                &wd_config,
-            )
-            .await,
-            Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config).await,
-        ])
+        .left_widgets(left_widgets)
+        .right_widgets(right_widgets)
         .build()
         .await?
         .start()
