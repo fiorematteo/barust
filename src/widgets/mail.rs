@@ -25,7 +25,7 @@ pub struct Mail {
 }
 
 #[async_trait]
-pub trait ImapLogin: std::fmt::Debug + Send {
+pub trait ImapLogin: std::fmt::Debug + Send + Sync {
     async fn login(&self) -> Result<Session<TlsStream<TcpStream>>>;
 }
 
@@ -207,15 +207,22 @@ impl Mail {
             format: format.to_string(),
         }))
     }
+
+    pub async fn get_message(&self) -> Result<usize> {
+        let mut session = self.authenticator.login().await?;
+        session.select(&self.folder_name).map_err(Error::from)?;
+        Ok(session
+            .search(&self.filter)
+            .map(|ids| ids.len())
+            .map_err(Error::from)?)
+    }
 }
 
 #[async_trait]
 impl Widget for Mail {
     async fn update(&mut self) -> Result<()> {
         debug!("updating mail");
-        let mut session = self.authenticator.login().await?;
-        session.select(&self.folder_name).map_err(Error::from)?;
-        let message_count = match session.search(&self.filter).map(|ids| ids.len()) {
+        let message_count = match self.get_message().await {
             Ok(c) => c,
             Err(e) => {
                 // TODO: some error should be non-recoverable
@@ -224,6 +231,7 @@ impl Widget for Mail {
                 return Ok(());
             }
         };
+
         if message_count == 0 {
             self.inner.clear();
         } else {
