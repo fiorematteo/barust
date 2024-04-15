@@ -175,7 +175,7 @@ impl LowBatteryWarner for NotifySend {
         }
 
         if charge < 5.0 && !self.warn_5 {
-            self.warn_20 = true;
+            self.warn_5 = true;
             return true;
         }
 
