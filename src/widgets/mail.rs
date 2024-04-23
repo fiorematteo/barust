@@ -3,6 +3,7 @@ use crate::{
     widget_default,
     widgets::{Result, Text, Widget, WidgetConfig},
 };
+use async_channel::Receiver;
 use async_trait::async_trait;
 use futures::Future;
 use imap::Session;
@@ -19,9 +20,7 @@ use yup_oauth2::{
 pub struct Mail {
     inner: Text,
     format: String,
-    folder_name: String,
-    filter: String,
-    authenticator: Box<dyn ImapLogin>,
+    message_receiver: Receiver<Result<usize>>,
 }
 
 #[async_trait]
@@ -199,30 +198,54 @@ impl Mail {
         filter: impl Into<Option<&str>>,
         config: &WidgetConfig,
     ) -> Result<Box<Self>> {
+        let (tx, rx) = async_channel::unbounded();
+
+        let filter = filter.into().unwrap_or("(UNSEEN)").to_string();
+        let folder_name = folder_name.into().unwrap_or("INBOX").to_string();
+
+        tokio::task::spawn(async move {
+            loop {
+                let count =
+                    fetch_message_count(authenticator.as_ref(), &folder_name, &filter).await;
+                if tx.send(count).await.is_err() {
+                    break;
+                }
+                sleep(Duration::from_secs(60)).await;
+            }
+            error!("mail thread broke");
+        });
+
         Ok(Box::new(Self {
             inner: *Text::new("", config).await,
-            authenticator,
-            folder_name: folder_name.into().unwrap_or("INBOX").to_string(),
-            filter: filter.into().unwrap_or("(UNSEEN)").to_string(),
             format: format.to_string(),
+            message_receiver: rx,
         }))
     }
+}
 
-    pub async fn get_message(&self) -> Result<usize> {
-        let mut session = self.authenticator.login().await?;
-        session.select(&self.folder_name).map_err(Error::from)?;
-        Ok(session
-            .search(&self.filter)
-            .map(|ids| ids.len())
-            .map_err(Error::from)?)
-    }
+async fn fetch_message_count(
+    authenticator: &dyn ImapLogin,
+    folder_name: &str,
+    filter: &str,
+) -> Result<usize> {
+    let mut session = authenticator.login().await?;
+    session.select(folder_name).map_err(Error::from)?;
+    let count = session
+        .search(filter)
+        .map(|ids| ids.len())
+        .map_err(Error::from)?;
+    Ok(count)
 }
 
 #[async_trait]
 impl Widget for Mail {
     async fn update(&mut self) -> Result<()> {
         debug!("updating mail");
-        let message_count = match self.get_message().await {
+        let Ok(message_count) = self.message_receiver.try_recv() else {
+            return Ok(());
+        };
+
+        let message_count = match message_count {
             Ok(c) => c,
             Err(e) => {
                 // TODO: some error should be non-recoverable
@@ -240,20 +263,12 @@ impl Widget for Mail {
                 .replace("%c", message_count.to_string().as_str());
             self.inner.set_text(new_text);
         };
+
         Ok(())
     }
 
-    async fn hook(&mut self, sender: HookSender, _pool: &mut TimedHooks) -> Result<()> {
-        // 5 min
-        tokio::spawn(async move {
-            loop {
-                if let Err(e) = sender.send().await {
-                    debug!("breaking thread loop: {}", e);
-                    break;
-                }
-                sleep(Duration::from_secs(60 * 5)).await;
-            }
-        });
+    async fn hook(&mut self, sender: HookSender, pool: &mut TimedHooks) -> Result<()> {
+        pool.subscribe(sender);
         Ok(())
     }
 
