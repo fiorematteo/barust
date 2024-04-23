@@ -1,15 +1,15 @@
-use crate::utils::{
-    hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms, Color,
-    HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks, WidgetID,
-};
 use crate::{
+    utils::{
+        hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms,
+        Color, HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks,
+        WidgetID,
+    },
     widgets::{ReplaceableWidget, Size, Widget},
     BarustError, Result,
 };
 use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
-use futures::future::join_all;
-use futures::StreamExt;
+use futures::{future::join_all, StreamExt};
 use log::{debug, error};
 use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
@@ -103,7 +103,7 @@ impl StatusBar {
         self.connection.flush()?;
 
         // clear all pending events
-        while let Ok(_) = widgets_events.try_recv() {}
+        while widgets_events.try_recv().is_ok() {}
 
         let mut draw_timer = ResettableTimer::new(Duration::from_millis(1000 / 60));
         loop {
@@ -215,21 +215,6 @@ impl StatusBar {
             .chain(self.right_regions.iter())
             .collect();
 
-        // double buffer to prevent flickering
-        let tmp_surface = self.surface.create_similar_image(
-            cairo::Format::ARgb32,
-            self.width as _,
-            self.height as _,
-        )?;
-
-        for (wd, rectangle) in widgets.zip(regions) {
-            let cairo_rectangle: cairo::Rectangle = (*rectangle).into();
-            let surface = &tmp_surface.create_for_rectangle(cairo_rectangle)?;
-            let context = Context::new(surface)?;
-            wd.draw_or_replace(context, rectangle).await;
-        }
-        tmp_surface.flush();
-
         let context = Context::new(&self.surface)?;
         // clear surface
         context.set_operator(Operator::Clear);
@@ -238,11 +223,15 @@ impl StatusBar {
         context.set_operator(Operator::Over);
         set_source_rgba(&context, self.background);
         context.paint()?;
-        // copy tmp_surface
-        context.set_source_surface(&tmp_surface, 0.0, 0.0)?;
-        context.paint()?;
-        self.surface.flush();
 
+        for (wd, rectangle) in widgets.zip(regions) {
+            let cairo_rectangle: cairo::Rectangle = (*rectangle).into();
+            let surface = &self.surface.create_for_rectangle(cairo_rectangle)?;
+            let context = Context::new(surface)?;
+            wd.draw_or_replace(context, rectangle).await;
+        }
+
+        self.surface.flush();
         self.connection.flush()?;
         Ok(())
     }
