@@ -13,7 +13,8 @@ use xcb::{
         ChangeProperty, ChangeWindowAttributes, ClientMessageData, ClientMessageEvent, Colormap,
         ColormapAlloc, ConfigWindow, ConfigureWindow, CreateColormap, CreateWindow, Cw,
         DestroyWindow, Drawable, EventMask, Gcontext, MapWindow, Pixmap, PropMode, ReparentWindow,
-        SendEvent, SendEventDest, UnmapWindow, VisualClass, Window, WindowClass, CURRENT_TIME,
+        SendEvent, SendEventDest, StackMode, UnmapWindow, VisualClass, Window, WindowClass,
+        CURRENT_TIME,
     },
     Connection, Xid, XidNew,
 };
@@ -431,6 +432,17 @@ impl Widget for Systray {
         };
         self.create_tray_window(y as _, info.height as _)?;
         self.icon_size = info.height - 2;
+
+        // enforce stacking order
+        self.connection
+            .send_and_check_request(&ConfigureWindow {
+                window: self.window.unwrap(),
+                value_list: &[
+                    ConfigWindow::Sibling(info.window),
+                    ConfigWindow::StackMode(StackMode::Above),
+                ],
+            })
+            .map_err(Error::from)?;
 
         self.take_selection()?;
         Ok(())
