@@ -103,28 +103,23 @@ impl Systray {
         }
         self.children.retain(|child| *child != window);
 
-        self.connection
-            .send_and_check_request(&ChangeWindowAttributes {
+        self.connection.send_request(&ChangeWindowAttributes {
+            window,
+            value_list: &[
+                Cw::OverrideRedirect(false),
+                Cw::EventMask(EventMask::NO_EVENT),
+            ],
+        });
+        self.connection.send_request(&UnmapWindow { window });
+        self.connection.send_request(
+            &(ReparentWindow {
                 window,
-                value_list: &[
-                    Cw::OverrideRedirect(false),
-                    Cw::EventMask(EventMask::NO_EVENT),
-                ],
-            })
-            .ok();
-        self.connection
-            .send_and_check_request(&UnmapWindow { window })
-            .ok();
-        self.connection
-            .send_and_check_request(
-                &(ReparentWindow {
-                    window,
-                    parent: self.connection.get_setup().roots().next().unwrap().root(),
-                    x: 0,
-                    y: 0,
-                }),
-            )
-            .ok();
+                parent: self.connection.get_setup().roots().next().unwrap().root(),
+                x: 0,
+                y: 0,
+            }),
+        );
+        self.connection.flush().map_err(Error::from)?;
 
         if self.children.is_empty() {
             self.connection
