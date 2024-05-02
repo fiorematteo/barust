@@ -1,4 +1,5 @@
 use crate::{
+    statusbar::set_window_title,
     utils::{screen_true_height, Atoms, HookSender, Position, StatusBarInfo, TimedHooks},
     widgets::{Rectangle, Result, Size, Widget, WidgetConfig},
 };
@@ -214,6 +215,9 @@ impl Systray {
                 data: &[0_u32],
             })
             .map_err(Error::from)?;
+
+        set_window_title(self.connection.clone(), window, "systray").map_err(Error::from)?;
+
         self.connection.flush().map_err(Error::from)?;
 
         // get context

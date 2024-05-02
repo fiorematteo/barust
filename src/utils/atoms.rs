@@ -10,6 +10,7 @@ atoms!(
      struct Atoms {
         MANAGER,
         UTF8_STRING,
+        WM_NAME,
         _NET_ACTIVE_WINDOW,
         _NET_CURRENT_DESKTOP,
         _NET_DESKTOP_NAMES,

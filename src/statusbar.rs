@@ -404,6 +404,8 @@ impl StatusBarBuilder {
             data: &[atoms._NET_WM_WINDOW_TYPE_DOCK],
         })?;
 
+        set_window_title(connection.clone(), window, "barust")?;
+
         let surface = unsafe {
             let conn_ptr = connection.get_raw_conn() as _;
             XCBSurface::create(
@@ -439,6 +441,25 @@ impl StatusBarBuilder {
             position: self.position,
         })
     }
+}
+
+pub(crate) fn set_window_title(
+    connection: Arc<Connection>,
+    window: Window,
+    title: &str,
+) -> xcb::Result<()> {
+    let atoms = Atoms::new(&connection)?;
+    let mut property_request = xcb::x::ChangeProperty {
+        mode: xcb::x::PropMode::Replace,
+        window,
+        property: atoms.WM_NAME,
+        r#type: xcb::x::ATOM_STRING,
+        data: title.as_bytes(),
+    };
+    connection.send_and_check_request(&property_request)?;
+    property_request.property = atoms._NET_WM_NAME;
+    connection.send_and_check_request(&property_request)?;
+    Ok(())
 }
 
 fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
