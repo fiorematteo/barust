@@ -11,7 +11,7 @@ use barust::{
 use elite::Titans;
 use envtime::envtime;
 use log::LevelFilter;
-use std::{env, fs::OpenOptions, time::Duration};
+use std::{env, time::Duration};
 
 const PURPLE: Color = Color::new(0.8, 0.0, 1.0, 1.0);
 const BLANK: Color = Color::new(0.0, 0.0, 0.0, 0.0);
@@ -135,6 +135,9 @@ impl WorkspaceHider for WorkspaceFilter {
 }
 
 fn setup_logger() {
+    log_panics::Config::new()
+        .backtrace_mode(log_panics::BacktraceMode::Resolved)
+        .install_panic_hook();
     let args = env::args().collect::<Vec<_>>();
 
     let mut level = LevelFilter::Info;
@@ -149,18 +152,10 @@ fn setup_logger() {
         }
     }
 
-    if args.contains(&String::from("--stderr")) {
-        simple_logging::log_to_stderr(level);
-    } else {
-        simple_logging::log_to(
-            OpenOptions::new()
-                .append(true)
-                .open("/home/matteo/.local/share/barust.log")
-                .unwrap(),
-            level,
-        );
-        log_panics::Config::new()
-            .backtrace_mode(log_panics::BacktraceMode::Resolved)
-            .install_panic_hook();
-    }
+    let handle = log2::open("/home/matteo/.local/share/barust/log.txt")
+        .level(level)
+        .tee(args.contains(&String::from("--stderr")))
+        .start();
+    // dropping handle stops the logger
+    std::mem::forget(handle);
 }
