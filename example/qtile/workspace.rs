@@ -49,7 +49,7 @@ impl WorkspaceStatusProvider for QtileStatusProvider {
 impl QtileStatusProvider {
     pub async fn new() -> Result<Self> {
         let python_module = Python::with_gil(|py| -> PyResult<Py<PyModule>> {
-            Ok(PyModule::from_code(
+            Ok(PyModule::from_code_bound(
                 py,
                 r#"from collections import Counter
 from libqtile.command.client import CommandClient

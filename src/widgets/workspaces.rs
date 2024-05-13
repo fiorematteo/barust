@@ -279,7 +279,6 @@ pub enum Error {
     #[error("Pango")]
     Pango,
     Xcb(#[from] xcb::Error),
-    Py(#[from] pyo3::PyErr),
 }
 
 impl From<xcb::ConnError> for Error {
