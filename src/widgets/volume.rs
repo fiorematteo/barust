@@ -17,10 +17,10 @@ pub struct VolumeIcons {
 
 impl Default for VolumeIcons {
     fn default() -> Self {
-        let percentages = ['奄', '奔', '墳'];
+        let percentages = ['󰕿', '󰖀', '󰕾'];
         Self {
             percentages: percentages.map(String::from).to_vec(),
-            muted: String::from('ﱝ'),
+            muted: String::from('󰝟'),
         }
     }
 }
