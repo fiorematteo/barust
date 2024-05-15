@@ -92,8 +92,8 @@ async fn main() -> Result<()> {
         Titans::new(&wd_config).await,
         Disk::new("💾 %f", "/", &wd_config).await,
         Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,
-        Cpu::new("💻 %p%", &wd_config).await?,
-        Battery::new("%i %c%", None, &wd_config, NotifySend::default()).await?,
+        Cpu::new("💻 %p󱉸", &wd_config).await?,
+        Battery::new("%i %c󱉸", None, &wd_config, NotifySend::default()).await?,
         Volume::new(
             "%i %p",
             Box::new(PulseaudioProvider::new().await.unwrap()),
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
         )
         .await,
         Brightness::new(
-            "%i %p%",
+            "%i %p󱉸",
             Box::new(SysfsProvider::new().await?),
             None,
             &wd_config,

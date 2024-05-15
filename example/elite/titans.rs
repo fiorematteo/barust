@@ -56,7 +56,7 @@ impl Widget for Titans {
         }
         let text = if let Some(titan) = &self.titan {
             format!(
-                "🌸 {}: {:.2}% ({}💚)",
+                "🌸 {}: {:.2}󱉸 ({}💚)",
                 titan.name,
                 titan.heart_progress * 100.,
                 titan.hearts_remaining
