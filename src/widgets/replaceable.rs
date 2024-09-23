@@ -59,7 +59,7 @@ impl ReplaceableWidget {
             Ok(s) => s,
             Err(e) => {
                 self.replace(e).await;
-                self.0.setup(info).await.unwrap()
+                self.0.setup(info).await.unwrap();
             }
         }
     }

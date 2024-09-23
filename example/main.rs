@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     // console_subscriber::init();
 
     let wd_config = WidgetConfig {
-        font: "DejaVuSansM Nerd Font Propo".into(),
+        font: "DejaVuSansM Nerd Font Propo".to_owned(),
         font_size: 17.0,
         hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()

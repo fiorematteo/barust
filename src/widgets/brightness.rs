@@ -160,12 +160,12 @@ impl SysfsProvider {
                 Some("brightness") => {
                     let mut path = device.path();
                     path.push("brightness");
-                    brightness = Some(path)
+                    brightness = Some(path);
                 }
                 Some("max_brightness") => {
                     let mut path = device.path();
                     path.push("max_brightness");
-                    max_brightness = Some(path)
+                    max_brightness = Some(path);
                 }
                 _ => (),
             }

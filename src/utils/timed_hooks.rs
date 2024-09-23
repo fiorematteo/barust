@@ -18,7 +18,7 @@ impl TimedHooks {
         spawn(async move {
             for s in self.senders.into_iter().cycle() {
                 if s.send().await.is_err() {
-                    error!("breaking thread loop")
+                    error!("breaking thread loop");
                 }
 
                 sleep(duration).await;

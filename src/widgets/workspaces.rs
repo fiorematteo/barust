@@ -268,7 +268,7 @@ pub fn get_current_desktop(connection: &Connection) -> Result<u32> {
         .value::<u32>()
         .first()
         .ok_or_else(|| Error::Ewmh.into())
-        .map(|v| *v)
+        .cloned()
 }
 
 #[derive(thiserror::Error, Debug)]

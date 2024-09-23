@@ -329,7 +329,7 @@ impl Systray {
                 self.handle_client_message(event)?;
             }
             SystrayEvent::DestroyNotify(window) => self.forget(window)?,
-            SystrayEvent::PropertyNotify(_) => {}
+            SystrayEvent::PropertyNotify => {}
             SystrayEvent::ReparentNotify((parent, window)) => {
                 if parent != self.window.unwrap() {
                     self.forget(window)?;
@@ -549,7 +549,7 @@ impl Display for Systray {
 enum SystrayEvent {
     ClientMessage(ClientMessageEvent),
     DestroyNotify(Window),
-    PropertyNotify(u32),
+    PropertyNotify,
     ReparentNotify((Window, Window)),
     SelectionClear,
     Unknown,
@@ -560,7 +560,7 @@ impl From<xcb::x::Event> for SystrayEvent {
         match value {
             xcb::x::Event::ClientMessage(event) => Self::ClientMessage(event),
             xcb::x::Event::DestroyNotify(event) => Self::DestroyNotify(event.window()),
-            xcb::x::Event::PropertyNotify(event) => Self::PropertyNotify(event.time()),
+            xcb::x::Event::PropertyNotify(_) => Self::PropertyNotify,
             xcb::x::Event::ReparentNotify(event) => {
                 Self::ReparentNotify((event.parent(), event.window()))
             }
