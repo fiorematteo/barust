@@ -28,15 +28,14 @@ impl Titans {
     }
 
     async fn update_data(&mut self) -> Result<()> {
-        let mut data = reqwest::get("https://dcoh.watch/api/v1/Overwatch/Titans")
+        let data = reqwest::get("https://dcoh.watch/api/v1/Overwatch/Titans")
             .await
             .map_err(Error::from)?
             .json::<TitanList>()
             .await
             .map_err(Error::from)?
             .maelstroms;
-        data.retain(|t| t.total_progress != 1.);
-        self.titan = data.into_iter().max();
+        self.titan = data.into_iter().filter(|t| t.total_progress != 1.).max();
         Ok(())
     }
 }
@@ -56,10 +55,10 @@ impl Widget for Titans {
         }
         let text = if let Some(titan) = &self.titan {
             format!(
-                "🌸 {}: {:.2}󱉸 ({}💚)",
+                "🌸 {} ({:.2}󱉸 💚) {} to go",
                 titan.name,
-                titan.heart_progress * 100.,
-                titan.hearts_remaining
+                titan.total_progress * 100.,
+                titan.systems_thargoid_controlled
             )
         } else {
             String::from("No active titans")
