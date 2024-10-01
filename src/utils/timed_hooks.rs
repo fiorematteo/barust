@@ -14,6 +14,10 @@ impl TimedHooks {
     }
 
     pub async fn start(self) {
+        if self.senders.len() == 0 {
+            return;
+        }
+
         let duration = Duration::from_secs(1) / self.senders.len() as u32;
         spawn(async move {
             for s in self.senders.into_iter().cycle() {

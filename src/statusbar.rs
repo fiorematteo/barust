@@ -178,7 +178,10 @@ impl StatusBar {
             .filter(|wd| wd.is_flex())
             .count();
 
-        let flex_size = (self.width - static_size) / flex_widgets as u32;
+        let flex_size = (self.width - static_size)
+            .checked_div(flex_widgets as u32)
+            // if there are no flex widgets, use the full width
+            .unwrap_or(self.width - static_size);
 
         self.left_regions.clear();
         for wd in &mut self.left_widgets {
