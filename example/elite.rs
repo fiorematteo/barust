@@ -108,23 +108,50 @@ impl PartialOrd for Titan {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct TitanList {
-    maelstroms: Vec<Titan>,
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+pub struct TitanList {
+    pub maelstroms: Vec<Titan>,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-struct Titan {
-    name: String,
-    #[serde(rename = "systemName")]
-    system_name: String,
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+pub struct Titan {
+    #[serde(rename = "systemsInAlert")]
+    pub systems_in_alert: i64,
+    #[serde(rename = "systemsInInvasion")]
+    pub systems_in_invasion: i64,
+    #[serde(rename = "systemsThargoidControlled")]
+    pub systems_thargoid_controlled: i64,
+    #[serde(rename = "systemsInRecovery")]
+    pub systems_in_recovery: i64,
+    #[serde(rename = "defenseRate")]
+    pub defense_rate: f64,
+    #[serde(rename = "damageResistance")]
+    pub damage_resistance: DamageResistance,
     #[serde(rename = "heartsRemaining")]
-    hearts_remaining: u64,
+    pub hearts_remaining: i64,
     #[serde(rename = "heartProgress")]
-    heart_progress: f64,
+    pub heart_progress: f64,
     #[serde(rename = "totalProgress")]
-    total_progress: f64,
+    pub total_progress: f64,
+    pub state: String,
+    #[serde(rename = "meltdownTimeEstimate")]
+    pub meltdown_time_estimate: Option<String>,
+    #[serde(rename = "completionTimeEstimate")]
+    pub completion_time_estimate: Option<String>,
+    #[serde(rename = "causticLevel")]
+    pub caustic_level: String,
+    pub name: String,
+    #[serde(rename = "systemName")]
+    pub system_name: String,
+    #[serde(rename = "systemAddress")]
+    pub system_address: i64,
+    #[serde(rename = "ingameNumber")]
+    pub ingame_number: i64,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+pub struct DamageResistance {
+    pub name: String,
 }
 
 #[derive(thiserror::Error, Debug)]
