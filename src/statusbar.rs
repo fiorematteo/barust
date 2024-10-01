@@ -9,12 +9,14 @@ use crate::{
 };
 use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
-use futures::{future::join_all, StreamExt};
-use log::{debug, error};
-use signal_hook::consts::signal::{SIGINT, SIGTERM};
-use signal_hook_tokio::Signals;
-use std::{ffi::c_int, sync::Arc, thread, time::Duration};
-use tokio::{select, spawn};
+use futures::future::join_all;
+use log::{debug, error, warn};
+use std::{sync::Arc, thread, time::Duration};
+use tokio::{
+    select,
+    signal::unix::{signal, SignalKind},
+    spawn,
+};
 use xcb::{
     x::{
         Colormap, ColormapAlloc, CreateColormap, CreateWindow, Cw, EventMask, MapWindow, Pixmap,
@@ -93,7 +95,7 @@ impl StatusBar {
             .collect::<Vec<_>>();
         join_all(update_futures).await;
 
-        let signal = notify(&[SIGINT, SIGTERM])?;
+        let signal = stop_on_signal()?;
         let bar_events = bar_event_listener(Arc::clone(&self.connection))?;
 
         self.generate_regions().await?;
@@ -108,6 +110,7 @@ impl StatusBar {
         let mut draw_timer = ResettableTimer::new(Duration::from_millis(1000 / 60));
         loop {
             let mut to_update: Option<WidgetID> = None;
+
             select!(
                 id = widgets_events.recv() => {
                     to_update = id.ok();
@@ -473,12 +476,18 @@ fn bar_event_listener(connection: Arc<Connection>) -> Result<Receiver<()>> {
     Ok(rx)
 }
 
-fn notify(signals: &[c_int]) -> std::result::Result<Receiver<c_int>, BarustError> {
+fn stop_on_signal() -> std::result::Result<Receiver<()>, BarustError> {
     let (s, r) = bounded(10);
-    let mut signals = Signals::new(signals)?;
     spawn(async move {
-        while let Some(signal) = signals.next().await {
-            if s.send(signal).await.is_err() {
+        let mut sigterm = signal(SignalKind::terminate()).unwrap();
+        let mut sigint = signal(SignalKind::interrupt()).unwrap();
+        loop {
+            select! {
+                _ = sigterm.recv() => warn!("Receive SIGTERM"),
+                _ = sigint.recv() => warn!("Receive SIGINT"),
+            };
+            if s.send(()).await.is_err() {
+                error!("signal channel closed");
                 break;
             }
         }
