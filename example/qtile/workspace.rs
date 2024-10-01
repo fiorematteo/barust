@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use barust::widgets::*;
+use log::error;
 use pyo3::{types::PyModule, Py, PyResult, Python};
 use std::{collections::HashMap, fmt::Display};
 
@@ -25,6 +26,7 @@ impl WorkspaceStatusProvider for QtileStatusProvider {
                 .call0(py)?
                 .extract::<HashMap<String, usize>>(py)
         }) else {
+            error!("Failed to get group count");
             return Ok(());
         };
         self.group_count.clear();
@@ -53,7 +55,9 @@ impl QtileStatusProvider {
                 py,
                 r#"from collections import Counter
 from libqtile.command.client import CommandClient
+import signal
 
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 c = CommandClient()
 def windows():
     windows = c.call("windows")

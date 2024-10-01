@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use cairo::Context;
-use log::debug;
+use log::{debug, error};
 use pango::{FontDescription, Layout};
 use pangocairo::functions::{create_context, show_layout};
 use std::{collections::HashSet, fmt::Display, thread};
@@ -156,6 +156,7 @@ impl Widget for Workspaces {
                 Ok(xcb::Event::X(xcb::x::Event::PropertyNotify(_)))
             ) && sender.send_blocking().is_err()
             {
+                error!("breaking workspaces hook");
                 break;
             }
         });
