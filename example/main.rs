@@ -131,9 +131,6 @@ impl WorkspaceHider for WorkspaceFilter {
 }
 
 fn setup_logger() {
-    log_panics::Config::new()
-        .backtrace_mode(log_panics::BacktraceMode::Resolved)
-        .install_panic_hook();
     let args = env::args().collect::<Vec<_>>();
 
     let mut level = LevelFilter::Info;
