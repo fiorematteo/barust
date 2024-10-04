@@ -1,7 +1,8 @@
 use crate::{
     utils::{HookSender, TimedHooks},
     widget_default,
-    widgets::{Result, Text, Widget, WidgetConfig},
+    widgets::{Result, Text, Widget, WidgetConfig, WidgetError},
+    xdg_cache, xdg_config,
 };
 use async_channel::Receiver;
 use async_trait::async_trait;
@@ -9,7 +10,7 @@ use futures::Future;
 use imap::Session;
 use log::{debug, error, warn};
 use native_tls::TlsStream;
-use std::{env, fmt::Display, fs, net::TcpStream, path::PathBuf, pin::Pin, time::Duration};
+use std::{fmt::Display, net::TcpStream, path::PathBuf, pin::Pin, time::Duration};
 use tokio::time::sleep;
 use yup_oauth2::{
     authenticator_delegate::{DefaultInstalledFlowDelegate, InstalledFlowDelegate},
@@ -88,10 +89,13 @@ pub struct GmailLogin {
 }
 
 impl GmailLogin {
+    /// client_secret_path is the path to the client_secret.json file
+    /// either absolute or relative to the config directory
     pub fn new(user: impl ToString, client_secret_path: impl Into<PathBuf>) -> Box<Self> {
+        let config_path = xdg_config().map_err(Error::from).unwrap();
         Box::new(Self {
             user: user.to_string(),
-            client_secret_path: client_secret_path.into(),
+            client_secret_path: config_path.join(client_secret_path.into()),
         })
     }
 }
@@ -99,18 +103,18 @@ impl GmailLogin {
 #[async_trait]
 impl ImapLogin for GmailLogin {
     async fn login(&self) -> Result<Session<TlsStream<TcpStream>>> {
-        let xdg_cache = env::var("XDG_CACHE_HOME")
-            .unwrap_or_else(|_| format!("{}/.cache", env::var("HOME").expect("HOME not set")));
-        let cache_path = format!("{}/barust/{}", xdg_cache, &self.user);
-        fs::create_dir_all(&cache_path).map_err(Error::from)?;
-
+        let cache_path = xdg_cache().map_err(Error::from)?;
         let secret = yup_oauth2::read_application_secret(&self.client_secret_path)
             .await
-            .map_err(Error::from)?;
+            .map_err(|e| {
+                Error::ClientSecret(e, self.client_secret_path.to_string_lossy().to_string())
+            })?;
 
+        let persistent_path = cache_path.join(&self.user).join("tokencache.json");
+        std::fs::create_dir_all(persistent_path.parent().unwrap()).map_err(Error::from)?;
         let auth =
             InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
-                .persist_tokens_to_disk(&format!("{}/tokencache.json", cache_path))
+                .persist_tokens_to_disk(persistent_path)
                 .flow_delegate(Box::new(InstalledFlowBrowserDelegate::new(&self.user)))
                 .build()
                 .await
@@ -248,9 +252,10 @@ impl Widget for Mail {
         let message_count = match message_count {
             Ok(c) => c,
             Err(e) => {
-                // TODO: some error should be non-recoverable
-                // right now we just log and continue
-                error!("error getting mail count: {}", e);
+                if matches!(e, WidgetError::Mail(Error::ClientSecret(_, _))) {
+                    // can't recover from this
+                    return Err(e);
+                }
                 return Ok(());
             }
         };
@@ -287,5 +292,7 @@ pub enum Error {
     Tls(#[from] native_tls::Error),
     Imap(#[from] imap::Error),
     Io(#[from] std::io::Error),
+    #[error("{0} while reading client secret at {1}")]
+    ClientSecret(std::io::Error, String),
     YupOauth2(#[from] yup_oauth2::Error),
 }

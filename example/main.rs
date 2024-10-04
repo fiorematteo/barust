@@ -6,7 +6,7 @@ use barust::{
     statusbar::StatusBar,
     utils::{Color, Position},
     widgets::*,
-    Result,
+    xdg_data, Result,
 };
 use elite::Titans;
 use envtime::envtime;
@@ -77,10 +77,7 @@ async fn main() -> Result<()> {
         .await?,
         Mail::new(
             "(m.fiorina1) %c 📧",
-            GmailLogin::new(
-                "m.fiorina1@campus.unimib.it",
-                "/home/matteo/.local/share/barust_client_secret.json",
-            ),
+            GmailLogin::new("m.fiorina1@campus.unimib.it", "client_secret.json"),
             None,
             None,
             &wd_config,
@@ -145,7 +142,7 @@ fn setup_logger() {
         }
     }
 
-    let handle = log2::open("/home/matteo/.local/share/barust/log.txt")
+    let handle = log2::open(xdg_data().unwrap().join("log.txt").to_str().unwrap())
         .level(level)
         .tee(args.contains(&String::from("--stderr")))
         .start();

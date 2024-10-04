@@ -78,8 +78,8 @@ impl ReplaceableWidget {
     }
 
     async fn replace(&mut self, e: WidgetError) {
-        error!("{:?}", e);
-        error!("Replacing widget with default");
+        error!("{e}");
+        error!("Replacing `{}` with default", self.0);
         self.0 = Text::new("Widget Crashed 🙃", &WidgetConfig::default()).await;
     }
 }
