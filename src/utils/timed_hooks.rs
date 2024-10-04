@@ -14,7 +14,7 @@ impl TimedHooks {
     }
 
     pub async fn start(self) {
-        if self.senders.len() == 0 {
+        if self.senders.is_empty() {
             return;
         }
 

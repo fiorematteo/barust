@@ -12,7 +12,7 @@ pub mod timed_hooks;
 
 pub use atoms::Atoms;
 pub use color::{set_source_rgba, Color};
-pub use hook_sender::{HookSender, WidgetID};
+pub use hook_sender::{HookSender, WidgetIndex};
 pub use image_surface::OwnedImageSurface;
 pub use resettable_timer::ResettableTimer;
 pub use timed_hooks::TimedHooks;
@@ -20,8 +20,7 @@ pub use timed_hooks::TimedHooks;
 #[derive(Debug)]
 pub struct StatusBarInfo {
     pub background: Color,
-    pub left_regions: Vec<Rectangle>,
-    pub right_regions: Vec<Rectangle>,
+    pub regions: Vec<Rectangle>,
     pub height: u32,
     pub width: u32,
     pub position: Position,

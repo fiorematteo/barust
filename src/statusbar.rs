@@ -1,7 +1,7 @@
 use crate::{
     utils::{
-        hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms,
-        Color, HookSender, Position, Rectangle, StatusBarInfo, TimedHooks, WidgetID,
+        screen_true_height, screen_true_width, set_source_rgba, Atoms, Color, HookSender, Position,
+        Rectangle, StatusBarInfo, TimedHooks, WidgetIndex,
     },
     widgets::{ReplaceableWidget, Size, Widget},
     BarustError, Result,
@@ -28,10 +28,8 @@ use xcb::{
 pub struct StatusBar {
     background: Color,
     connection: Arc<Connection>,
-    left_regions: Vec<Rectangle>,
-    left_widgets: Vec<ReplaceableWidget>,
-    right_regions: Vec<Rectangle>,
-    right_widgets: Vec<ReplaceableWidget>,
+    regions: Vec<Rectangle>,
+    widgets: Vec<ReplaceableWidget>,
     surface: XCBSurface,
     height: u32,
     width: u32,
@@ -49,13 +47,12 @@ impl StatusBar {
     /// Starts the [StatusBar] drawing and event loop
     pub async fn start(mut self) -> Result<()> {
         debug!("Starting loop");
-        let (tx, widgets_events) = bounded::<WidgetID>(10);
+        let (tx, widgets_events) = bounded::<WidgetIndex>(10);
 
         debug!("Widget setup");
         let info = StatusBarInfo {
             background: self.background,
-            left_regions: self.left_regions.clone(),
-            right_regions: self.right_regions.clone(),
+            regions: self.regions.clone(),
             height: self.height,
             width: self.width,
             position: self.position,
@@ -64,32 +61,20 @@ impl StatusBar {
         let mut pool = TimedHooks::default();
 
         let setup_futures = self
-            .left_widgets
+            .widgets
             .iter_mut()
-            .chain(self.right_widgets.iter_mut())
             .map(|w| w.setup_or_replace(&info))
             .collect::<Vec<_>>();
         join_all(setup_futures).await;
 
-        for (index, wd) in self.left_widgets.iter_mut().enumerate() {
-            wd.hook_or_replace(
-                HookSender::new(tx.clone(), (RightLeft::Left, index)),
-                &mut pool,
-            )
-            .await;
-        }
-        for (index, wd) in self.right_widgets.iter_mut().enumerate() {
-            wd.hook_or_replace(
-                HookSender::new(tx.clone(), (RightLeft::Right, index)),
-                &mut pool,
-            )
-            .await;
+        for (index, wd) in self.widgets.iter_mut().enumerate() {
+            wd.hook_or_replace(HookSender::new(tx.clone(), index), &mut pool)
+                .await;
         }
 
         let update_futures = self
-            .left_widgets
+            .widgets
             .iter_mut()
-            .chain(self.right_widgets.iter_mut())
             .map(|w| w.update_or_replace())
             .collect::<Vec<_>>();
         join_all(update_futures).await;
@@ -104,7 +89,7 @@ impl StatusBar {
         self.connection.flush()?;
 
         loop {
-            let mut to_update: Option<WidgetID> = None;
+            let mut to_update: Option<WidgetIndex> = None;
 
             select!(
                 id = widgets_events.recv() => {
@@ -130,11 +115,8 @@ impl StatusBar {
         }
     }
 
-    async fn update(&mut self, (side, index): WidgetID) -> Result<()> {
-        let wd = match side {
-            RightLeft::Left => &mut self.left_widgets[index],
-            RightLeft::Right => &mut self.right_widgets[index],
-        };
+    async fn update(&mut self, index: WidgetIndex) -> Result<()> {
+        let wd = &mut self.widgets[index];
         wd.update_or_replace().await;
         Ok(())
     }
@@ -151,9 +133,8 @@ impl StatusBar {
         };
 
         let static_size: u32 = self
-            .left_widgets
+            .widgets
             .iter_mut()
-            .chain(&mut self.right_widgets)
             .map(|wd| {
                 if let Ok(Size::Static(width)) = wd.size(&context) {
                     width + 2 * wd.padding()
@@ -164,9 +145,8 @@ impl StatusBar {
             .sum();
 
         let flex_widgets = self
-            .left_widgets
+            .widgets
             .iter_mut()
-            .chain(&mut self.right_widgets)
             .flat_map(|wd| wd.size(&context))
             .filter(|wd| wd.is_flex())
             .count();
@@ -178,16 +158,9 @@ impl StatusBar {
 
         let mut need_relayout = false;
 
-        let left = self
-            .left_widgets
-            .iter_mut()
-            .zip(self.left_regions.iter_mut());
-        let right = self
-            .right_widgets
-            .iter_mut()
-            .zip(self.right_regions.iter_mut());
+        let left = self.widgets.iter_mut().zip(self.regions.iter_mut());
 
-        for (wd, region) in left.chain(right) {
+        for (wd, region) in left {
             rectangle.x += wd.padding();
             let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
             rectangle.width = widget_width;
@@ -203,21 +176,13 @@ impl StatusBar {
 
     async fn draw_all(&mut self) -> Result<()> {
         assert!(
-            self.left_regions.len() == self.left_widgets.len()
-                && self.right_regions.len() == self.right_widgets.len(),
+            self.regions.len() == self.widgets.len(),
             "Regions and widgets length mismatch"
         );
 
-        let widgets = self
-            .left_widgets
-            .iter_mut()
-            .chain(self.right_widgets.iter_mut());
+        let widgets = self.widgets.iter_mut();
 
-        let regions: Vec<&Rectangle> = self
-            .left_regions
-            .iter()
-            .chain(self.right_regions.iter())
-            .collect();
+        let regions: Vec<&Rectangle> = self.regions.iter().collect();
 
         let context = Context::new(&self.surface)?;
         // clear surface
@@ -240,17 +205,11 @@ impl StatusBar {
         Ok(())
     }
 
-    async fn targeted_draw(&mut self, (side, index): WidgetID) -> Result<()> {
-        let wd = match side {
-            RightLeft::Right => &mut self.right_widgets[index],
-            RightLeft::Left => &mut self.left_widgets[index],
-        };
-        let region = match side {
-            RightLeft::Right => &self.right_regions[index],
-            RightLeft::Left => &self.left_regions[index],
-        };
+    async fn targeted_draw(&mut self, index: WidgetIndex) -> Result<()> {
+        let wd = &mut self.widgets[index];
+        let region = self.regions[index];
 
-        let cairo_rectangle: cairo::Rectangle = (*region).into();
+        let cairo_rectangle: cairo::Rectangle = region.into();
         let surface = &self.surface.create_for_rectangle(cairo_rectangle)?;
         let context = Context::new(surface)?;
 
@@ -260,7 +219,7 @@ impl StatusBar {
         set_source_rgba(&context, self.background);
         context.paint()?;
 
-        wd.draw_or_replace(context, region).await;
+        wd.draw_or_replace(context, &region).await;
 
         self.surface.flush();
         self.connection.flush()?;
@@ -283,8 +242,7 @@ pub struct StatusBarBuilder {
     height: u16,
     position: Position,
     background: Color,
-    left_widgets: Vec<Box<dyn Widget>>,
-    right_widgets: Vec<Box<dyn Widget>>,
+    widgets: Vec<Box<dyn Widget>>,
 }
 
 impl Default for StatusBarBuilder {
@@ -296,8 +254,7 @@ impl Default for StatusBarBuilder {
             height: 21,
             position: Position::Top,
             background: Color::new(0.0, 0.0, 0.0, 1.0),
-            left_widgets: Vec::new(),
-            right_widgets: Vec::new(),
+            widgets: Vec::new(),
         }
     }
 }
@@ -339,30 +296,16 @@ impl StatusBarBuilder {
         self
     }
 
-    ///Add a widget to the `StatusBar` on the left
-    pub fn left_widget(mut self, widget: Box<dyn Widget>) -> Self {
-        self.left_widgets.push(widget);
+    ///Add a widget to the `StatusBar`
+    pub fn widget(mut self, widget: Box<dyn Widget>) -> Self {
+        self.widgets.push(widget);
         self
     }
 
-    ///Add multiple widgets to the `StatusBar` on the left
-    pub fn left_widgets(mut self, widgets: Vec<Box<dyn Widget>>) -> Self {
+    ///Add multiple widgets to the `StatusBar`
+    pub fn widgets(mut self, widgets: Vec<Box<dyn Widget>>) -> Self {
         for wd in widgets {
-            self.left_widgets.push(wd);
-        }
-        self
-    }
-
-    ///Add a widget to the `StatusBar` on the right
-    pub fn right_widget(mut self, widget: Box<dyn Widget>) -> Self {
-        self.right_widgets.push(widget);
-        self
-    }
-
-    ///Add multiple widgets to the `StatusBar` on the right
-    pub fn right_widgets(mut self, widgets: Vec<Box<dyn Widget>>) -> Self {
-        for wd in widgets {
-            self.right_widgets.push(wd);
+            self.widgets.push(wd);
         }
         self
     }
@@ -450,22 +393,19 @@ impl StatusBarBuilder {
 
         connection.flush()?;
 
+        let widgets: Vec<ReplaceableWidget> = self
+            .widgets
+            .into_iter()
+            .map(ReplaceableWidget::new)
+            .collect();
+        let regions = vec![Rectangle::default(); widgets.len()];
+
         Ok(StatusBar {
             background: self.background,
             connection,
             height: u32::from(self.height),
-            left_regions: vec![Rectangle::default(); self.left_widgets.len()],
-            left_widgets: self
-                .left_widgets
-                .into_iter()
-                .map(ReplaceableWidget::new)
-                .collect(),
-            right_regions: vec![Rectangle::default(); self.right_widgets.len()],
-            right_widgets: self
-                .right_widgets
-                .into_iter()
-                .map(ReplaceableWidget::new)
-                .collect(),
+            regions,
+            widgets,
             surface,
             width: u32::from(width),
             window,

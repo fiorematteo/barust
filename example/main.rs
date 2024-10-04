@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     let mail_user = envtime!("MAIL_USER").expect("MAIL_USER not set");
     let mail_password = envtime!("MAIL_PASSWORD").expect("MAIL_PASSWORD not set");
 
-    let left_widgets: Vec<Box<dyn Widget>> = vec![
+    let widgets: Vec<Box<dyn Widget>> = vec![
         Spacer::new(20).await,
         Workspaces::new(
             PURPLE,
@@ -50,9 +50,6 @@ async fn main() -> Result<()> {
             ..wd_config.clone()
         })
         .await?,
-    ];
-
-    let right_widgets: Vec<Box<dyn Widget>> = vec![
         Systray::new(
             10,
             &WidgetConfig {
@@ -114,8 +111,7 @@ async fn main() -> Result<()> {
         .height(25)
         .position(Position::Top)
         .background(BLANK)
-        .left_widgets(left_widgets)
-        .right_widgets(right_widgets)
+        .widgets(widgets)
         .build()
         .await?
         .start()

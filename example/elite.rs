@@ -3,7 +3,7 @@ use std::{cmp::Ordering, time::Duration};
 use async_channel::SendError;
 use async_trait::async_trait;
 use barust::{
-    utils::{HookSender, TimedHooks, WidgetID},
+    utils::{HookSender, TimedHooks, WidgetIndex},
     widget_default,
     widgets::{Result, Text, Widget, WidgetConfig, WidgetError},
 };
@@ -158,7 +158,7 @@ pub struct DamageResistance {
 #[error(transparent)]
 pub enum Error {
     Reqwest(#[from] reqwest::Error),
-    HookSender(#[from] SendError<WidgetID>),
+    HookSender(#[from] SendError<WidgetIndex>),
 }
 
 impl From<Error> for WidgetError {
