@@ -1,8 +1,7 @@
 use crate::{
     utils::{
         hook_sender::RightLeft, screen_true_height, screen_true_width, set_source_rgba, Atoms,
-        Color, HookSender, Position, Rectangle, ResettableTimer, StatusBarInfo, TimedHooks,
-        WidgetID,
+        Color, HookSender, Position, Rectangle, StatusBarInfo, TimedHooks, WidgetID,
     },
     widgets::{ReplaceableWidget, Size, Widget},
     BarustError, Result,
@@ -11,7 +10,7 @@ use async_channel::{bounded, Receiver};
 use cairo::{Context, Operator, XCBConnection, XCBDrawable, XCBSurface, XCBVisualType};
 use futures::future::join_all;
 use log::{debug, error, warn};
-use std::{sync::Arc, thread, time::Duration};
+use std::{sync::Arc, thread};
 use tokio::{
     select,
     signal::unix::{signal, SignalKind},
@@ -100,14 +99,10 @@ impl StatusBar {
 
         self.generate_regions().await?;
         self.show()?;
-        self.draw().await?;
+        self.draw_all().await?;
         pool.start().await;
         self.connection.flush()?;
 
-        // clear all pending events
-        while widgets_events.try_recv().is_ok() {}
-
-        let mut draw_timer = ResettableTimer::new(Duration::from_millis(1000 / 60));
         loop {
             let mut to_update: Option<WidgetID> = None;
 
@@ -125,16 +120,12 @@ impl StatusBar {
             if let Some(to_update) = to_update {
                 self.update(to_update).await?;
             }
-            // greedy updating
-            while let Ok(to_update) = widgets_events.try_recv() {
-                self.update(to_update).await?;
-            }
 
-            self.generate_regions().await?;
-
-            if draw_timer.is_done() {
-                draw_timer.reset();
-                self.draw().await?;
+            let need_relayout = self.generate_regions().await?;
+            if need_relayout {
+                self.draw_all().await?;
+            } else if let Some(to_update) = to_update {
+                self.targeted_draw(to_update).await?;
             }
         }
     }
@@ -148,7 +139,9 @@ impl StatusBar {
         Ok(())
     }
 
-    async fn generate_regions(&mut self) -> Result<()> {
+    /// Regenerate the regions for the widgets
+    /// return true if the regions have changed
+    async fn generate_regions(&mut self) -> Result<bool> {
         let context = Context::new(&self.surface)?;
         let mut rectangle = Rectangle {
             x: 0,
@@ -183,27 +176,32 @@ impl StatusBar {
             // if there are no flex widgets, use the full width
             .unwrap_or(self.width - static_size);
 
-        self.left_regions.clear();
-        for wd in &mut self.left_widgets {
+        let mut need_relayout = false;
+
+        let left = self
+            .left_widgets
+            .iter_mut()
+            .zip(self.left_regions.iter_mut());
+        let right = self
+            .right_widgets
+            .iter_mut()
+            .zip(self.right_regions.iter_mut());
+
+        for (wd, region) in left.chain(right) {
             rectangle.x += wd.padding();
             let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
             rectangle.width = widget_width;
-            self.left_regions.push(rectangle);
+            if !need_relayout && *region != rectangle {
+                need_relayout = true;
+            }
+            *region = rectangle;
             rectangle.x += widget_width + wd.padding();
         }
 
-        self.right_regions.clear();
-        for wd in &mut self.right_widgets {
-            rectangle.x += wd.padding();
-            let widget_width = wd.size_or_replace(&context).await.unwrap_or(flex_size);
-            rectangle.width = widget_width;
-            self.right_regions.push(rectangle);
-            rectangle.x += widget_width + wd.padding();
-        }
-        Ok(())
+        Ok(need_relayout)
     }
 
-    async fn draw(&mut self) -> Result<()> {
+    async fn draw_all(&mut self) -> Result<()> {
         assert!(
             self.left_regions.len() == self.left_widgets.len()
                 && self.right_regions.len() == self.right_widgets.len(),
@@ -236,6 +234,33 @@ impl StatusBar {
             let context = Context::new(surface)?;
             wd.draw_or_replace(context, rectangle).await;
         }
+
+        self.surface.flush();
+        self.connection.flush()?;
+        Ok(())
+    }
+
+    async fn targeted_draw(&mut self, (side, index): WidgetID) -> Result<()> {
+        let wd = match side {
+            RightLeft::Right => &mut self.right_widgets[index],
+            RightLeft::Left => &mut self.left_widgets[index],
+        };
+        let region = match side {
+            RightLeft::Right => &self.right_regions[index],
+            RightLeft::Left => &self.left_regions[index],
+        };
+
+        let cairo_rectangle: cairo::Rectangle = (*region).into();
+        let surface = &self.surface.create_for_rectangle(cairo_rectangle)?;
+        let context = Context::new(surface)?;
+
+        context.set_operator(Operator::Clear);
+        context.paint()?;
+        context.set_operator(Operator::Over);
+        set_source_rgba(&context, self.background);
+        context.paint()?;
+
+        wd.draw_or_replace(context, region).await;
 
         self.surface.flush();
         self.connection.flush()?;
@@ -429,13 +454,13 @@ impl StatusBarBuilder {
             background: self.background,
             connection,
             height: u32::from(self.height),
-            left_regions: Vec::new(),
+            left_regions: vec![Rectangle::default(); self.left_widgets.len()],
             left_widgets: self
                 .left_widgets
                 .into_iter()
                 .map(ReplaceableWidget::new)
                 .collect(),
-            right_regions: Vec::new(),
+            right_regions: vec![Rectangle::default(); self.right_widgets.len()],
             right_widgets: self
                 .right_widgets
                 .into_iter()

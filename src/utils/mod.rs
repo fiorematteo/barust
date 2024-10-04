@@ -75,7 +75,7 @@ pub fn bytes_to_closest(value: Bytes) -> String {
     format!("{}{}", value, units[selected_unit])
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Rectangle {
     pub x: u32,
     pub y: u32,

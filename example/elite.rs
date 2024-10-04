@@ -43,6 +43,7 @@ impl Titans {
 #[async_trait]
 impl Widget for Titans {
     async fn update(&mut self) -> Result<()> {
+        debug!("updating titans");
         if let Err(e) = self.update_data().await {
             error!("Failed to update titans: {}", e);
             self.titan = None;
