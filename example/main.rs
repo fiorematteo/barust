@@ -145,6 +145,7 @@ fn setup_logger() {
     let handle = log2::open(xdg_data().unwrap().join("log.txt").to_str().unwrap())
         .level(level)
         .tee(args.contains(&String::from("--stderr")))
+        .module_filter(|module| module.contains("barust"))
         .start();
     // dropping handle stops the logger
     std::mem::forget(handle);
