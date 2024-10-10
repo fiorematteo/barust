@@ -95,13 +95,7 @@ async fn main() -> Result<()> {
             &wd_config,
         )
         .await,
-        Brightness::new(
-            "%i %p󱉸",
-            Box::new(SysfsProvider::new().await?),
-            None,
-            &wd_config,
-        )
-        .await,
+        Brightness::new("%i %p󱉸", None, None, &wd_config).await?,
         Clock::new("🕓 %H:%M %d/%m/%Y", &wd_config).await,
     ];
     StatusBar::create()

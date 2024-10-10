@@ -4,11 +4,16 @@ use crate::{
     widgets::{Result, Text, Widget, WidgetConfig},
 };
 use async_trait::async_trait;
-use std::{fmt::Display, fs, io::SeekFrom, ops::DerefMut, path::PathBuf, process::Command};
+use futures::StreamExt;
+use inotify::Inotify;
+use log::{debug, error};
+use std::{fmt::Display, fs, io::SeekFrom, path::PathBuf};
 use tokio::{
     fs::File,
     io::{AsyncReadExt, AsyncSeekExt},
+    spawn,
     sync::Mutex,
+    time::sleep,
 };
 
 /// Icons used by [Brightness]
@@ -29,34 +34,43 @@ impl Default for BrightnessIcons {
 #[derive(Debug)]
 pub struct Brightness {
     format: String,
-    brightness_provider: Box<dyn BrightnessProvider>,
     previous_brightness: f64,
     show_counter: ResettableTimer,
     inner: Text,
     icons: BrightnessIcons,
+    brightness_file: Mutex<File>,
+    max_brightness_file: Mutex<File>,
+    device: Option<String>,
 }
 
 impl Brightness {
     ///* `format`
     ///  * *%p* will be replaced with the brightness percentage
     ///  * *%i* will be replaced with the correct icon
-    ///* `brightness_command` a function that returns the brightness in a range from 0 to 100
     ///* `icons` sets a custom [VolumeIcons]
     ///* `config` a [&WidgetConfig]
     pub async fn new(
         format: impl ToString,
-        brightness_provider: Box<impl BrightnessProvider + 'static>,
         icons: Option<BrightnessIcons>,
+        device: Option<String>,
         config: &WidgetConfig,
-    ) -> Box<Self> {
-        Box::new(Self {
+    ) -> Result<Box<Self>> {
+        let (brightness_path, max_brightness_path) = Self::brightness_file_path(&device)?;
+        let brightness_file = File::open(&brightness_path).await.map_err(Error::from)?;
+        let max_brightness_file = File::open(&max_brightness_path)
+            .await
+            .map_err(Error::from)?;
+
+        Ok(Box::new(Self {
             format: format.to_string(),
-            previous_brightness: 0.0,
-            brightness_provider,
+            previous_brightness: -1.0,
             show_counter: ResettableTimer::new(config.hide_timeout),
             inner: *Text::new("", config).await,
             icons: icons.unwrap_or_default(),
-        })
+            brightness_file: Mutex::new(brightness_file),
+            max_brightness_file: Mutex::new(max_brightness_file),
+            device,
+        }))
     }
 
     fn build_string(&self, current_brightness: f64) -> String {
@@ -66,14 +80,78 @@ impl Brightness {
             .replace("%p", &format!("{:.0}", current_brightness))
             .replace("%i", &self.icons.percentages[index].to_string())
     }
+
+    async fn read_brightness_raw(&self) -> Result<f64> {
+        Self::fetch_from_file(&self.brightness_file).await
+    }
+
+    async fn read_max_brightness_raw(&self) -> Result<f64> {
+        Self::fetch_from_file(&self.max_brightness_file).await
+    }
+
+    async fn fetch_from_file(file: &Mutex<File>) -> Result<f64> {
+        let mut file = file.lock().await;
+        file.seek(SeekFrom::Start(0)).await.map_err(Error::from)?;
+        let mut buf = String::new();
+        file.read_to_string(&mut buf).await.map_err(Error::from)?;
+        Ok(buf.trim().parse::<f64>().map_err(Error::from)?)
+    }
+
+    async fn brightness(&self) -> Result<f64> {
+        Ok(self.read_brightness_raw().await? / self.read_max_brightness_raw().await? * 100.0)
+    }
+
+    fn brightness_file_path(
+        device_name: &Option<String>,
+    ) -> std::result::Result<(PathBuf, PathBuf), Error> {
+        let mut folder = PathBuf::from("/sys/class/backlight");
+        let mut d = fs::read_dir(&folder).map_err(Error::from)?;
+
+        if let Some(device_name) = device_name {
+            folder.push(device_name);
+        } else {
+            folder = d
+                .next()
+                .ok_or(Error::NoBrightnessFile)?
+                .map_err(Error::from)?
+                .path();
+        }
+
+        let mut brightness = None;
+        let mut max_brightness = None;
+        let mut d = fs::read_dir(&folder).map_err(Error::from)?;
+        while let Some(Ok(file)) = d.next() {
+            match file.file_name().to_str() {
+                Some("brightness") => {
+                    let mut path = folder.clone();
+                    path.push("brightness");
+                    brightness = Some(path);
+                }
+                Some("max_brightness") => {
+                    let mut path = folder.clone();
+                    path.push("max_brightness");
+                    max_brightness = Some(path);
+                }
+                _ => (),
+            }
+        }
+        Ok((
+            brightness.ok_or(Error::NoBrightnessFile)?,
+            max_brightness.ok_or(Error::NoBrightnessFile)?,
+        ))
+    }
 }
 
 #[async_trait]
 impl Widget for Brightness {
     async fn update(&mut self) -> Result<()> {
-        let f = self.brightness_provider.brightness();
-        let current_brightness = f.await.ok_or(Error::Command)?;
-
+        let current_brightness = self.brightness().await?;
+        if self.previous_brightness == -1.0 {
+            // first_update
+            self.previous_brightness = current_brightness;
+            self.inner.clear();
+            return Ok(());
+        }
         if current_brightness != self.previous_brightness {
             self.previous_brightness = current_brightness;
             self.show_counter.reset();
@@ -87,8 +165,40 @@ impl Widget for Brightness {
         Ok(())
     }
 
-    async fn hook(&mut self, sender: HookSender, timed_hooks: &mut TimedHooks) -> Result<()> {
-        timed_hooks.subscribe(sender);
+    async fn hook(&mut self, sender: HookSender, _timed_hooks: &mut TimedHooks) -> Result<()> {
+        let (path, _) = Self::brightness_file_path(&self.device)?;
+
+        let events = Inotify::init().unwrap();
+        events
+            .watches()
+            .add(path, inotify::WatchMask::MODIFY)
+            .map_err(Error::from)?;
+        let show_counter_duration = self.show_counter.duration;
+        spawn(async move {
+            let mut buffer = [0; 1024];
+            let mut event_stream = events.into_event_stream(&mut buffer).unwrap();
+            loop {
+                match event_stream.next().await {
+                    Some(Ok(_event)) => {
+                        if let Err(e) = sender.send().await {
+                            debug!("breaking thread loop: {}", e);
+                            return;
+                        }
+                        let c_sender = sender.clone();
+                        spawn(async move {
+                            // hide after some time
+                            sleep(show_counter_duration).await;
+                            let _ = c_sender.send().await;
+                        });
+                    }
+                    Some(Err(e)) => {
+                        debug!("breaking thread loop: {}", e);
+                        return;
+                    }
+                    None => {}
+                }
+            }
+        });
         Ok(())
     }
 
@@ -104,113 +214,9 @@ impl Display for Brightness {
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
 pub enum Error {
-    #[error("Failed to execute brightness command")]
-    Command,
     Io(#[from] std::io::Error),
     #[error("Failed to find a valid sysfs folder")]
     NoBrightnessFile,
-}
-
-#[async_trait]
-pub trait BrightnessProvider: std::fmt::Debug + Send {
-    async fn brightness(&self) -> Option<f64>;
-}
-
-#[derive(Debug, Default)]
-pub struct LightProvider;
-
-impl LightProvider {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-#[async_trait]
-impl BrightnessProvider for LightProvider {
-    async fn brightness(&self) -> Option<f64> {
-        String::from_utf8(Command::new("light").output().ok()?.stdout)
-            .ok()?
-            .trim()
-            .parse::<f64>()
-            .ok()
-    }
-}
-
-#[derive(Debug)]
-pub struct SysfsProvider {
-    brightness_file: Mutex<File>,
-    max_brightness_file: Mutex<File>,
-}
-
-impl SysfsProvider {
-    pub async fn new() -> Result<Self> {
-        let mut folder = PathBuf::from("/sys/class/backlight");
-        let mut d = fs::read_dir(&folder).map_err(Error::from)?;
-        let device = d
-            .next()
-            .ok_or(Error::NoBrightnessFile)?
-            .map_err(Error::from)?;
-        folder.push(device.file_name());
-
-        let mut brightness = None;
-        let mut max_brightness = None;
-        let mut d = fs::read_dir(folder).map_err(Error::from)?;
-        while let Some(Ok(file)) = d.next() {
-            match file.file_name().to_str() {
-                Some("brightness") => {
-                    let mut path = device.path();
-                    path.push("brightness");
-                    brightness = Some(path);
-                }
-                Some("max_brightness") => {
-                    let mut path = device.path();
-                    path.push("max_brightness");
-                    max_brightness = Some(path);
-                }
-                _ => (),
-            }
-        }
-        let brightness_path = brightness.ok_or(Error::NoBrightnessFile)?;
-        let max_brightness_path = max_brightness.ok_or(Error::NoBrightnessFile)?;
-        let brightness_file = File::open(&brightness_path).await.map_err(Error::from)?;
-        let max_brightness_file = File::open(&max_brightness_path)
-            .await
-            .map_err(Error::from)?;
-        Ok(Self {
-            brightness_file: Mutex::new(brightness_file),
-            max_brightness_file: Mutex::new(max_brightness_file),
-        })
-    }
-
-    async fn read_brightness_raw(&self) -> Option<f64> {
-        read_file_from_start(self.brightness_file.lock().await)
-            .await?
-            .trim()
-            .parse::<f64>()
-            .ok()
-    }
-
-    async fn read_max_brightness_raw(&self) -> Option<f64> {
-        read_file_from_start(self.max_brightness_file.lock().await)
-            .await?
-            .trim()
-            .parse::<f64>()
-            .ok()
-    }
-}
-
-async fn read_file_from_start<T: AsyncReadExt + AsyncSeekExt + Unpin>(
-    mut f: impl DerefMut<Target = T>,
-) -> Option<String> {
-    f.seek(SeekFrom::Start(0)).await.ok()?;
-    let mut buf = String::new();
-    f.read_to_string(&mut buf).await.ok()?;
-    Some(buf)
-}
-
-#[async_trait]
-impl BrightnessProvider for SysfsProvider {
-    async fn brightness(&self) -> Option<f64> {
-        Some(self.read_brightness_raw().await? / self.read_max_brightness_raw().await? * 100.0)
-    }
+    #[error("Failed to parse brightness file")]
+    Parse(#[from] std::num::ParseFloatError),
 }

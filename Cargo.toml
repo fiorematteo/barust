@@ -19,6 +19,7 @@ cairo-rs = { version = "0.20.1", features = ["xcb", "png"] }
 chrono = { version = "0.4.22", optional = true }
 futures = "0.3.30"
 imap = "2.4.1"
+inotify = "0.11.0"
 ipgeolocate = { version = "0.3.6", optional = true }
 iwlib = { version = "0.1.0", optional = true }
 libnotify = "1.0.3"

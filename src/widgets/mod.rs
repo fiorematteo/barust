@@ -38,7 +38,7 @@ mod workspaces;
 
 pub use active_window::ActiveWindow;
 pub use bat::{Battery, BatteryIcons, LowBatteryWarner, NotifySend};
-pub use brightness::{Brightness, BrightnessProvider, LightProvider, SysfsProvider};
+pub use brightness::Brightness;
 #[cfg(feature = "clock")]
 pub use clock::Clock;
 #[cfg(feature = "cpu")]
