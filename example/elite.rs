@@ -56,7 +56,8 @@ impl Widget for Titans {
         }
         let text = if let Some(titan) = &self.titan {
             format!(
-                "🌸 {} ({:.2}󱉸 💚) {} to go",
+                // "🌸 {} ({:.2}󱉸 💚) {} to go",
+                "{} ({:.2}󱉸 💚) {} to go",
                 titan.name,
                 titan.total_progress * 100.,
                 titan.systems_thargoid_controlled

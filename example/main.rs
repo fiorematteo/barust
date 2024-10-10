@@ -6,7 +6,7 @@ use barust::{
     statusbar::StatusBar,
     utils::{Color, Position},
     widgets::*,
-    xdg_data, Result,
+    xdg_config, xdg_data, Result,
 };
 use elite::Titans;
 use envtime::envtime;
@@ -66,7 +66,6 @@ async fn main() -> Result<()> {
         // )
         // .await,
         // Icon::new("test.svg", 21, &wd_config)?,
-        // Icon::new("interceptor.png", 21, &wd_config)?,
         Mail::new(
             "(fiorematteo2002) %c 📧",
             PasswordLogin::new("imap.gmail.com", mail_user, mail_password),
@@ -83,6 +82,11 @@ async fn main() -> Result<()> {
             &wd_config,
         )
         .await?,
+        Icon::new(
+            xdg_config()?.join("interceptor.png"),
+            21,
+            &wd_config,
+        )?,
         Titans::new(&wd_config).await,
         Disk::new("💾 %f", "/", &wd_config).await,
         Wlan::new("📡 %e", "wlp1s0".to_string(), &wd_config).await,

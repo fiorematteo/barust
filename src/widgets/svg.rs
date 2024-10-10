@@ -5,7 +5,10 @@ use crate::{
 use async_trait::async_trait;
 use cairo::{Context, Format, ImageSurface};
 use rsvg::CairoRenderer;
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    path::PathBuf,
+};
 
 pub struct Svg {
     surface: OwnedImageSurface,
@@ -20,7 +23,7 @@ impl Debug for Svg {
 }
 
 impl Svg {
-    pub fn new(path: &str, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
+    pub fn new(path: PathBuf, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let handle = rsvg::Loader::new().read_path(path).map_err(Error::from)?;
 
         let surface =

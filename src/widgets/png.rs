@@ -7,6 +7,7 @@ use cairo::{Context, ImageSurface};
 use std::{
     fmt::{Debug, Display},
     fs::File,
+    path::PathBuf,
 };
 
 pub struct Png {
@@ -27,7 +28,7 @@ impl Debug for Png {
 }
 
 impl Png {
-    pub fn new(path: &str, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
+    pub fn new(path: PathBuf, width: u32, config: &WidgetConfig) -> Result<Box<Self>> {
         let mut file = File::open(path).map_err(Error::from)?;
         let surface = ImageSurface::create_from_png(&mut file).map_err(Error::from)?;
         Ok(Box::new(Self {
