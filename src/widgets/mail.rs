@@ -11,7 +11,7 @@ use imap::Session;
 use log::{debug, error, warn};
 use native_tls::TlsStream;
 use std::{fmt::Display, net::TcpStream, path::PathBuf, pin::Pin, time::Duration};
-use tokio::time::sleep;
+use tokio::{process::Command, time::sleep};
 use yup_oauth2::{
     authenticator_delegate::{DefaultInstalledFlowDelegate, InstalledFlowDelegate},
     InstalledFlowAuthenticator, InstalledFlowReturnMethod,
@@ -168,7 +168,10 @@ impl InstalledFlowDelegate for InstalledFlowBrowserDelegate {
             url: &str,
             need_code: bool,
         ) -> std::result::Result<String, String> {
-            webbrowser::open(url).map_err(|e| format!("{}", e))?;
+            Command::new("xdg-open")
+                .arg(url)
+                .spawn()
+                .map_err(|e| format!("{}", e))?;
 
             DefaultInstalledFlowDelegate
                 .present_user_url(url, need_code)
