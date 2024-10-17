@@ -55,13 +55,20 @@ impl Widget for Titans {
             }
         }
         let text = if let Some(titan) = &self.titan {
-            format!(
-                // "🌸 {} ({:.2}󱉸 💚) {} to go",
-                "{} ({:.2}󱉸 💚) {} to go",
-                titan.name,
-                titan.total_progress * 100.,
-                titan.systems_thargoid_controlled
-            )
+            if titan.damage_resistance.name == "Completely vulnerable" {
+                format!(
+                    "🌸 {} {:.2}󱉸 of {} 💚",
+                    titan.name,
+                    titan.heart_progress * 100.,
+                    titan.hearts_remaining
+                )
+            } else {
+                format!(
+                    "🌸 {} {} to go",
+                    titan.name,
+                    titan.systems_thargoid_controlled
+                )
+            }
         } else {
             String::from("No active titans")
         };
