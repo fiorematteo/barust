@@ -38,12 +38,12 @@ pub struct PasswordLogin {
 }
 
 impl PasswordLogin {
-    pub fn new(domain: impl ToString, user: impl ToString, password: impl ToString) -> Box<Self> {
-        Box::new(Self {
+    pub fn new(domain: impl ToString, user: impl ToString, password: impl ToString) -> Self {
+        Self {
             domain: domain.to_string(),
             user: user.to_string(),
             password: password.to_string(),
-        })
+        }
     }
 }
 
@@ -91,12 +91,12 @@ pub struct GmailLogin {
 impl GmailLogin {
     /// client_secret_path is the path to the client_secret.json file
     /// either absolute or relative to the config directory
-    pub fn new(user: impl ToString, client_secret_path: impl Into<PathBuf>) -> Box<Self> {
+    pub fn new(user: impl ToString, client_secret_path: impl Into<PathBuf>) -> Self {
         let config_path = xdg_config().map_err(Error::from).unwrap();
-        Box::new(Self {
+        Self {
             user: user.to_string(),
             client_secret_path: config_path.join(client_secret_path.into()),
-        })
+        }
     }
 }
 
@@ -200,7 +200,7 @@ impl Mail {
     ///* `config` a [&WidgetConfig]
     pub async fn new(
         format: impl ToString,
-        authenticator: Box<dyn ImapLogin>,
+        authenticator: impl ImapLogin + 'static,
         folder_name: impl Into<Option<&str>>,
         filter: impl Into<Option<&str>>,
         config: &WidgetConfig,
@@ -213,7 +213,7 @@ impl Mail {
         tokio::task::spawn(async move {
             loop {
                 let count =
-                    fetch_message_count(authenticator.as_ref(), &folder_name, &filter).await;
+                    fetch_message_count(&authenticator, &folder_name, &filter).await;
                 if tx.send(count).await.is_err() {
                     break;
                 }
@@ -231,7 +231,7 @@ impl Mail {
 }
 
 async fn fetch_message_count(
-    authenticator: &dyn ImapLogin,
+    authenticator: &impl ImapLogin,
     folder_name: &str,
     filter: &str,
 ) -> Result<usize> {
