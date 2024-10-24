@@ -40,7 +40,6 @@ yup-oauth2 = "8.3.2"
 
 [dev-dependencies]
 console-subscriber = "0.2.0"
-envtime = "0.0.4"
 futures = "0.3.30"
 log = "0.4.17"
 pyo3 = { version = "0.21.2", features = ["auto-initialize"] }

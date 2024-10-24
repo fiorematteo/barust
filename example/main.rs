@@ -9,7 +9,6 @@ use barust::{
     xdg_data, Result,
 };
 use elite::Titans;
-use envtime::envtime;
 use log::LevelFilter;
 use std::{env, time::Duration};
 
@@ -28,9 +27,6 @@ async fn main() -> Result<()> {
         hide_timeout: Duration::from_secs(5),
         ..WidgetConfig::default()
     };
-
-    let mail_user = envtime!("MAIL_USER").expect("MAIL_USER not set");
-    let mail_password = envtime!("MAIL_PASSWORD").expect("MAIL_PASSWORD not set");
 
     let widgets: Vec<Box<dyn Widget>> = vec![
         Spacer::new(20).await,
@@ -68,7 +64,7 @@ async fn main() -> Result<()> {
         // Icon::new("test.svg", 21, &wd_config)?,
         Mail::new(
             "(fiorematteo2002) %c 📧",
-            PasswordLogin::new("imap.gmail.com", mail_user, mail_password),
+            GmailLogin::new("fiorematteo2002@gmail.com", "client_secret.json"),
             None,
             None,
             &wd_config,

@@ -90,7 +90,7 @@ pub struct GmailLogin {
 
 impl GmailLogin {
     /// client_secret_path is the path to the client_secret.json file
-    /// either absolute or relative to the config directory
+    /// either absolute or relative to the barust config directory
     pub fn new(user: impl ToString, client_secret_path: impl Into<PathBuf>) -> Self {
         let config_path = xdg_config().map_err(Error::from).unwrap();
         Self {
