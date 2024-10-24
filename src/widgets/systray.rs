@@ -86,16 +86,6 @@ impl Systray {
             })
             .map_err(Error::from)?;
 
-        self.connection
-            .send_and_check_request(&ConfigureWindow {
-                window,
-                value_list: &[
-                    ConfigWindow::Sibling(self.window.unwrap()),
-                    ConfigWindow::StackMode(StackMode::Above),
-                ],
-            })
-            .map_err(Error::from)?;
-
         if self.children.is_empty() {
             self.connection
                 .send_and_check_request(&MapWindow {
@@ -556,6 +546,7 @@ impl Display for Systray {
     }
 }
 
+#[derive(Debug)]
 enum SystrayEvent {
     ClientMessage(ClientMessageEvent),
     DestroyNotify(Window),
