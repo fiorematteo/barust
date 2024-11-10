@@ -437,10 +437,7 @@ impl Widget for Systray {
         self.connection
             .send_and_check_request(&ConfigureWindow {
                 window: self.window.unwrap(),
-                value_list: &[
-                    ConfigWindow::Sibling(info.window),
-                    ConfigWindow::StackMode(StackMode::Above),
-                ],
+                value_list: &[ConfigWindow::StackMode(StackMode::Above)],
             })
             .map_err(Error::from)?;
 
