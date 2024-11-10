@@ -84,7 +84,11 @@ impl StatusBar {
 
         self.generate_regions().await?;
         self.show()?;
+
+        // refresh background for transparent bar?
         self.draw_all().await?;
+        self.draw_all().await?;
+
         pool.start().await;
         self.connection.flush()?;
 
@@ -376,6 +380,25 @@ impl StatusBarBuilder {
             property: atoms._NET_WM_WINDOW_TYPE,
             r#type: xcb::x::ATOM_ATOM,
             data: &[atoms._NET_WM_WINDOW_TYPE_DOCK],
+        })?;
+
+        let bar_size = self.height as u32; // MUST USE u32
+        let strut_data = [0, 0, bar_size, 0, 0, 0, 0, 0, 0, width as u32, 0, 0];
+
+        connection.send_and_check_request(&xcb::x::ChangeProperty {
+            mode: xcb::x::PropMode::Replace,
+            window,
+            property: atoms._NET_WM_STRUT,
+            r#type: xcb::x::ATOM_CARDINAL,
+            data: &strut_data[0..4],
+        })?;
+
+        connection.send_and_check_request(&xcb::x::ChangeProperty {
+            mode: xcb::x::PropMode::Replace,
+            window,
+            property: atoms._NET_WM_STRUT_PARTIAL,
+            r#type: xcb::x::ATOM_CARDINAL,
+            data: &strut_data,
         })?;
 
         set_window_title(connection.clone(), window, "barust")?;

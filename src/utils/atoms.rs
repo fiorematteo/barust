@@ -2,7 +2,7 @@
 
 use crate::atoms;
 use std::sync::OnceLock;
-use xcb::Connection;
+use xcb::{Connection, Xid};
 
 static ATOMS: OnceLock<Atoms> = OnceLock::new();
 
@@ -21,6 +21,8 @@ atoms!(
         _NET_WM_NAME,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_DOCK,
+        _NET_WM_STRUT,
+        _NET_WM_STRUT_PARTIAL,
         _XEMBED,
         _XEMBED_EMBEDDED_NOTIFY,
     }
@@ -43,16 +45,14 @@ macro_rules! atoms {
             #[allow(dead_code)]
             fn intern_all(conn: &xcb::Connection) -> xcb::Result<$Atoms> {
                 $(
-                    let $field = conn.send_request(&xcb::x::InternAtom {
-                        only_if_exists: false, // NOTE: this is important
+                    let cookie = conn.send_request(&xcb::x::InternAtom {
+                        only_if_exists: true, // NOTE: this is important?
                         name: stringify!($field).as_bytes(),
                     });
+                    let $field = conn.wait_for_reply(cookie)?.atom();
+                    assert!($field.resource_id() != 0, "{:?} atom does not exist", stringify!($field));
                 )*
-                Ok($Atoms {
-                    $(
-                        $field: conn.wait_for_reply($field)?.atom(),
-                    )*
-                })
+                Ok($Atoms { $( $field,)* })
             }
         }
     };
